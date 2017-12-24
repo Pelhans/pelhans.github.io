@@ -1,5 +1,5 @@
 # Site settings
-title: 假如你要尊重真理，就要预期在腹背受难。
+title: Pelhans Blog
 SEOTitle: Pelhans | Pelhans Blog
 header-img: img/home-bg.jpg
 email: p.zhang1992@gmail.com
@@ -48,7 +48,7 @@ kramdown:
 
 
 # Disqus settings
-disqus_username: hux
+disqus_username: pelhans
 
 # Netease setttings
 netease_comment: false
@@ -57,11 +57,11 @@ netease_comment: false
 
 # Analytics settings
 # Baidu Analytics 
-# ba_track_id: [your track id]
+ ba_track_id: 'b69508ada6cca8707145b640e177a53a'
 
 # Google Analytics
-ga_track_id: 'UA-49627206-1'            # Format: UA-xxxxxx-xx
-ga_domain: huangxuan.me
+#ga_track_id: 'UA-49627206-1'            # Format: UA-xxxxxx-xx
+#ga_domain: pelhans.me
 
 
 
@@ -85,6 +85,8 @@ service-worker: true
 
 
 # Friends
+friends:[
+]
 #friends: [
 #    {
 #    #     title: "Su",
