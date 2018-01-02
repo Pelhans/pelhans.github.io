@@ -4,7 +4,7 @@ SEOTitle: 张涵沛的博客 | Pelhans Blog
 header-img: img/home-bg.jpg
 email: p.zhang1992@gmail.com
 description: "自然语言处理学徒 | Pelhans，Machine Learning , NLP , ASR | 这里是 @Pelhans 的博客"
-keyword: "Pelhans, 机器学习, 自然语言处理, 语音识别, 知识图谱, 表示学习"
+keyword: "Pelhans, 自然语言处理, 语音识别, 知识图谱, 表示学习"
 #url: "https://pelhans.me"              # your host, for absolute URL
 url: "https://pelhans.github.io"              # your host, for absolute URL
 baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'
@@ -90,35 +90,5 @@ service-worker: true
 #    {
 #    #     title: "Su",
 #    #     href: "http://su.gallery/"
-#    # },{
-#        title: "乱序",
-#        href: "http://mida.re/"
-#    },{
-#        title: "前端外刊评论",
-#        href: "http://qianduan.guru/"
-#    },{
-#        title: "天镶的博客",
-#        href: "http://lingyu.wang/"
-#    },{
-#        title: "Luke 的自留地",
-#        href: "http://hmqk1995.github.io"
-#    },{
-#        title: "Ebn's Blog",
-#        href: "http://ebnbin.com/"
-#    },{
-#        title: "SmdCn's Blog",
-#        href: "http://blog.smdcn.net"
-#    },{
-#        title: "解旻的博客",
-#        href: "http://xieminis.me/"
-#    },{
-#        title: "DHong Say",
-#        href: "http://dhong.co"
-#    },{
-#        title: "尹峰以为",
-#        href: "http://ingf.github.io/"
-#    },{
-#        title: "前端神盾局",
-#        href: "http://wepiaofei.github.io/blog/"
-#    }
+#    # }
 #]
