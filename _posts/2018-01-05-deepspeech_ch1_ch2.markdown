@@ -27,3 +27,12 @@ tags:
 声学模型的两个主要问题为特征向量序列可编程和音频信号的丰富变化性。前者可通过动态时间规整（DTW）或HMM解决。在过去，最流行的语音识别系统采用MFCC或RASTA-PLP作为特征向量，使用GMM-HMM作为声学模型。采用最大似然准则、序列鉴别性训练算法（MCE、MPE）等进行训练。现在流行的是分层鉴别性模型如深度神经网络模型。
 
 ![](/img/in-post/deepspeech_ch1_ch2/deepspeech_ch1_ch2_1.jpg)
+
+# 第二章 混合高斯模型
+
+1 
+<img src="http://www.forkosh.com/mathtex.cgi? p(x) = \frac{1}{(2\pi)^{1/2}}">
+2 
+<img src="http://chart.googleapis.com/chart?cht=tx&chl= p(x) = \frac{1}{(2\pi)^{1/2}}" style="border:none;">
+3 
+$p(x) = \frac{1}{(2\pi)^{1/2}}$
