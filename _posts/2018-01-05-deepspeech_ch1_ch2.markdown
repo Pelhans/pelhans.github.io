@@ -30,9 +30,37 @@ tags:
 
 # 第二章 混合高斯模型
 
-1 
-<img src="http://www.forkosh.com/mathtex.cgi? p(x) = \frac{1}{(2\pi)^{1/2}}">
-2 
-<img src="http://chart.googleapis.com/chart?cht=tx&chl= p(x) = \frac{1}{(2\pi)^{1/2}}" style="border:none;">
-3 
-$p(x) = \frac{1}{(2\pi)^{1/2}}$
+随机变量可分为离散型随机变量, 连续型随机变量或混合型随机变量.如果连续型随机变量x的概率密度是
+
+![](/img/in-post/deepspeech_ch1_ch2/deepspeech_ch2_f1.jpg)
+
+
+那么它是服从正态分布或高斯分布的.
+
+一个标量连续随机变量x服从混合高斯分布，如果它的概率密度函数为:
+
+![](/img/in-post/deepspeech_ch1_ch2/deepspeech_ch2_f2.jpg)
+
+其中:
+![](/img/in-post/deepspeech_ch1_ch2/deepspeech_ch2_f3.jpg)
+
+混合权重和为1，即:
+
+![](/img/in-post/deepspeech_ch1_ch2/deepspeech_ch2_f4.jpg)
+
+混合高斯模型可以描述多模态性质的物理数据（如语音数据）。推广到多变量的多元混合高斯分布，其联合概率密度函数可写为：
+
+![](/img/in-post/deepspeech_ch1_ch2/deepspeech_ch2_f5.jpg)
+
+在实际计算中，若使用全协方差矩阵（非对角）将引入大量参数（约为MxD^2)，因此可以使用对角协方差矩阵，当M很大时，亦可以限制所有的协方差矩阵为相同矩阵。
+
+对于多元混合高斯分布的参数估计即根据符合混合高斯分布的数据来确定模型参数的取值。此处主要介绍最大值期望算法（EM算法），它可以作为最大似然准侧估计方法的代表。EM算法是在给定确定数量的混合分布成分情况下去估计各个分布参数最通用的方法。
+
+该算法分为两个阶段，E阶段为期望计算阶段，M为最大化阶段，针对高斯混合分布的EM算法参数更新公式为：
+
+![](/img/in-post/deepspeech_ch1_ch2/deepspeech_ch2_f6.jpg)
+
+由上可以看出，这些公式本质上是对整个采样数据的加权平均的均值和协方差。
+
+原始的语音数据经过短时傅立叶变换或取倒谱后会成为特征序列，在忽略时序信息的条件下，GMM就非常适合拟合这样的语音特征。因此，GMM被整合进HMM中，用来拟合基于状态的输出分布。但若包含语音顺序信息的话，GMM就不再是一个好模型，因为它不包含任何顺序信息。若当给定HMM的一个状态后，若要对属于该状态的语音特征向量的概率分布进行建模，GMM仍不失为一个好的模型。
+
