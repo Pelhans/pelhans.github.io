@@ -36,8 +36,8 @@ var gitment = new Gitment({
   owner: 'pelhans',
   repo: 'pelhans.github.io',
   oauth: {
-    client_id: 'dbec37728f2282bb2d97',
-    client_secret: 'b602c6c6c0f484eb0894d15d6a5898f5d1f13438',
+    client_id: '15b9fe2f4c186c1a0331',
+    client_secret: '2cfe93101b4693abbccf523b126d8ffcc2985a7a',
   },
 })
 gitment.render('container')
