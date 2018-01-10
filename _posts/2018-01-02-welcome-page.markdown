@@ -15,6 +15,8 @@ tags:
 
 > 新年新气象~ Happy new year！！ <br><br>
 
+* TOC
+{:toc}
 
 ## 自然语言
 
