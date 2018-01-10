@@ -97,7 +97,7 @@ $$ v(s) = E[R_{t+1} + \gamma v(S_{t+1}) | S_{t} = s] $$
 <script>
 var gitment = new Gitment({
   id: '', // 可选。默认为 location.href
-  owner: 'pelhans',
+  owner: '17537939',
   repo: 'pelhans.github.io',
   oauth: {
     client_id: 'dbec37728f2282bb2d97',
