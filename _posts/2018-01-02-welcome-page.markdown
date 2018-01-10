@@ -26,19 +26,3 @@ tags:
 
 好啦~做梦结束，新的一年，继续补充基础吧~
 
-
-<div id="container"></div>
-<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
-<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
-<script>
-var gitment = new Gitment({
-  id: 'location.href', // 可选。默认为 location.href
-  owner: 'pelhans',
-  repo: 'pelhans.github.io',
-  oauth: {
-    client_id: '15b9fe2f4c186c1a0331',
-    client_secret: '2cfe93101b4693abbccf523b126d8ffcc2985a7a',
-  },
-})
-gitment.render('container')
-</script>

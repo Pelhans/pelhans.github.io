@@ -179,6 +179,26 @@ layout: default
 {% endif %}
 
 
+{% if site.git_issue %}
+<!-- Gitment评论代码开始 start --> 
+<div id="container"></div>
+<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css"><script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+<script>                                                                        
+var gitment = new Gitment({
+  id: 'location.href', // 可选。默认为 location.href
+  owner: 'pelhans',
+  repo: 'pelhans.github.io',
+  oauth: {
+    client_id: '15b9fe2f4c186c1a0331',
+    client_secret: '2cfe93101b4693abbccf523b126d8ffcc2985a7a',
+  },
+})
+gitment.render('container')
+</script>
+<!-- Gitment评论代码结束 end --> 
+{% endif %}
+
+
 {% if site.disqus_username %}
 <!-- disqus 公共JS代码 start (一个网页只需插入一次) -->
 <script type="text/javascript">

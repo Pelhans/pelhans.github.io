@@ -54,6 +54,7 @@ disqus_username: pelhans
 
 # Netease setttings
 netease_comment: false
+git_issue : true
 
 
 
