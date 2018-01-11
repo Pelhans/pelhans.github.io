@@ -2,7 +2,7 @@
 layout:     post
 title:      "深度学习语音识别笔记(三)" 
 subtitle:   "隐马尔科夫模型-HMM"
-date:       2018-01-11 10:33:28
+date:       2018-01-11 21:46:28
 author:     "Pelhans"
 header-img: "img/post_deepspeech_ch1_ch2.jpg"
 header-mask: 0.3 
@@ -137,7 +137,7 @@ $$\alpha_{1}(i) = \pi_{i}b_{i}(O_{1}),~1\leq i \leq N$$
 
 步骤2: 归纳计算:
 
-$$\alpha_{t+1}(j) = (\sum_\limits_{i=1}^{N}\alpha_{t}(i)a_{ij})b_{j}(O_{t=1}), ~1\leq t\leq T-1$$
+$$\alpha_{t+1}(j) = (\sum\limits_{i=1}^{N}\alpha_{t}(i)a_{ij})b_{j}(O_{t=1}), ~1\leq t\leq T-1$$
 
 步骤3：求和终结
 
@@ -151,17 +151,81 @@ $$\beta_{t}(i) = P(O_{t=1}O_{t+2}\ldots O_{T} | q_{t} = s_{i}, \mu)$$
 
 ### 解码问题：Viterbi算法
 
-维特比算法用来求解HMM的第二个问题，即给定一个HMM的模型参数$$\mu$$和观察序列$$O = O_{1}O_{2}\ldots O_{T}$$，找到最优的状态序列$$Q = q_{1}q_{2}\ldots q_{T}$$.因此我们的目标是在给定模型参数$$\mu$$和观察序列O的条件下，使得条件概率$$P_(Q | O,\mu)$$最大的状态序列，即:
+维特比算法用来求解HMM的第二个问题，即给定一个HMM的模型参数$$\mu$$和观察序列$$O = O_{1}O_{2}\ldots O_{T}$$，找到最优的状态序列$$Q = q_{1}q_{2}\ldots q_{T}$$.因此我们的目标是在给定模型参数$$\mu$$和观察序列O的条件下，使得条件概率
+$$P(Q | O,\mu)$$最大的状态序列，即:
 
-$$\^{Q} = argmax\limits_{Q}P(Q | O, \mu)$$
+$$Q_{*} = \arg\max\limits_{Q}P(Q | O, \mu)$$
 
 此时优化的是整个状态序列。为了应用维特比算法，我们首先定义一个维特比变量$$\delta_{t}(i)$$:
 
-$$\delta_{t}(i) = max\limits_{q_{1},q_{2},\ldots q_{t-1}} P(q_{1}, q_{2}, \ldots, q_{t} = s_{i}, O_{1}O_{2}\ldots O_{t} | \mu)$$
+$$\delta_{t}(i) = \max\limits_{q_{1},q_{2},\ldots q_{t-1}} P(q_{1}, q_{2}, \ldots, q_{t} = s_{i}, O_{1}O_{2}\ldots O_{t} | \mu)$$
 
 与前向变量类似，$$\delta_{t}(i)$$有如下递归关系:
 
-$$\delta_{t+1}(i) = max\limits_{j}[\delta_{t}(j)\cdot a_{ij}]\cdot_{i}(O_{t+1})$$
+$$\delta_{t+1}(i) = \max\limits_{j}[\delta_{t}(j)\cdot a_{ij}]\cdot a_{i}(O_{t+1})$$
 
 这种递归关系能够使我们使用动态规划搜索技术。同时为了记录在时间t时，HMM通过哪一条概率最大的路径到达状态$$s_{i}$$，维特比算法设置了另外一个变量$$\psi_{t}(i)$$用于路径记忆，让$$\psi_{t}(i)$$记录该路径上状态$$s_{i}$$的前一个状态。综合上面所述，我们得到完整的维特比算法:
 
+1): 初始化:
+
+$$\delta_{1}(i) = \pi_{i}b_{i}(O_{1}), ~1\leq i \leq N$$
+
+$$\psi_{1}(i) = 0$$
+
+2): 归纳计算:
+
+$$\delta_{t}(j) = \max\limits_{1\leq i\leq N}[\delta_{t-1}\cdot a_{ij}]\cdot b_{j}(O_{t}), ~2\leq t \leq T;~1\leq j \leq N$$
+
+记忆回退路径:
+
+$$\psi_{t}(j) = \arg\max\limits_{1\leq i\leq N}[\delta_{t-1}\cdot a_{ij}]\cdot b_{j}(O_{t}), ~2\leq t \leq T;~1\leq j \leq N$$
+
+3) 终结:
+
+$$Q_{T*} = \arg\max\limits_{1\leq i\leq N}[\delta_{T}(i)]$$
+
+$$P_{T*} = \max\limits_{1\leq i\leq N}[\delta_{T}(i)]$$
+
+4)路径(状态序列)回溯:
+
+$$q_{*} = \psi_{t+1}(q_{t+1,*}),~~t = T-1, T-2,\cdots,1$$
+
+维特比算法的时间复杂度和前向算法,后向算法一样,都是$$O(N^{2}T)$$.在实际应用中,往往会所搜n个最佳路径.
+
+### HMM的训练:前向后向算法
+
+前向后向算法用来求解HMM中的第三个问题,即给定一个观察序列$$O = O_{1}O_{2}\cdots O_{T}$$,如何调节模型参数,
+使得$$P(O, | \mu)$$最大化.
+
+期望最大化(Exoectation maximization, EM)算法可以用于含有隐变量的统计模型的参数最大似然估计.它的核心思想是初始时随机地给模型的参数赋值,该赋值遵循模型对参数的限制.而后我们将得到模型的参数$$\mu_{0}$$.根据$$\mu_{0}$$求得模型中隐变量的期望值.由该期望值又可以重新得到模型参数的新估计值,由此得到模型的新参数$$\mu_{1}$$.循环进行该过程,知道参数收敛于最大似然估计值.
+
+这里我们介绍EM算法的一种具体实现方法,称之为Baum-Welch算法或前向后向算法.
+
+从上面的描述中,我们看到隐状态的期望和参数的更新公式是我们关心的,因此我们先求期望.
+
+给定HMM的参数$$\mu$$和观察序列$$O = O_{1}O_{2}\cdots O_{T}$$,在时间t位于状态$$s_{i}$$,时间t+1位于状态$$s_{j}$$的概率
+$$\xi_{t}(i, j) = P(q_{t} = s_{i}, q_{t+1} = s_{j} | O, \mu)(1\leq t\leq T, 1\leq i,j\leq N)$$可以由下面的公式计算获得:
+
+$$\xi_{t}(i, j) = \frac{P(q_{t} = s_{i}, q_{t+1} = s_{j}, O \mu)}{P(O | \mu)}$$
+
+$$= \frac{\alpha_{t}(i)a_{ij}b_{j}(O_{t+1})\beta_{t+1}(j)}{P(O | \mu)}$$
+
+$$= \frac{\alpha_{t}(i)a_{ij}b_{j}(O_{t+1})\beta_{t+1}(j)}{\sum\limits_{i=1}^{N} \sum\limits_{j=1}^{N} \alpha_{t}(i)a_{ij}b_{j}(O_{t+1})\beta_{t+1}(j)}$$
+
+给定HMM的参数和观察序列,在时间t位于状态$$s_{i}$$的概率$$\gamma_{t}(i)$$为:
+
+$$\gamma_{t}(i) = \sum\limits_{j=1}^{N}\xi_{t}(i, j)$$
+
+它表示对下一所有可能状态j的求和.得到期望后,我们就可以对参数进行更新了.
+
+$$average(\pi_{i}) = P_(q_{1} = s_{i} | O,\mu) = \gamma_{1}(i)  $$
+
+$$average(a_{ij}) = \frac{\sum\limits_{t=1}^{T-1}\xi_{t}(i,j)}{\sum\limits_{t=1}^{T-1}\gamma_{t}(i,j)}$$
+
+$$average(b_{j}) = \frac{\sum\limits_{t=1}^{T}\gamma_{t}(j)\times\delta(O_{t},v_{k})}{\sum\limits_{t=1}^{T}\gamma_{t}(j)}$$
+
+有了上述算法,我们就可以按照E-M的步骤进行计算.E步骤计算期望值$$\xi_{t}(i,j), \gamma_{t}(i)$$.M步骤用E步骤得到的期望值重新估计参数,得到新的模型参数.重复这些步骤直至模型参数收敛.
+
+# 絮叨
+
+关于马尔科夫真的有太多需要写的,也有太多需要记忆的,毕竟在深度学习席卷ML之前,HMM是霸主一样的存在,被应用于各行各业,这里只是给出很基础的一些概念.其他很多都是这个的衍生.我自己之前虽然多次学习,但一直都是模模糊糊,每次看完后都会忘掉.直到这次完整写出来理出思路.愿随着笔记的增长,我能对ML和NLP理解的更深刻,走的更远.GOod Luck~
