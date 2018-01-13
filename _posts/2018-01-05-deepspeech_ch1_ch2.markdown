@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      "深度学习语音识别笔记（一）" 
-subtitle:   "第一章与第二章"
+title:      "语音识别笔记（一）" 
+subtitle:   "简介与高斯混合模型"
 date:       2018-01-05 17:02:00
 author:     "Pelhans"
 header-img: "img/post_deepspeech_ch1_ch2.jpg"
