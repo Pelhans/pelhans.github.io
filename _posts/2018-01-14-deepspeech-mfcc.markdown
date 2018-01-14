@@ -2,7 +2,7 @@
 layout:     post
 title:      "语音识别笔记 (五)" 
 subtitle:   "MFCC,搜索-解码,Embedded Training"
-date:       2017-01-14 20:39:28
+date:       2018-01-14 20:39:28
 author:     "Pelhans"
 header-img: "img/post_deepspeech_ch1_ch2.jpg"
 header-mask: 0.3 
