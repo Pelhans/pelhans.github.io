@@ -2,7 +2,7 @@
 layout:     post
 title:      "David Silver 强化学习 第四讲" 
 subtitle:   "Model-Free 的预测"
-date:       2017-01-16 21:35:18
+date:       2018-01-16 21:35:18
 author:     "Pelhans"
 header-img: "img/post_deepRL.jpg"
 header-mask: 0.3 
