@@ -1,0 +1,45 @@
+---
+layout:     post
+title:      "Kaldi thchs30手札（一）" 
+subtitle:   "特征提取阶段（line 0-33)"
+date:       2018-01-15 22:15:18
+author:     "Pelhans"
+header-img: "img/post_kaldi_note.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Kaldi
+---
+
+
+> Kaldi是一个语音识别工具包，基于C++并遵循Apache v2.0协议。它包含语音信号处理、声学模型训练、解码等一系列工具，同时内部还带有各种语言的源代码实例。非常强大。
+
+* TOC
+{:toc}
+
+#  thchs30 的运行
+
+程序到手，当然是先跑起来看看长什么样子，功能是什么。所以本部分先介绍Kaldi的运行。
+
+1） 从github上Clone 仓库： git clone https://github.com/kaldi-asr/kaldi
+
+2) 进入Kaldi目录后查看INSTALL文件，它会告诉你怎么安装Kaldi，需要注意的是 extras/check_dependencies.sh这里检查依赖，一定要确保满足相关要求，否则后面会很麻烦。编译的话根据自己的CPU数目选择make -j **n**。
+
+3） 下载语音预料，thchs30的语料是公开的，可以在http://www.openslr.org/18/ 里下载并解压。
+
+4） Kaldi安装好后就可以进入到egs/thchs30/s5/目录了。首先加入你是本地运行的话，需要讲cmd.sh文件内的queue.pl替换为run.pl。然后再修改第11行的thchs= 的路径为你自己存放语音语料的路径，到此Kaldi程序就可以运行了。后面DNN那里可能会出一点问题，这个后面再说。
+
+# 生成text wav.scp utt2pk spk2utt
+
+负责此处的是run.sh中的第22行，即:
+<code class="hljs livecodeserver">{% highlight ruby %}
+local/thchs-30_data_prep.sh $H $thchs/data_thchs30 || exit 1;
+{% endhighlight %}
+
+其中$H 是当前目录名，$thchs指的是语音语料库位置。这俩是thchs-30_data_prep.sh 脚本的参数。（这个local我一开始以为是bash里面的local命令，想了半天也没有想懂，后来才发现这货就一文件夹。。。$
+
+该程序的答题执行流程是读取语料库中的{train, dev, test}文件夹下的.wav文件和.trn文件。利用wav文件的名字和所在路径生成wav.scp文件，利用wav.trn文件中的第1行和第3行生成word.txt 和phone.txt。这里的word和phone都是直接从文件中读取的。同时由于此处没有说话人识别，因此对于utt2spk(语段到说话人)和spk2utt(说话人到语段)里的内容都是两列相同的wav文件名。
+
+# 提取MFCC特征
+
+
