@@ -1,0 +1,129 @@
+---
+layout:     post
+title:      "David Silver 强化学习 第六讲" 
+subtitle:   "价值函数的近似表示"
+date:       2018-01-15 22:15:18
+author:     "Pelhans"
+header-img: "img/post_deepRL.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Reinforment Learning
+---
+
+
+> 前五讲主要是强化学习的理论内容,往往不能很好的解决实际问题.因此本讲及后三讲都是讲解实践中的强化学习.
+
+* TOC
+{:toc}
+
+# 简介
+
+在实际应用中,对于状态和行为空间巨大的情况下,我们很难精确的获得v(S)和q(s, a).因此我们不得不寻找近似函数,具体来说可以使用线性组合,神经网络以及其他方法来近似价值函数:
+
+$$ v(S) \approx v(S, w) $$
+
+w表示引入的参数.通过函数近似的方式,我们可以直接拟合各种价值函数,本课程讲近似方法分为两大类:递增方法(即时更新)和批方法(收集一批数据后更新).两类方法没明显界限,相互借鉴.到目前为止,在理论中我们使用的都是Table Lookup的方式,即每一个状态或者状态行为对对应一个价值函数.对于实际问题来讲,状态空间太大的话这就不现实了.因此对于大规模问题,我们采用如下思路:
+
+1) 通过函数近似来估计实际的价值函数:
+
+$$ v_{*}(s, w) \approx v_{\pi}(s) $$
+
+$$ q_{*}(s, a ,w) \approx q_{\pi}(s, a) $$
+
+2) 把从已知的状态学习到的函数通用化推广至那些未碰到的状态中.
+
+3) 使用MC或TD学习来更新函数参数.
+
+对于近似函数的选择往往需要考虑针对状态可导和收敛的一些性质.最终我们需要一个适用于非静态,满足i.i.d的数据的训练方法得到近似函数.
+
+# 递增方法 (Incremental Methods)
+
+##　线性函数近似－特征向量（Linear Function Approximation - Feature Vectors）
+
+用一个特征向量表示一个状态,每一个状态是由以w表示的不同强度的特征来线性组合得到:
+
+$$
+x(S) = \left(
+\begin{aligned}
+x_{1}(S) & \\
+\vdots & \\
+x_{1}(S)
+\end{aligned}
+\right)
+$$
+
+若采用线性函数近似价值函数的话,则:
+
+$$ v^{*}(S,\textbf{w}) = \textbf{x}(S)^{T}\textbf{w} = \sum\limits_{j=1}^{n}\textbf{x}_{j}(S)\textbf{w}_{j} $$
+
+因此目标函数就可以表示为:
+
+$$ J(\textbf{w}) = E_{\pi}[(v_{\pi}(S) - \textbf{x}(S)^{T}\textbf{w})^{2}] $$
+
+对应的参数更新规则为:
+
+$$\nabla_{w}v^{*}(S, \textbf{w}) = \textbf{w}(S) $$
+
+$$\triangle\textbf{w} = \alpha(v_{\pi}(S) - v^{*}(S, w))\textbf{x}(S) $$
+
+这样就可以像常见的机器学习算法一样用梯度下降就可以收敛到全局最优解了.
+
+## 递增-预测算法(Incremental Prediction Algorithms)
+
+上面公式虽然看起来合理,但别忘了是在强化学习中使用,和带标签的监督学习不同,此时我们没有监督学习,因此上式还不能直接使用.那怎么办呢?假如能找到能替代$$v_{\pi}(S)$$的目标值就好了.
+
+对于MC算法,目标值就是收获:
+
+$$ \triangle\textbf{w} = \alpha(G_{t} - v^{*}(S_{t}, \textbf{w}))\nabla_{w}v^{*}(S_{t}, \textbf{w}) $$
+
+对于TD(0),目标值就是TD目标:
+
+$$ \triangle\textbf{w} = \alpha(R_{t+1} + \gamma v^{*}(S_{t+1}, \textbf{w}) - v^{*}(S_{t}, \textbf{w}))\nabla_{w}v^{*}(S_{t}, \textbf{w}) $$
+
+对于TD($$\lambda$$),目标值就是$$\lambda$$收获:
+
+$$ \triangle\textbf{w} = \alpha(G_{t}^{\lambda} - v^{*}(S_{t+1}, \textbf{w}))\nabla_{w}v^{*}(S_{t},\textbf{w}) $$ 
+
+
+### MC应用于状态价值函数近似
+
+前面学过,MC的收获$$G_{t}$$是对真实价值$$V_{\pi}(S_{t})$$的有噪声无偏采样.此时的训练数据集可以是:
+
+$$ <S_{1}, G_{1}>, <S_{2}, G_{2}> , \ldots, <S_{T}, G_{T}> $$
+
+如果使用线性蒙特卡洛策略迭代，用$$G_{t}$$作为标签数据的话,那么每次参数的修正值则为：
+
+$$ \triangle\textbf{w} = \alpha(G_{t} - v^{*}(S_{t}, \textbf{w}))\textbf{x}(S_{t}) $$
+
+**蒙特卡洛策略迭代即使使用线性函数近似时也是收敛到一个局部最优解**.
+
+### TD应用于状态价值函数近似
+
+TD目标值是真实价值的有噪声、有偏采样。此时的训练数据集是：
+
+$$ <S_{1}, R_{2}+\gamma v^{*}(S_{2},\textbf{w})>,<S_{2}, R_{3}+\gamma v^{*}(S_{3},\textbf{w})>, \ldots,<S_{T-1}, R_{T}> $$
+
+若使用线性TD(0)学习,则讲数据集带入梯度更新公式由:
+
+$$ \nabla\textbf{w} = \alpha\delta\textbf{w} (S) $$
+
+**线性TD(0)近似收敛至全局最优解。**
+
+### TD(λ)应用于状态价值函数近似
+
+TD(λ)目标值是真实价值的有噪声、有偏采样。此时的训练数据集是：
+
+$$ <S_{1}, G_{1}^{\lambda}>, <S_{2}, G_{2}^{\lambda}>, \ldots, <S_{T-1}, G_{T-1}^{\lambda}> $$
+
+如果使用线性TD(λ)学习，从反向认识看，有：
+
+$$ \delta_{t} = R_{t+1} + \gamma v^{*}(S_{t+1}, \textbf{w}) - v^{*}(S_{t}, w) $$
+
+$$E_{t} = \gamma\lambda E_{t-1} + \textbf{x}(S_{t}) $$
+
+$$ \triangle\textbf{w} = \alpha\delta_{t}E_{t} $$
+
+对于一个完整的Episode，TD(λ)的前向认识和反向认识对于w的改变是等效的。**线性TD(0)近似收敛至全局最优解。**
+
+## 递增-控制算法(Incremental Control  Algorithms)
