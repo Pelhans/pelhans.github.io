@@ -42,6 +42,13 @@ local/thchs-30_data_prep.sh $H $thchs/data_thchs30 || exit 1;
 
 # 提取MFCC特征
 
+对应代码为：
+<code class="hljs livecodeserver">{% highlight bash %}
+steps/make_mfcc.sh --nj $n --cmd "$train_cmd" data/mfcc/$x exp/make_mfcc/$x mfcc/$x || exit 1;
+{% endhighlight %}
+
+其中$n是make的cpu线程数目，$train_cmd 是cmd.sh里的train_cmd变量，$x就是循环里的{train,dev,test}了。
+
 关于梅尔倒谱系数(MFCC)我们之前讲过,在Kaldi里它本身设置了合理的默认值,同事保留了一部分用户最有可能想调整的选项,如梅尔滤波器的个数,最大和最小截止频率等等.它通常需要读取wav文件或.pcm文件,假如数据源不是wav文件,我们就得使用工具来转化,Kaldi中有的sph2pipe工具能满足一般的情况.
 
 命令工具 compute-mfcc-feats用来计算MFCC特征,若直接运行不带参数的话就会给出一个参数列表.改程序需要两个参数,rspecifier是用来度.wav数据, wspecifier是用来写特征的(就是r 和w啦).典型的用法是,将数据写入一个大的"archive"文件,也写到一个"scp"文件以便随机读取.
@@ -68,10 +75,50 @@ Kaldi的特征和HTK的特征在很多方面不同，但是几乎所有这些不
 
 # 倒谱均值方差归一化(CMVN)
 
+代码为：
+<code class="hljs livecodeserver">{% highlight bash %}
+steps/compute_cmvn_stats.sh data/mfcc/$x exp/mfcc_cmvn/$x mfcc/$x || exit 1;
+{% endhighlight %}
+
 在实际情况下,受不同麦克风及音频通道的影响,会导致相同音素的特征差别比较大，通过CMVN可以得到均值为0，方差为1的标准特征。均值方差可以以一段语音为单位计算，但更好的是在一个较大的数据及上进行计算，这样识别效果会更加robustness。Kaldi中计算均值和方差的代码在compute-cmvn-stats.cc， 归一化在apply-cmvn.cc。
 
 # 滤波器组(FilterBank, FBank)
 
 人耳对声音频谱的响应是非线性的，经验表明：如果我们能够设计一种前端处理算法，以类似于人耳的方式对音频进行处理，可以提高语音识别的性能。FilterBank分析就是这样的一种算法。FBank特征提取要在预处理之后进行，这时语音已经分帧，我们需要逐帧提取FBank特征。
 
+# 语音感知线性预测（Perceptual Linear Prediction，PLP）
 
+PLP和MFCC一样都是一种声学特征，且它们的前期计算工作也是一样的。PLP在Kaldi的手册中没有找到，此处再用HTK手册中的叙述。As implemented in HTK the PLP feature extraction is based on the standard mel-frequency
+filterbank (possibly warped). The mel filterbank coefficients are weighted by an equal-loudness
+curve and then compressed by taking the cubic root. 5 From the resulting auditory spectrum LP
+coefficients are estimated which are then converted to cepstral coefficients in the normal way (see above).
+
+
+# 特征级声道长度归一化（VTLN）
+
+程序compute-mfcc-feats和compute-plp-feats**接收一个VTLN弯折因子选项**。在目前的脚本中，这仅用作线性版的VTLN的初始化线性转换的一种方法。**VTLN通过移动三角频率箱的中心频率的位置来实现**。移动频率箱的弯折函数是一个在频域空间分段线性的函数。为理解它，记住以下数量关系：
+
+0 <= low-freq <=vtln-low < vtln-high < high-freq <= nyquist
+
+此处，low-freq和high-freq分别是用于标准MFCC或PLP计算的最低和最高频率（忽略更低和更高的频率）。vtln-low和vtln-high是用于VTLN的截止频率，**它们的功能是确保所有梅尔滤波器有合适的宽度**。
+
+Kaldi实现的VTLN弯折函数是一个**分段线性函数**，三个部分映射区间[low-freq,high-freq]至[low-freq, high-freq]。记弯折函数为W(f)，f是频率。中段映射f到f/scale，scale是VTLN弯折因子（通常范围为0.8到1.2）。x轴上低段和中段的连接点是满足min(f,W(f)) = vtln-low的f点。x轴上中段和高端的连接点是满足max(f, W(f)) = vtln-high的f点。要求低段和高段的斜率和偏移是连续的且W(low-freq)=low-freq，
+W(high-freq)=high-freq。这个弯折函数和HTK的不同；HTK的版本中，"vtln-low"和"vtln-high"的数量关系是x轴上可以不连续的点，这意味着变量"vtln-high"必须基于弯折因子的可能范围的先验知识谨慎选择（否则梅尔滤波器可能为空）。
+
+一个合理的设置如下（以16kHz采样的语音为例）；注意这反映的是我们理解的合理值，并非任何非常细致的调试实验的结果。
+
+low-freq | vtln-low | vtln-high | high-freq | Nyquist
+40       | 60       | 7200      | 7800      | 8000
+
+
+# Hanmming窗
+
+前面说过，我们要处理的语音信号一般在10ms到30ms之间，我们可以把它看作是平稳的。为了处理语音信号，我们要对语音信号进行分段，即每次仅处理一段数据。
+
+那怎么能够获取一段数据呢？一种方式就是构造一个函数。这个函数在某一区间有非零值，而在其余区间皆为0.汉明窗就是这样的一种函数。它主要部分的形状像sin（x）在0到pi区间的形状，而其余部分都是0.这样的函数乘上其他任何一个函数f，f只有一部分有非零值。
+
+为什么汉明窗这样取呢？因为之后我们会对汉明窗中的数据进行FFT，它假设一个窗内的信号是代表一个周期的信号。（也就是说窗的左端和右端应该大致能连在一起）而通常一小段音频数据没有明显的周期性，加上汉明窗后，数据形状就有点周期的感觉了。 
+
+因为加上汉明窗，只有中间的数据体现出来了，两边的数据信息丢失了，所以等会移窗的时候，只会移1/3或1/2窗，这样被前一帧或二帧丢失的数据又重新得到了体现。
+
+简单的说汉明窗就是个函数，它的形状像窗，所以类似的函数都叫做窗函数。
