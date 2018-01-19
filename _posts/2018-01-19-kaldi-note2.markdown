@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "Kaldi thchs30手札（二）" 
-subtitle:   "特征提取阶段（line 38-47)"
+subtitle:   "word-graph（line 38-47)"
 date:       2018-01-19 22:15:18
 author:     "Pelhans"
 header-img: "img/post_kaldi_note.jpg"
