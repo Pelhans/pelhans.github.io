@@ -2,7 +2,7 @@
 layout:     post
 title:      "Kaldi thchs30手札（二）" 
 subtitle:   "特征提取阶段（line 38-47)"
-date:       2018-01-17 22:15:18
+date:       2018-01-19 22:15:18
 author:     "Pelhans"
 header-img: "img/post_kaldi_note.jpg"
 header-mask: 0.3 
@@ -108,3 +108,5 @@ line 415-433: 创建完整的L.fst文件。
 该程序的主要目标就是根据语言模型生成G.fst文件。方便与之前的L.fst结合，发挥fst的优势。脚本最后会检测G.fst中是否存没有单词的空环，如果存在就会报错，这回这会导致后续HLG的determinization出现错误。其程序核心就是arpa2fst
 
 # L.fst 与 G.fst
+
+这里我看了别人的教程,但是自己并没有很好的理解,留个坑.
