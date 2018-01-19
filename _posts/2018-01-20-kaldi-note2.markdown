@@ -1,0 +1,110 @@
+---
+layout:     post
+title:      "Kaldi thchs30手札（二）" 
+subtitle:   "特征提取阶段（line 38-47)"
+date:       2018-01-17 22:15:18
+author:     "Pelhans"
+header-img: "img/post_kaldi_note.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Kaldi
+---
+
+
+> 本部分是对Kaldi thchs30 中run.sh的代码的line 38-47行研究和知识总结，重点是word-graph的建立。
+
+* TOC
+{:toc}
+
+#  概览
+
+先把代码放在这里：
+
+<code class="hljs livecodeserver">{% highlight bash %}
+#prepare language stuff
+#build a large lexicon that invovles words in both the training and decoding. 
+(
+  echo "make word graph ..."
+  cd $H; mkdir -p data/{dict,lang,graph} && \
+  cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt, silence_phones.txt} data/dict && \
+  cat $thchs/resource/dict/lexicon.txt $thchs/data_thchs30/lm_word/lexicon.txt | \
+    grep -v '<s>' | grep -v '</s>' | sort -u > data/dict/lexicon.txt || exit 1;
+  utils/prepare_lang.sh --position_dependent_phones false data/dict "<SPOKEN_NOISE>" data/local/   lang data/lang || exit 1;
+  gzip -c $thchs/data_thchs30/lm_word/word.3gram.lm > data/graph/word.3gram.lm.gz || exit 1;
+  utils/format_lm.sh data/lang data/graph/word.3gram.lm.gz $thchs/data_thchs30/lm_word/lexicon.txt data/graph/lang || exit 1;
+)  
+{% endhighlight %}  
+
+其中$H是指的是thchs30/s5这个路径，$thchs30指的是前面设置的语音语料库路径。
+
+头五行为提示开始制作，进入主目录并建立dict,lang,graph三个文件夹，然后讲语音数据库中dict下的文件考到data/dict目录下。用cat命令显示字典文件并用grep查找不包含$$<s>$$和$$</s>$$字符的行并输入到lexicon.txt文件中。
+
+utils/prepare_lang.sh 构建字典L.fst文件，该文件不包含消岐符。
+
+gzip -c这行是解压语言模型。
+
+utils/format_lm.sh 该行是为了生成G.fst文件和并检查它是否包含空环。
+
+可以看出重点就是两个utils/*的脚本，下面我们详细介绍它俩。
+
+# prepare_lang.sh
+
+该程序的参数在文件开头有详细的说明，这里挑选使用到的参数翻译一下：
+
+1) --position_dependent_phones false： 是否将phone拆成更详细的部分，若选择true，则将在phone后面根据音素所处的位置加上$$_B, _I, _E, _S$$
+
+2) data/dict： 词典源文件夹 $$<dict-src-dir>$$。
+
+3) $$"<SPOKEN_NOISE>"$$：词典里未包含的事例,$$<oov-dict-entry>$$.
+
+4) data/local/lang : 临时文件夹
+
+5) data/lang: 目标文件夹。
+
+6) share_silence_phones：在构造出的roots.txt文件中，其中的所有sil共享同一个高斯pdf。需要注意的是若选择共享也只是共享pdf，转移概率还是不一样的。
+
+这里对roots.txt文件详细解释一下，在同一行出现的所有音素对应的HMM会共享它们的pdf-class根节点,如果不共享的话就放在不同行。
+
+roots.txt每行开头都包含(not)shared和(not)split的修饰，**share代表对于每个HMM（例如有三个状态)，是否所有的状态共享一个根节点**(如三个状态共享一个根节点),not-shared就是每个状态都有不同的根节点。(not)split则表示对于上述的每个根节点，是否有机会根据问题进行决策树分裂，**如果为split，则允许进行分裂，分裂后同一行中的不同音素对应的HMM状态可能会有不同的pdf-class**。如果是not-split,则不允许分裂，同一行中的所有音素对应的HMM将固定共享它们的pdf-class而不发生分裂。在thchs30中该选项是false同时不进行共享。
+
+到这里用到的选项我们就解释完了，下面从头到尾把用到的部分代码解释一下。
+
+line 85-129是各种输入文件的检查和整理。其中:
+1. lexicon.txt文件是字典文件，格式为$$word~phone~phone2~phoneN$$.
+
+2. lexiconp.txt是带概率的字典文件，概率值为每个词出现的概率，格式为：$$word~pron-prob~phone1,~phone2~phoneN$$.
+
+3. silence_phones.txt/nonsilence_phones.txt为静音/非静音音素，每一行代表一组相同的base phone,但可能有不同的中银或者声调的音素，如:$$a~a1~a2~a3$$。
+
+4. optional_silence.txt:包含一个单独的音素用来作为词典中默认的静音音素。
+
+5. extra_questions.txt:用来构建决策树的问题集，可以是空的，包含多组相同的音素，每一组音素包含相同的重音或者声调；也有可能是一致表示非语音的静音/噪音音素。这可以用于增加自动生成问题的数量。
+
+line 131-203:当你选择position_dependent_phones是true时，根据lexiconp.txt文件在每个词的音素后面添加位置标记.
+
+line 209-230:执行上面建立roots.txt文件的过程。若share_silence_phones为true则共享sil，若为false则直接将shared 和split加到roots.txt文件头并且将需要共享的音素放到一行即可。
+
+line 232-237:使用utils/apply_map.pl将源文件夹下的音素映射到phones/下的对应文件。(map程序说自己applies a map to things in a file...这个things..等我有时间好好看看这货干嘛的，不过我对比了下，俩文件除了多个空格没有其他区别。。。)
+
+line 243-253:根据音素的位置来添加extra questions.
+
+line 255-284: 字典中的词可能会出现同个发音的情况，这里在同音词的发音标注后面加入消岐符(disambig sysmbols,长这样#1)来进行区分，字典中有多少同音词就会有多少个消岐符。
+
+line 286-296: 为每个音素创建描述词边界信息的文件。
+
+line 298-345: 创建词汇-符号表。这个表中的内容就是所有词汇和符号与数字的对应；如$$<eps> 0 $$这样。
+
+line 347-362: 创建align_lexicon.{txt,int}文件，大体操作为从lexiconp.txt中移除概率部分。
+
+line 364-386： 创建不包含消岐符的的L.fst文件用于训练使用。使用的是utils/make_lexicon_fst.pl，它将词典中的单词和音素转换成fst输入格式的文件。内部存储格式为:
+
+line 389-412: 主要是格式转换，将各个文本转换成前面映射得到的数字表示。
+
+line 415-433: 创建完整的L.fst文件。
+
+# format_lm.sh
+
+该程序的主要目标就是根据语言模型生成G.fst文件。方便与之前的L.fst结合，发挥fst的优势。脚本最后会检测G.fst中是否存没有单词的空环，如果存在就会报错，这回这会导致后续HLG的determinization出现错误。其程序核心就是arpa2fst
+
+# L.fst 与 G.fst
