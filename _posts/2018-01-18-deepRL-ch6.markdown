@@ -2,7 +2,7 @@
 layout:     post
 title:      "David Silver 强化学习 第六讲" 
 subtitle:   "价值函数的近似表示"
-date:       2018-01-15 22:15:18
+date:       2018-01-18 22:15:18
 author:     "Pelhans"
 header-img: "img/post_deepRL.jpg"
 header-mask: 0.3 
@@ -127,3 +127,94 @@ $$ \triangle\textbf{w} = \alpha\delta_{t}E_{t} $$
 对于一个完整的Episode，TD(λ)的前向认识和反向认识对于w的改变是等效的。**线性TD(0)近似收敛至全局最优解。**
 
 ## 递增-控制算法(Incremental Control  Algorithms)
+
+对于控制问题，我们需要能够近似状态行为对的价值函数而不是单针对状态的近似。此时的策略评估也是近似的:
+
+$$ q^{*}(S, A, \textbf{w}) \approx q_{\pi}(S, A) $$
+
+而策略的改善则使用$$\epsilon -greedy$$执行。需要注意的是改进死无法最终收敛于最优策略对应的价值函数。
+
+有了行为价值函数近似表示后，采用最小均方差为损失评估：
+
+$$ J(\textbf{w}) = E_{\pi}[(q_{\pi}(S, A) - q^{*}(S, A, \textbf{w}))^{2}] $$
+
+若使用随机梯度下降来寻找局部最优解的话，则参数更新公式为：
+
+$$ \triangle \textbf{w} = \alpha(q_{\pi}(S, A) - q^{*}(S, A, \textbf{w}))\nabla_{\textbf{w}}q^{*}(S, A, \textbf{w}) $$
+
+当使用线性函数近似状态行为价值函数时，线性特征组合的状态行为价值近似函数可以表示为：
+
+$$ q^{*}(S, A, \textbf{w}) = \textbf{w}(S, A)^{T}\textbf{w} = \sum\limits_{j=1}^{n}\textbf{x}_{j}(S, A)\textbf{w}_{j} $$
+
+随机梯度下降的参数更新是：
+
+$$ \triangle\textbf{w} = \alpha(q_{\pi}(S, A) - q^{*}(S, A, \textbf{w}))\textbf{x}(S, A) $$
+
+类似于预测部分，对于线性控制算法，我们找到真实行为价值的目标值。
+
+对于MC算法，目标值就是收获：
+
+$$ \triangle\textbf{w} = \alpha(G_{t} - q^{*}(S_{t}, A_{t}, \textbf{w}))\nabla_{\textbf{w}}q^{*}(S_{t}, A_{t}, \textbf{w}) $$
+
+对于TD(0)，目标值就是TD目标：
+
+$$ \triangle\textbf{w} = \alpha(R_{t+1} + \gamma q^{*}(S_{t+1}, A_{t+1}. \textbf{w}) - q^{*}(S_{t}, A_{t},\textbf{w}))\nabla_{\textbf{w}}q^{*}(S_{t}, A_{t}, \textbf{w}) $$
+
+对于后向认识TD(λ)，对应的参数更新是：
+
+$$ \delta_{t} = R_{t+1} + \gamma q^{*}(S_{t+1}, A_{t+1}, \textbf{w}) - q^{*}(S_{t}, A_{t}, \textbf{w}) $$
+
+$$ E_{t} = \gamma \lambda E_{t-1} + \nabla_{\textbf{w}}q^{*}(S_{t}, A_{t}, \textbf{w}) $$
+
+$$ \triangle\textbf{w} = \alpha\delta_{t}E_{t} $$
+
+## 收敛性
+
+下图给出预测学习算法的收敛性总结,：
+
+![](/img/in-post/deepRL_ch6/deepRL_ch6_1.jpg)
+
+下图给出的是针对控制学习算法的收敛性总结：
+
+![](/img/in-post/deepRL_ch6/deepRL_ch6_2.jpg)
+
+# 批方法（Batch Methods）
+
+批方法是把一段时间的数据集中起来，通过学习使得数能较好地符合这段时期内所有的数据。这里的训练数据集“块”相当于个体的一段经验。具体流程为：
+
+假设存在一个价值函数的近似：
+
+$$ v^{*} \approx_{\pi}(s) $$
+
+在一段时期内的经历D：
+
+$$ D = {<s_{1}, v_{1}^{\pi}>, <s_{2}, v_{2}^{\pi}>, \ldots , <s_{T}, v_{T}^{\pi}>} $$
+
+若采用最小平方差损失：
+
+$$ J(\textbf{w}) = \sum\limits_{t=1}^{T}(v_{t}^{\pi} - v^{*}(s_{t}, \textbf{w}))^{2} = E_{D}[(v^{\pi} - v^{*}(s, \textbf{w}))^{2}] $$
+
+## DQN
+
+先前说过TD方法结合非线性的神经网络函数近似可能不会收敛，但DQN(Deep Q-Networks) 使用 经历重现和固定的Q目标值 能做到收敛而且保持很好的鲁棒性。在解释其收敛之前先要介绍DQN算法的要点：
+
+1. 依据Ɛ-greedy执行策略产生t时刻的行为；
+
+2. 将大量经历数据（例如百万级的）以 $$(s_{t}, a_{t}, r_{t+1}, s_{t+1})$$ 存储在内存里，作为D大块；
+
+3. 从D大块中随机抽取小块（例如64个样本数据）数据 (s, a, r, s')；
+
+4. 维护两个神经网络DQN1，DQN2,一个网络固定参数专门用来产生目标值，目标值相当于标签数据。另一个网络专门用来评估策略，更新参数。
+
+5. 优化关于Q网络和Q目标值之间的最小平方差，其中$$w^{fix}$$是批学习过程中固定的参数，$$w_{i}$$则是动态更新的参数： 
+$$ L_{i}(w_{i}) = E_{s,a,r,s'\~ D}[(r+ \gamma \max\limits_{a'}Q(s',a',w_{i}^{fix}) - Q(s, a_{i}, w_{i}))^{2}] $$
+
+6.  用随机梯度下降的方式更新参数。
+
+首先，随机采样打破了状态之间的联系；第二个神经网络会暂时冻结参数，我们从冻结参数的网络而不是从正在更新参数的网络中获取目标值，这样增加了算法的稳定性。经过一次批计算后，把冻结参数的网络换成更新的参数再次冻结产生新一次迭代时要用的目标值。
+
+下图给出分别移除DQN各个部件的表现对比：
+
+![](/img/in-post/deepRL_ch6/deepRL_ch6_3.jpg)
+
+可以看出，批方法对结果的影响较大，参数固定的影响相对小一点。
