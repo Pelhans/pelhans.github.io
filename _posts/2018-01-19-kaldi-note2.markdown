@@ -1,8 +1,8 @@
 ---
 layout:     post
 title:      "Kaldi thchs30手札（二）" 
-subtitle:   "word-graph（line 38-47)"
-date:       2018-01-19 22:15:18
+subtitle:   "word-graph（line 38-60)"
+date:       2018-01-23 22:15:18
 author:     "Pelhans"
 header-img: "img/post_kaldi_note.jpg"
 header-mask: 0.3 
@@ -12,7 +12,7 @@ tags:
 ---
 
 
-> 本部分是对Kaldi thchs30 中run.sh的代码的line 38-47行研究和知识总结，重点是word-graph的建立。
+> 本部分是对Kaldi thchs30 中run.sh的代码的line 38-60行研究和知识总结，重点是word-graph的建立。
 
 * TOC
 {:toc}
@@ -109,4 +109,61 @@ line 415-433: 创建完整的L.fst文件。
 
 # L.fst 与 G.fst
 
-这里我看了别人的教程,但是自己并没有很好的理解,留个坑.
+可以看出，上面两个程序的主要目标就是创建L.fst和G.fst，那么这两个文件是什么呢？它们的作用又是什么呢？
+
+fst文件根据它的显示图我猜测应该是有限状态转换机(Finite State Transducer)的缩写，FST允许声学信息(HMM集合)、单词发音、语言模型和识别语法的单独的统一的表示。由于该统一表示，导致在遍历搜索网络期间，可以执行计算花费不大的计算，而其他计算花费大的优化能够被卸下到预编译阶段进行。
+
+知道它是个有限状态转换机，剩余的就好办的多了，以L.fst来说，它在转换之前是一个带有概率和消岐符的字典文件，长的是下面这个样子：
+
+![](/img/in-post/Kaldi_note_2/kaldi_note_n2_1.png)
+
+它的第一行$$!EXCLAMATION=POINT$$表示一个词word，后面的1.0表示概率，再后面的EH_B等就表示音素以及音素的相对位置(当然若未选择位置依赖选项为true的话就没有_B等后缀)。若是带有消岐符的词典的话，则在重音的单词后的音素结尾处会带有消岐符，如$$#1$$这种。字典中有多少个同音词就会有多少个消岐符(disambig sysmbol).
+
+而后我们使用脚本utils/make_lexicon_fst.pl将词典中的单词和音素转换成fst输入文件的格式，其格式为:
+
+
+![](/img/in-post/Kaldi_note_2/kaldi_note_n2_2.png)
+
+头两行与后两行相对应，从第一行的0开始，到下一个第一行出现0为止构成一个循环，如上图中第一行数字为0 1，代表从状态0指向状态1，对应的弧为K_B:'CAUSE,而后第二行是1 2，对应弧为AH_I:<eps>.第三行为2 0 ，对应弧为Z_E:<eps>。这样又指回了0即完成了一个循环，对应于下图中的最上面的环.而后接下来继续从0开始下一个循环，只不过接着的状态不是1而是上一个循环0之前的状态数+1
+.
+
+![](/img/in-post/Kaldi_note_2/kaldi_note_n2_3.png)
+
+看完数字再看后两行，即第三行和第四行，其中第三行是音素，第四行是单词，$$<eps>$$代表单词间的空格，如'CAUSE是由头三个音素组成$$K_B AH_I Z_E$$组成，因此除了第一行是单词'CAUSE外，后面两个接着的都是$$<eps>$$。至此我们知道一个从0开始到0结束的闭环代表一个单词的音素状态转移。我们可以由一连串的音素闭环输入得到一个对应的单词输出，即词典的功能。
+
+我们还可以使用fstcompile将text描述性质的fst转换成二进制形式：
+<code class="hljs livecodeserver">{% highlight bash %}
+fstcompile --isymbols=phone.txt --osymbols=word.txt text_format.fst binary.fst
+{% endhighlight %}  
+
+生成的二进制文件可以使用fstdraw可视化，结果就是上面的图:
+<code class="hljs livecodeserver">{% highlight bash %}
+fstdraw --isymbols=phone.txt --osymbols=word.txt binary.fst | dot -Tjpg > fst.jpg
+{% endhighlight %}  
+
+上面对L.fst进行了详细的介绍，可以看到，转换到fst的文件，其功能并未发生改变，只是其本身结构发生了变换-变成了状态转换图的形式了，因此对于G.fst也可以用同样的眼光看待，它只不过是转换为fst格式的语言模型而已，画出来图形仍然是与L.fst类似的形式。
+
+# 建立phone-graph
+
+与建立word-graph的代码极为相似，不同的就是把lexicon.txt和lexiconp.txt里的单词换成音素标记，中间一行依旧是概率，最后一行是该音素的发音(因此对于大部分音素第一行与第三行是相同的)，代码如下:
+<code class="hljs livecodeserver">{% highlight bash %}
+(
+  echo "make phone graph ..."
+  cd $H; mkdir -p data/{dict_phone,graph_phone,lang_phone} && \
+  cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,      silence_phones.txt} data/dict_phone  && \
+  cat $thchs/data_thchs30/lm_phone/lexicon.txt | grep -v '<eps>' | sort -u > data/dict_phone/   lexicon.txt  && \
+  echo "<SPOKEN_NOISE> sil " >> data/dict_phone/lexicon.txt  || exit 1;
+  utils/prepare_lang.sh --position_dependent_phones false data/dict_phone "<SPOKEN_NOISE>" data/local/lang_phone data/lang_phone || exit 1;
+  gzip -c $thchs/data_thchs30/lm_phone/phone.3gram.lm > data/graph_phone/phone.3gram.lm.gz  ||  exit 1;
+  utils/format_lm.sh data/lang_phone data/graph_phone/phone.3gram.lm.gz $thchs/data_thchs30/    lm_phone/lexicon.txt \
+    data/graph_phone/lang  || exit 1;
+)
+{% endhighlight %}  
+
+因为其使用的也是utils/prepare_lang.sh 和 format_lm.sh，因此它的目的还是建立L.fst和G.fst文件。只不过L.FST的输入是音素，输出也是音素了。二G.fst文件则对应着音素的3-gram语言模型的fst文件。
+
+# 参考
+
+[Kaldi学习笔记 -- 构建字典FST脚本 -- prepare_lang.sh 关键内容解析](http://blog.csdn.net/duishengchen/article/details/52473918)
+
+[kaldi学习笔记 -- 构造语言模型相关脚本 -- ami_train_lms.sh，utils/format_lm.sh](http://blog.csdn.net/DuishengChen/article/details/52514477)
