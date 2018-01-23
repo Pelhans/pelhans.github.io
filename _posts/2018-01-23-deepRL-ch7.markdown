@@ -1,0 +1,180 @@
+---
+layout:     post
+title:      "David Silver 强化学习 第七讲" 
+subtitle:   "策略梯度"
+date:       2018-01-23 23:15:18
+author:     "Pelhans"
+header-img: "img/post_deepRL.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Reinforment Learning
+---
+
+
+> 本讲直接参数化策略本身,通过策略相关的目标函数梯度的引导,寻找目标函数的极值,进而得到最优策略.
+
+* TOC
+{:toc}
+
+# 简介
+[**总结自叶强的David Silver强化学习公开课中文讲解及实践专栏**](https://zhuanlan.zhihu.com/reinforce)
+
+本讲我们直接参数化策略本身,同时参数化的策略将不再是一个概率集合而是一个函数:
+
+$$ \pi_{\theta} = P[a|s,\theta] $$
+
+策略函数确定了在给定的状态和一定的参数设置下,采取任何可能行为的概率.因此它实际上是一个概率密度函数.我们要做的是利用参数化的策略函数,通过调整这些参数来得到一个较优的策略.在遵循这个策略产生的行为将得到较多的奖励.具体的实现可以对其使用一个梯度上升算法优化参数以最大化奖励.
+
+除了上一讲基于价值的和本讲基于策略的强化学习外,还有一种二者都学习的方法,称之为Actor-Critic强化学习.下图给出它们三个的关系:
+
+![](/img/in-post/deepRL_ch7/deepRL_ch7_1.jpg)
+
+基于策略学习相比于基于价值的学习具有以下优点:
+
+1. 可能具有更好的收敛性.
+
+2. 对于拥有高纬度或连续空间的情况,基于价值的学习需要比较各种行为对应的价值大小,而基于策略的学习则不需要这么麻烦.
+
+3. 能够学习到一些随机的策略.
+
+4. 当计算的价值函数非常复杂时,基于策略的学习可以直接修改策略而简化步骤.
+
+除了以上优点外,它也具有原始的未经改善的基于策略学习有时效率不高,方差大,学习慢等缺点.但通过一些修整可以改进.在解决实际问题时,需要评估问题的特点来决定使用哪种学习方式.
+
+那直接基于策略的学习是如何优化策略的呢?我们首先要知道我们要优化什么?由于我们优化的最终目的是尽可能获得更多的奖励,因此我们需要设计一个目标函数来衡量策略的好坏,针对不同的问题类型,将目标函数分为以下三类:
+
+1. Start Value:用于离散且开始状态确定或分布确定的情况.Start value的定义是:如果个体总是从某个状态s1开始，或者以一定的概率分布从s1开始，那么从该状态开始到Episode结束个体将会得到怎样的最终奖励.此时我们的目标就是最大化这个Start Value:  
+$$ J_{1}(\theta) = V^{\pi_{\theta}}(s_{1}) = E_{\pi_{\theta}}[v_{1}] $$
+
+2. Average Value:适用于对于一个连续环境,不存在一个开始状态.跟字面意思一样,我们考虑个体在某时刻下处在某状态下的概率,针对每个可能 的状态计算从该时刻开始已知持续到与环境交互下去能够得到的奖励,按照该时刻个状态的概率分布求和:  
+$$ J_{averV}(\theta) = \sum\limits_{s}d^{\pi_{theta}}(s)V^{\pi_{\theta}}(s) $$
+
+3. Average reward per time-Step:即使用每一个时间步长在各种情况下得到的平均奖励,和上面不同的是这里用到的是Reward而上面用的是价值:  
+$$ J_{averV}(\theta) = \sum\limits_{s}d^{\pi_{\theta}}(s)\sum\limits_{a}\pi_{\theta}(s, a)R_{s}^{a}$$
+
+找到目标函数后,下一步的工作就是优化策略参数然后使得目标函数值最大化.这样就把其转化为一个优化问题.
+
+# 有限差分策略梯度Finite difference Policy Gradient
+
+## 策略梯度
+
+简单来说就是对目标函数值$$J(\theta)$$进行梯度上升算法.
+
+## 有限差分法计算策略梯度
+
+听起来很神奇，但差分其实就是取小变化单元内的差嘛．．因此实际上就是使用下面的公式对$$\theta$$的每一个分量$$\theta_{k}$$粗略计算梯度：
+
+$$ \frac{\partial J(\theta)}{\partial\theta_{k}} \approx \frac{J(\theta + \epsilon u_{k}) - J(\theta)}{\epsilon} $$
+
+其中$$u_{k}$$是一个单位向量,仅在第k个维度上的值为1,其余维度为0.有限差分法简单，不要求策略函数可微分，适用于任意策略；但有噪声，且大多数时候不高效。
+
+# 蒙特卡罗策略梯度 Monte-Carlo Policy Gradient
+
+函数在某个变量θ处的梯度等于该处函数值与该函数的对数函数在此处梯度的乘积：
+
+$$ \nabla_{\theta}\pi_{\theta}(s,a) = \pi_{\theta}(s,a)\frac{\nabla_{\theta}\pi_{\theta}(s,a) }{\pi_{\theta}(s,a)  } $$
+
+$$~~~~~~~~ = \pi_{\theta}(s,a)\nabla_{\theta}\log\pi_{\theta}(s,a) $$
+
+据此,我们定义Score Function:
+
+$$ \nabla_{\theta}\log\pi_{\theta}(s,a) $$
+
+即函数在$$\theta$$处的梯度等于该处的函数值和Score function的乘积.
+
+对应不同的策略,我们会有不同的Score function,例如原文中的Softmax策略,其Score函数为:
+
+$$ \nabla_{\theta}\log\pi_{\theta}(s,a) = \psi(s,a) - E_{\pi_{\theta}}[\psi(s,\cdot)] $$
+
+而当采用高斯策略时,对应的Score函数:
+
+$$ \nabla_{\theta}\log\pi_{\theta}(s,a) = \frac{(a-\mu(s))\phi(s)}{\sigma^{2}} $$
+
+Score function 通常用于当下代码很难得到梯度的时候,当前的一些机器学习库可以通过带入损失值直接计算目标函数的梯度,此时就不需要它了.
+
+## 策略梯度定理 Policy Gradient Theorem
+
+定理: 对于任何可微的策略$$\pi_{\theta}(s,a)$$,对于任何策略的目标函数$$J = J_1$$ ，$$J_{avR}$$或者$$\frac{J_{avR}}{(1-\gamma)}$$ ，策略梯度都是：
+
+$$ \nabla_{\theta}J(\theta)  = E_{\pi_{\theta}}[\nabla_{\theta}\log\pi_{\theta}(s,a)Q^{\pi_{\theta}}(s,a) ] $$
+
+有了上述定理,我们将其用于之前学习到的算法上:DP,MC,TD算法,DP适合中小规模问题,因此一下介绍MC和TD.
+
+## 蒙特卡洛策略梯度
+
+针对具有完整Episode的情况，我们应用策略梯度理论，使用随机梯度上升来更新参数，对于公式里的期望，我们通过采样的形式来替代，即使用t时刻的收获（return）作为当前策略下行为价值的无偏估计。其算法表述如下:
+
+![](/img/in-post/deepRL_ch7/deepRL_ch7_2.jpg)
+
+## Actor-Critic策略梯度
+
+使用蒙特卡洛策略梯度方法使用了收获作为状态价值的估计，它虽然是无偏的，但是噪声却比较大，也就是变异性（方差）较高。如果我们能够相对准确地估计状态价值，用它来指导策略更新，那么是不是会有更好的学习效果呢？这就是Actor-Critic策略梯度的主要思想。其中Critic用来估计行为价值:
+
+$$ Q_{w}(s,a) \approx Q^{\pi_{\theta}}(s,a) $$
+
+基于Actor-Critic策略梯度学习分为两部分内容：
+
+1. Critic：参数化**行为价值函数$$Q_{w}(s, a)$$**,更新的是w.
+
+2. Actor: 按照Critic部分得到的价值**引导策略函数参数θ的更新**。
+
+这样,Actor-Critic算法遵循的是一个近似的策略梯度：
+
+$$ \nabla_{\theta}J(\theta) \approx E_{\pi_{\theta}}[\nabla_{\theta}\log\pi_{\theta}(s,a)Q_{w}(s,a) ] $$
+
+$$ \triangle\theta = \alpha\nabla_{\theta}\log\pi_{\theta}(s,a)Q_{w}(s,a) $$
+
+由此可以看出Critic的任务就是我们之前学过的策略评估,可以采用之前学过的MC策略评估,TD学习以及TD($$\lambda$$)等.
+
+### Actor-Critic的线性例子
+
+一个简单的actor-critic算法可以使用基于行为价值的critic，它使用一个线性价值函数来近似状态行为价值函数： $$Q_w(s,a) = \phi(s,a)^{T} w$$
+
+其中Critic通过现行近似的TD(0)更新w,Actor通过策略梯度更新$$\theta$$.算法流程如下:
+
+![](/img/in-post/deepRL_ch7/deepRL_ch7_3.jpg)
+
+## 兼容近似函数 Compatible Function Approximation
+
+用特征的线性组合来近似 $$Q_w(s,a)$$ 进而求解策略梯度的方法引入了偏倚，一个偏倚的价值下得到的策略梯度不一定能最后找到较好的解决方案.不过幸运的是，如果我们小心设计近似的 $$Q_w(s,a)$$ 函数，是可以避免引入偏倚的，这样我们相当于遵循了准确的策略梯度。那怎样才算一个小心设计了的Q呢?它需要满足以下两个条件:
+
+1. 近似价值函数的梯度完全等同于策略函数对数的梯度，即不存在重名情况：  
+$$ \nabla_{w}Q_{w}(s,a) = \nabla_{\theta}\log\pi_{\theta}(s,a) $$
+
+2. 价值函数参数w使得均方差最小：  
+$$ \epsilon = E_{\pi_{\theta}}[(Q^{\pi_{\theta}}(s,a) - Q_{w}(s,a))^{2} ] $$
+
+符合这两个条件，则认为策略梯度是准确的，此时：
+
+$$ \nabla_{\theta}J(\theta) = E_{\pi_{\theta}}[\nabla_{\theta}\log\pi_{\theta}(s,a)Q_{w}(s,a) ] $$
+
+在这个理论的基础上，我们对Actor-Critic方法做一些改进，其中一个方法是：**通过使用基线的方式来减少变异性 Reducing Variance Using Baseline**.其基本思想是从策略梯度里抽出一个基准函数B(s)，要求这一函数仅与状态有关，与行为无关，因而不改变梯度本身.原则上，和行为无关的函数都可以作为B(s)。一个很好的B(s)就是基于当前状态的状态价值函数：
+
+$$ B(s) = V^{\pi_{\theta}}(s) $$
+
+据此我们可以定义一个优势函数advantage function:
+
+$$ A^{\pi_{\theta}}(s,a) = Q^{\pi_{\theta}}(s,a) - V^{\pi_{\theta}}(s) $$
+
+它的含义为当个体采取行为a离开状态s时收获的平均价值改善.用$$A^{\pi_{\theta}}$$代替$$Q_{w}(s,a)$$,得到目标函数的梯度:
+
+$$ \nabla_{\theta}J(\theta) = E_{\pi_{\theta}}[\nabla_{\theta}\log\pi_{\theta}(s,a)A^{\pi_{\theta}}(s,a) ] $$
+
+**现在目标函数梯度的含义就变为为了使得来自优势函数的改善最大,我们应该怎么改变策略函数.**
+
+Advantage 函数可以明显减少状态价值的变异性，因此算法的Critic部分可以去估计advantage函数而不是仅仅估计行为价值函数。在这种情况下，**我们需要两个近似函数也就是两套参数，一套用来近似状态价值函数，一套用来近似行为价值函数，以便计算advantage函数，并且通过TD学习来更新这两个价值函数**。不过在实际操作中,由于D误差是优势函数的无偏估计,因此我们就可以使用TD误差来计算策略梯度:
+
+$$ \nabla_{\theta}J(\theta) = E_{\pi_{\theta}}[\nabla_{\theta}\log\pi_{\theta}(s,a)\delta^{\pi_{\theta}} ] $$
+
+实际运用时，我们使用一个近似的TD误差，即用状态函数的近似函数来代替实际的状态函数,这样我们只需要一套参数描述状态价值函数，而不再需要针对行为价值近似函数：
+
+$$ \delta_{v} = r + \gamma V_{v}(s') - V_{v}(s) $$
+
+至此策略梯度部分重要内容算是结束了,下面给出各个A-C算法的总结:
+
+![](/img/in-post/deepRL_ch7/deepRL_ch7_4.jpg)
+
+# 絮叨
+
+强化学习的最重要部分应该都过去了,写到后来我发现自己也仅仅处在看懂的水平,要自己完全打乱原文自己整理一定会出很多错误的,但不打乱又几乎只是在原文的基础上加上了自己的标注,改变甚小....只能标记原文链接罢.
