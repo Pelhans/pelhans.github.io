@@ -1,0 +1,92 @@
+---
+layout:     post
+title:      "Kaldi thchs30手札（三）" 
+subtitle:   "单音素模型训练（line 62-68)"
+date:       2018-01-20 22:15:18
+author:     "Pelhans"
+header-img: "img/post_kaldi_note.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Kaldi
+---
+
+
+> 本部分是对Kaldi thchs30 中run.sh的代码的line 62-68行研究和知识总结，内容为单音素模型的训练与解码。
+
+* TOC
+{:toc}
+
+#  概览
+
+先把代码放在这里：
+<code class="hljs livecodeserver">{% highlight bash %}
+#monophone   
+steps/train_mono.sh --boost-silence 1.25 --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/mono || exit 1;  
+#test monophone model
+local/thchs-30_decode.sh --mono true --nj $n "steps/decode.sh" exp/mono data/mfcc &
+#monophone_ali                                                                  
+steps/align_si.sh --boost-silence 1.25 --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/mono exp/mono_ali || exit 1;
+{% endhighlight %}
+
+可以看到代码只有三行，其中：
+
+1. 第一行steps/train_mono.sh 用来训练单音素模型，主要输出为final.mdl和tree。训练的核心流程就是迭代对齐-统计算GMM与HMM信息-更新参数。
+
+2. 第二行local/thchs-30_decode.sh是解码和测试部分，它采用刚刚训练得到的模型来对测试数据集进行解码并计算准确率等信息。
+
+3. 第三行steps/align_si.sh 使用src-dir中的模型对data-dir中的数据进行对齐，将结果放在align-dir中。
+
+下面对这三行对应的程序进行详细说明。
+
+# 单音素模型训练 steps/train_mono.sh
+
+先说一下比较重要的几个参数吧：
+
+num_iters=40 | 迭代次数
+max_iter_inc=30 | 指在迭代30次之后就不增加高斯数目了
+totgauss=1000 | 目标高斯数
+boost_silence=1.0 | 指对sil的likelihoods进行放大
+realign_iters | 指迭代到哪次时进行re_ali
+norm_vars=false | 不推荐，推荐--cmvn-opts "--norm-vars=false"
+
+steps/train_mono.sh 的使用: "steps/train_mono.sh [options] <data-dir> <lang-dir> <exp-dir>",其中data-dir是训练数据所在的目录，lang-dir是语言模型所在的目录，exp-dir是日志文件和最终目标文件的输出目录.下面对重要/难理解的代码行进行说明：
+
+line 57: 代码为:
+<code class="hljs livecodeserver">{% highlight bash %}
+    feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
+{% endhighlight %}
+
+这里因为Kaldi有自己的输入输出命令，因此较难理解，可以先看一下参考中的Kaldi中的I/O机制那里。首先这是一个feats变量的定义，该变量作为后续其他命令的参数用来处理特征数据。ark开头指定是ark类型,s,cs为其参数。后面在双引号中使用了两个Kaldi自带的函数apply-cmvn和add-deltas.其中apply-cmvn 的输入3个文件：
+–utt2spk=ark:sdata/JOB/utt2spk语料和录音人员关联文件，scp:sdata/JOB/cmvn.scp 说话人相关的均值和方差，scp:$sdata/JOB/feats.scp 训练用特征文件.apply-cmvn是对feat.sco做CMVN....add-deltas的输入是ark:-，即管道符前的输出。它的输出也表示成ark:-，利用管道符传递结果。其功能是为训练数据增加差分量，比如13维的MFCC处理后变成39维(这里不太确定，但结果确实是39维)。
+
+line 65-75:其代码为
+<code class="hljs livecodeserver">{% highlight bash %}
+if [ $stage -le -3 ]; then     
+  # Note: JOB=1 just uses the 1st part of the features-- we only need a subset anyway.
+  if ! feat_dim=`feat-to-dim "$example_feats" - 2>/dev/null` || [ -z $feat_dim ]; then            
+    feat-to-dim "$example_feats"
+    echo "error getting feature dimension"
+    exit 1;                    
+  fi                           
+  $cmd JOB=1 $dir/log/init.log \
+    gmm-init-mono $shared_phones_opt "--train-feats=$feats subset-feats --n=10 ark:- ark:-|"      $lang/topo $feat_dim \
+    $dir/0.mdl $dir/tree || exit 1;
+fi 
+{% endhighlight %}
+
+
+# 参考
+[Kaldi单音素GMM学习笔记(单音素模型的训练流程)](http://blog.csdn.net/u010731824/article/details/69668765)
+
+[Kaldi 入门详解(单音素脚本讲解)](http://blog.csdn.net/fandaoerji/article/details/50262969)
+
+[kaldi学习笔记 -- 训练单音素（monophone）模型脚本 -- steps/train_mono.sh](http://blog.csdn.net/DuishengChen/article/details/52575926)
+
+[Kaldi-Timit脚本](https://www.jianshu.com/p/5978380c3f82)
+
+[解读thchs30/s5/run.sh的主要步骤](http://blog.csdn.net/bbzz2/article/details/72884979)
+
+[Kaldi学习手记（三）: Kaldi 的I/O机制](http://blog.csdn.net/by21010/article/details/51776447)
+
+[Kaldi HCLG 深入理解](http://blog.csdn.net/dearwind153/article/details/70053704)
