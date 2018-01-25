@@ -2,7 +2,7 @@
 layout:     post
 title:      "Kaldi thchs30手札（三）" 
 subtitle:   "单音素模型训练（line 62-68)"
-date:       2018-01-20 22:15:18
+date:       2018-01-25 22:15:18
 author:     "Pelhans"
 header-img: "img/post_kaldi_note.jpg"
 header-mask: 0.3 
