@@ -75,6 +75,183 @@ if [ $stage -le -3 ]; then
 fi 
 {% endhighlight %}
 
+feat-to-dim "$example_feats" - 2>/dev/null 可以获取特征的维度(在这里的输出是39)。
+
+gmm-init-mono 是通过少量的数据快速得到一个初始化的HMM-GMM 模型和决策树，属于Flat-start（又称为快速启动）。$$lang/topo$$ 中定义了每个音素（phone）所对应的HMM 模型状态数以及初始时的转移概率。$$shared-phones=$lang/phones/sets.int$$ 选项指向的文件，即$$lang/phones/sets.int$$(该文件生成roots.txt中开头为share split的部分，表示同一行元素共享pdf，允许进行决策树分裂),文件中同一行的音素（phone）共享 GMM 概率分布。tree文件由sets.int产生。
+$$--train-feats=$feats subset-feats --n=10 ark:- ark:-|$$ 选项指定用来初始化训练用的特征，一般采用少量数据，程序内部会计算这批数据的means和variance，作为初始高斯模型。sets.int中所有行的初始pdf都用这个计算出来的means和variance进行初始化。numgauss那通过gmm-info命令即sed获取当前高斯数，而后在incgauss计算（目标高斯数 - 当前高斯数）/ 增加高斯迭代次数,得到每次迭代需要增加的高斯数目.
+
+line 80-86: 
+<code class="hljs livecodeserver">{% highlight bash %}
+if [ $stage -le -2 ]; then
+  echo "$0: Compiling training graphs"
+  $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
+    compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst \
+    "ark:sym2int.pl --map-oov $oov_sym -f 2- $lang/words.txt < $sdata/JOB/text|" \
+    "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
+fi 
+{% endhighlight %}
+
+构造训练的网络，从源码级别分析，是每个句子构造一个phone level 的fst网络。sdaba/JOB/text 中包含对每个句子的单词(words level)级别标注， L.fst是字典对于的fst表示，作用是将一串的音素（phones）转换成单词（words)。构造monophone解码图就是先将text中的每个句子，生成一个fst（类似于语言模型中的G.fst，只是相对比较简单，只有一个句子），然后和L.fst 进行composition 形成训练用的音素级别（phone level）fst网络（类似于LG.fst）。fsts.JOB.gz 中使用 key-value 的方式保存每个句子和其对应的fst网络，通过 key(句子) 就能找到这个句子的fst网络，value中保存的是句子中每两个音素之间互联的边（Arc）,例如句子转换成音素后，标注为："a b c d e f",那么value中保存的其实是 a->b b->c c->d d->e e->f 这些连接（kaldi会为每种连接赋予一个唯一的id），后面进行 HMM 训练的时候是根据这些连接的id进行计数，就可以得到转移概率。
+
+line 89-94:
+<code class="hljs livecodeserver">{% highlight bash %}
+if [ $stage -le -1 ]; then
+  echo "$0: Aligning data equally (pass 0)"
+  $cmd JOB=1:$nj $dir/log/align.0.JOB.log \                                                      
+    align-equal-compiled "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" ark,t:-  \| \
+    gmm-acc-stats-ali --binary=true $dir/0.mdl "$feats" ark:- \
+    $dir/0.JOB.acc || exit 1;
+fi 
+{% endhighlight %}
+
+align-equal-compiled 在本步骤先对训练数据进行初始对齐，对齐即将每一帧观察量与标注对齐。初始时采用均匀对齐，即根据标注量和观察量来进行均匀对齐，比如有100帧序列，5个标注，那么就是每个标注20帧，虽然这种初始化的对齐方式误差会很大，但在接下来的训练步骤中会不断的重新对齐的。
+
+gmm-acc-stats-ali 是对对齐后的数据进行训练，获得中间统计量，每个任务输出到一个.acc的文件中。acc文件中记录了与HMM和GMM相关的统计量：
+
+1. HMM相关的统计量：两个音素之间互联的边（Arc） 出现的次数。如上面所述，fst.JOB.gz 中每个key对于的value保存一个句子中音素两两之间互联的边。gmm-acc-stats-ali 会统计每条边（例如a->b）出现的次数，然后记录到acc文件中。
+
+2. GMM相关的统计量:每个pdf-id 对应的特征累计值和特征平方累计值。对于每一帧，都会有个对齐后的标注，gmm-acc-stats-ali 可以根据标注检索得到pdf-id,每个pdf-id 对应的GMM可能由多个单高斯Component组成，会先计算在每个单高斯Component对应的分布下这一帧特征的似然概率（log-likes），称为posterior。然后：  
+1). 把每个单高斯Component的posterior加到每个高斯Component的occupancy（占有率）计数器上，用于表征特征对于高斯的贡献度，如果特征一直落在某个高斯的分布区间内，那对应的这个值就比较大；相反，如果一直落在区间外，则表示该高斯作用不大。gmm-est中可以设置一个阈值，如果某个高斯的这个值低于阈值，则不更新其对应的高斯。另外这个值（向量)其实跟后面GMM更新时候的高斯权重weight的计算相关。  
+2). 把这一帧数据加上每个单高斯Component的posterior再加到每个高斯的均值累计值上；这个值（向量）跟后面GMM的均值更新相关。  
+3). 把这一帧数据的平方值加上posterior再加到每个单高斯Component的平方累计值上；这个值（向量）跟后面GMM的方差更新相关。  
+4) 最后将均值累计值和平方累计值写入到文件中。
+
+line 99-103:
+<code class="hljs livecodeserver">{% highlight bash %}
+if [ $stage -le 0 ]; then
+  gmm-est --min-gaussian-occupancy=3  --mix-up=$numgauss --power=$power \
+    $dir/0.mdl "gmm-sum-accs - $dir/0.*.acc|" $dir/1.mdl 2> $dir/log/update.0.log || exit 1;
+  rm $dir/0.*.acc
+fi
+{% endhighlight %}
+
+gmm-est这里用上面得到的统计量来更新每个GMM模型，AccumDiagGmm中occupancy_的值决定混合高斯模型中每个单高斯Component的weight；min-gaussian-occupancy 的作用是设置occupancy_的阈值，如果某个单高斯Component的occupancy_低于这个阈值，那么就不会更新这个高斯。而且如果remove-low-count-gaussians=true,则对应得单高斯Component会被移除。
+
+line 106-134:
+<code class="hljs livecodeserver">{% highlight bash %}
+beam=6 # will change to 10 below after 1st pass
+# note: using slightly wider beams for WSJ vs. RM.
+x=1          
+while [ $x -lt $num_iters ]; do
+  echo "$0: Pass $x"
+  if [ $stage -le $x ]; then
+    if echo $realign_iters | grep -w $x >/dev/null; then
+      echo "$0: Aligning data"
+      mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/$x.mdl - |"
+      $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
+        gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$[$beam*4] --careful=$careful   "$mdl" \
+        "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" "ark,t:|gzip -c >$dir/ali.JOB.gz" \
+        || exit 1;
+    fi       
+    $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
+      gmm-acc-stats-ali  $dir/$x.mdl "$feats" "ark:gunzip -c $dir/ali.JOB.gz|" \                 
+      $dir/$x.JOB.acc || exit 1;
+             
+    $cmd $dir/log/update.$x.log \
+      gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss --power=$power $dir/$x.mdl \
+      "gmm-sum-accs - $dir/$x.*.acc|" $dir/$[$x+1].mdl || exit 1;
+    rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 2>/dev/null
+  fi         
+  if [ $x -le $max_iter_inc ]; then
+     numgauss=$[$numgauss+$incgauss];
+  fi         
+  beam=10    
+  x=$[$x+1]  
+done  
+{% endhighlight %}
+
+从代码可以看出，这里就是上面三步（对齐-计算统计量-更新参数）的训练版。大体含以上无明显改变。
+
+其中需要注意的是对齐部分，这里采用的不再是均匀对齐而是gmm-align-compiled，强制对齐。选项用于计算对解码过程中出现较低log-likelihood的token进行裁剪的阈值，该值设计的越小，大部分token会被裁剪以便提高解码速度.-acoustic-scale 选项跟GMM输出概率相关，用于平衡 GMM 输出概率和 HMM 跳转概率的重要性。--beam 选项用于计算对解码过程中出现较低log-likelihood的token进行裁剪的阈值，该值设计的越小，大部分token会被裁剪以便提高解码速度，但可能会在开始阶段把正确的token裁剪掉导致无法得到正确的解码路径。-retry-beam 选项用于修正上述的问题，当无法得到正确的解码路径后，会增加beam的值，如果找到了最佳解码路径则退出，否则一直增加指定该选项设置的值，如果还没找到，就抛出警告，导致这种问题要么是标注本来就不对，或者retry-beam也设计得太小。
+
+以上就是train_mono.sh的代码和讲解了。
+
+# 解码测试 local/thchs-30_decode.sh
+
+本部分即对应run.sh里面的第65行。其实local/thchs-30_decode.sh这个代码在run.sh里多次出现，都是负责根据得到的模型对语音进行解码得到汉字计算准确率/似然度等信息。打开程序发现其核心代码就两行，下面的decode phone 和word的代码除了出入不一样外都一样，而phone对应的输入我们前面介绍过，因此:
+<code class="hljs livecodeserver">{% highlight bash %}
+#decode word 
+utils/mkgraph.sh $opt data/graph/lang $srcdir $srcdir/graph_word  || exit 1;
+$decoder --cmd "$decode_cmd" --nj $nj $srcdir/graph_word $datadir/test $srcdir/decode_test_word || exit 1
+{% endhighlight %}
+
+其中mkgraph.sh的作用是创建一个完全扩展的解码图(HCLG.FST),该解码图表示语言模型、发音字典、上下文相关性和HMM结构。其程序流程为:
+
+1. 由L_disambig.fst（lexicon，发音字典）和G.fst（语言模型）生成最新的$lang/tmp/LG.fst。
+
+2. 生成最新的$lang/tmp/CLG_1_0.fst 和 ilabels_1_0 和 disambig_ilabels_1_0.int，需要LG.fst和disambig.int。
+
+3. 生成最新的exp/mono/graph/Ha.fst，需要文件$tree和$model.
+
+4. 生成最新的exp/mono/graph/HCLGa.fst。
+
+5. 生成最新的exp/mono/graph/HCLG.fst，调用程序add-self-loops。
+
+6. 检查HCLG.fst是否为空。
+
+7. 将$lang下的一些文件复制到exp/mono/graph下。
+
+第二行的$decoder是传入的参数，等价于steps/decode.sh，它的使用方式是steps/decode.sh [options] <graph-dir> <data-dir> <decode-dir>。作用为通过调用gmm-latgen-faster或gmm-latgen-faster-parallel进行解码，生成lat.JOB.gz。其中gmm-latgen-faster-parallel为gmm-latgen-faster的并行版本，可以自己去程序里根据需求设置。而后若设置变量skip_scoring为false，则调用local/score.sh进行打分，thchs30的解码设置的是false。
+
+# 单音素强制对齐 steps/align_si.sh 
+
+改程序的用法为：steps/align_si.sh <data-dir> <lang-dir> <src-dir> <align-dir>。其作用为使用src-dir中的模型对data-dir中的数据进行对齐，将结果放在align-dir中。简单来说就是用训练好的模型将数据进行强制对齐方便以后使用。这也是一般Kaldi训练都要包含单音素的原因之一。在run.sh中的调用代码为：
+<code class="hljs livecodeserver">{% highlight bash %}
+steps/align_si.sh --boost-silence 1.25 --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/mono exp/mono_ali || exit 1;
+{% endhighlight %}
+
+它用到的文件为 data/train/text  data/lang/oov.in  exp/mono/tree  exp/mono/final.mdl  exp/mono/final.occs，输出是 exp/mono_ali/ali.JOB.gz，JOB对应于任务号(1,2..)。其流程为:
+
+1. 先调用compile-train-graphs对每句话生成FST。
+
+2. 再调用gmm-align-compiled对数据进行对齐，结果放在exp/mono_ali/ali.JOB.gz。
+
+3. 调用steps/diagnostic/analyze_alignments.sh对对齐结果进行分析(thchs30里没用到这个)。
+
+# 杂货笔记
+
+在学习本讲的过程中，看了一些参考资料，讲自己以前在书里没看懂或没接触的地方打通了一些，一下做出整理。
+
+## Kaldi单音素训练
+
+看名字和上面的是重复的，但实际内容是偏理论上的整体流程。之前在看书的时候都主要在强调GMM是用来训练声学模型，HMM是用于解码。其中声学模型就是用一个混合高斯分布来拟合一个音素。HMM呢就是通过Viterbi或B-W算法来对状态进行解码，给出最可能的状态序列。但GMM与HMM间的连接却一直不清楚。这里尝试对此给出流程总结：
+
+1) 首先我们有一系列的特征序列，$$o_{1}, o_2, o_3, o_4, o_5, o_6, o_7 \ldots$$，这些特征若为MFCC，则每一帧的维度都为39.
+
+2) 对特征序列根据标注进行对齐。上面我们知道在初始时采用的是均匀对齐，在这里为了理解方便我们给出几轮迭代后的可能对齐方式,其中上面是可观察量，下面是HMM的状态，因此我们就可以求出HMM的参数-转移概率: 
+ 
+$$o_1$$ | $$o_2$$ | $$o_3$$ | $$o_4$$ | $$o_5$$ | $$o_6$$ | $$o_7$$  
+7       | 8       | 8       | 8       | 9       | 9       | 10
+
+3) 首先应该明白，在单音素GMM训练中，每一个HMM状态有一个对应的GMM概率密度函数（pdf），所以有多少个HMM状态，就有多少个GMM，也就有多少组GMM参数。在知道了特征序列和对齐序列后，找出某一个HMM状态对应的所有观测（比如状态8对应的o2, o3, o4，在kaldi中则是找到某一transition-id对应的所有观测），也就得到了该状态对应的GMM所对应的所有观测。知道了该GMM对应的所有观测、该GMM的当前参数，就可以根据GMM参数更新公式更新GMM参数了，比如知道了状态8对应的观测o2, o3, o4,那么将其带入EM更新公式中即可.
+
+## HCLG
+
+The overall picture for decoding-graph creation is that we are constructing the graph HCLG = H o C o L o G. Here
+
+G is an acceptor (i.e. its input and output symbols are the same) that encodes the grammar or language model.  
+L is the lexicon; its output symbols are words and its input symbols are phones.  
+C represents the context-dependency: its output symbols are phones and its input symbols represent context-dependent phones, i.e. windows of N phones; see Phonetic context windows.  
+H contains the HMM definitions; its output symbols represent context-dependent phones and its input symbols are transition-ids, which encode the pdf-id and other information (see Integer identifiers used by TransitionModel)  
+
+If we were to summarize our approach on one line (and one line can't capture all the details, obviously), the line would probably as follows, where asl=="add-self-loops" and rds=="remove-disambiguation-symbols", and H' is H without the self-loops:
+
+HCLG = asl(min(rds(det(H' o min(det(C o min(det(L o G))))))))
+
+说的很好。。。我这里用汉语总结一下：
+
+1. G.fst：语言模型。
+
+2. L.fst：词典，输入是Phone，输出是word.
+
+3. C.fst：表示文本依赖，它的输出的phones，输入是文本依赖的音素，如triphone.如： vector<int32> ctx_window = { 12, 15, 21 }; 它的含义：id = 15 的 phone 为 中心 phone, left phone id = 12, right phone id = 21。
+
+4. H: 包括HMM definitions,其输出 symbol 为 context-dependency phones, 其输入 symbol 为 transitions-ids(即 对 pdf-id 和 其它信息编码后的 id)。粗暴的理解为把HMM的pdf-id映射到如triphone上。即扩展了HMM。
+
+5. 合体：HCLG.fst，就是把1-4步合起来，最终该fst的输入是pdf-id,输出为对应的词组,用图表示为:
+
+![](/img/in-post/Kaldi_note_3/kaldi_note_n3_1.png)
+
 
 # 参考
 [Kaldi单音素GMM学习笔记(单音素模型的训练流程)](http://blog.csdn.net/u010731824/article/details/69668765)
@@ -90,3 +267,5 @@ fi
 [Kaldi学习手记（三）: Kaldi 的I/O机制](http://blog.csdn.net/by21010/article/details/51776447)
 
 [Kaldi HCLG 深入理解](http://blog.csdn.net/dearwind153/article/details/70053704)
+
+[Kaldi HCLG 官网](http://kaldi-asr.org/doc/graph.html)
