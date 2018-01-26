@@ -1,0 +1,152 @@
+---
+layout:     post
+title:      "Kaldi thchs30手札（四）" 
+subtitle:   "三音子模型（line 71-76)"
+date:       2018-01-26 04:15:18
+author:     "Pelhans"
+header-img: "img/post_kaldi_note.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Kaldi
+---
+
+
+> 本部分是对Kaldi thchs30 中run.sh的代码的line 71-76 行研究和知识总结，内容为三音子模型的训练与解码测试
+
+* TOC
+{:toc}
+
+#  概览
+
+首先放代码：
+<code class="hljs livecodeserver">{% highlight bash %}
+#triphone
+steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 2000 10000 data/mfcc/train data/lang   exp/mono_ali exp/tri1 || exit 1;
+
+#test tri1 model
+local/thchs-30_decode.sh --nj $n "steps/decode.sh" exp/tri1 data/mfcc &
+
+#triphone_ali
+steps/align_si.sh --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/tri1 exp/tri1_ali || exit 1;
+{% endhighlight %}
+
+恩。。。依旧是短短的三行实际代码：
+
+1. 其中第一行steps/train_deltas.sh就是三音子模型的训练部分，三音子的训练和单音素模型的主要区别是状态绑定部分，也是本讲的主要内容。
+
+2. 第二行是解码测试部分，可以看到该代码和单音素的解码测试是一样的，只是少了--mono选项，因此这里将略过它。
+
+3. 第三行是利用第一行训练得到的三因子模型来做强制对齐。代码也是和单音素时是一样的，只是输入模型的变化，因此也不再赘述。
+
+因此总结以上来看实际上我们主要关注的就是第一行的train_deltas.sh部分，我在参考中放了很多关于状态绑定的链接，我在这里只是把大体它做了什么，大体的原理写出来，更深入的代码级别解释还请看参考。
+
+# train_deltas.sh
+
+先看看代码的用法: 
+<code class="hljs livecodeserver">{% highlight bash %}
+Usage: steps/train_deltas.sh <num-leaves> <tot-gauss> <data-dir> <lang-dir> <alignment-dir> <exp-dir>
+{% endhighlight %}
+
+其中num-leaves是叶子节点数目，tot-gauss是总高斯数目，data-dir是数据文件夹，lang-dir是存放语言的文件夹，alignment-dir是存放之前单音素对齐后结果的文件夹，exp-dir是存放三音子模型结果的文件夹.
+
+line 75之前都是之前介绍过的比较简单的处理，包括设置环境、任务数，进行cmvn处理，定义feats变量等。下面讲集中精力在状态绑定的步骤上。
+
+## acc-tree-stats 与 sum-tree-stats 累积相关统计量
+
+它的作用是为决策树的构建累积相关的统计量。，输入是声学模型、特征、对齐序列，输出为统计量。它的执行流程为：
+
+1. 打开声学模型，并从中读取TransitionModel，打开特征文件和对其文件。
+
+2. 对每一句话的特征和对应的对齐状态，调用程序AccumulateTreeStats()累积统计量tree_stats。
+
+3. 将tree_stats(累积统计量)转移到BuildTreeStatsType类型的变量stats中，将stats写到文件JOB.treeacc。
+
+下面详细写一下这个统计量是怎么算的。首先我们要知道三音子及HMM状态据在Kaldi中的存储方式:
+<code class="hljs livecodeserver">{% highlight bash %}
+typedef std::vector<std::pair<EventKeyType,EventValueType> > EventType; 
+{% endhighlight %}
+
+其中EventKeyType用来表示HMM的状态信息，长pair<int, int>这样。其中第一个数取-1来标记它是HMM的状态信息而不是三音子的。第二个数可以取0,1,2用来表示这是该三音素是第几个HMM的状态.后面的EventValueType就用来表示三音子三个位置上的音素是什么，如(0, 10), (1, 11), (2,12)就表示最左面的(0)的音素为10（音素到数字映射后的数字)，中间的音素为11，最右侧的是12这样。
+
+在强制对齐之后，从左到右扫描对齐数据，我们能从中得到（三音素及HMM状态）和其对应的特征向量，也就是得到一个EventType和其对应的特征向量。在扫描过所有训练数据后，出现的每个EventType会对应多个特征向量。 于是，我们就可以发现，与一个EventType相关的统计量包括该EventType对应的特征向量的个数、这些特征向量的累加、这些特征向量的平方的累加。这三个值，就是GuassClusterable中需要保存的统计量，并且根据这三个统计量可以计算该EventType的似然。如果把多个EventType的统计量累加在一起，就可以计算这些EventType组成的状态集的似然，因为一个EventType实际就是一个状态state。 
+
+在扫描对齐数据累积统计量时，一个EventType对应一个Clusterable对象（确切来说是GaussClusterable对象）。在这个GaussCluterable对象中，成员count_保存着该EventType出现的次数，成员stats_矩阵的第一行保存着该EventType对应的所有特征向量的和，stats_矩阵的第二行保存着该EventType对应的所有特征向量的平方之和。
+
+在构建决策树时，我们需要知道的所有信息就是从训练数据的对齐中得到的所有EventType（三音素+HMM状态id）,和每个EventType对应的Clusterable对象。很自然的，我们可以把这两者的对应关系保存成一个对pair<EventType, Clusterable*>，然后把所有的这些对保存成一个vector，所以构建决策树所用到的统计量可以表示成：
+<code class="hljs livecodeserver">{% highlight bash %}
+typedef std::vector<std::pair<EventType, Clusterable*> > BuildTreeStatsType;
+{% endhighlight %}
+
+## cluster-phones 自动生成问题集
+
+它的作用是对多个音素或多个因素集进行聚类。输入为决策树相关统计量treeacc、多个音素集sets.int。输出为自动生成的问题集(每个问题由多个音素组成)。用法为：
+<code class="hljs livecodeserver">{% highlight bash %}
+Usage:  cluster-phones [options] <tree-stats-in> <phone-sets-in> <clustered-phones-out>
+{% endhighlight %}
+
+其执行的流程为:
+
+1. 从treeacc中读取统计量到BuildTreeStatsType stats；读取vector pdf_class_list，该变量指定所考虑的HMM状态，默认为1，也就是只考虑三状态HMM的中间状态；从sets.int读取vector > phone_sets；默认的三音素参数N=3，P=1。
+
+2. 若指定的mode为questions，调用AutomaticallyObtainQuestions()自动生成问题集vector > phone_sets_out；若指定的model为k-means，调用KMeansClusterPhones()。thchs30里只涉及questions模式。
+
+3. 将上述函数自动生成的phone_sets_out写到questions.int。
+
+可以看到主要的问题就是如何根据相关统计量和音素集通过聚类的方式生成决策树。以下对该问题的处理流程做简述:
+
+1. 读取sets.int中的所有音素，保存在phones中。
+
+2. 调用FilterStatsByKey()把stats中只属于三音素第二个HMM状态的统计量留下(即只保留中间音素的统计量)。
+
+3. 调用SplitStatsByKey(),根据三音素的中间音素对retained_stats进行划分，把属于每个音素的统计量放在一个BuildTreeStatsType中。由参数P指定根据三音素的第几个音素进行划分，因为此处P是1，所以是三音素的中间音素。举个例子，我们实验室的所用的音素一共有215个，假设每个音素都出现在三音素的中间位置，对retained_stats进行划分之后，split_stats的元素个数是215，每一个元素保存着(中间音素都是x的所有三音素对应的所有统计量)。
+
+4. 调用SumStatsVec()把split_stats每个元素中的所有统计量加起来，得到每个中间音素的统计量，也就是summed_stats，其维数为音素个数。简单来说,从上一步我们知道，split_stats的每一个元素保存着中间音素都是x的所有三音素对应的所有统计量，因为音素x左右音素的不同，所以split_stats这个元素中保存的统计量有很多，现在把中间音素都是x的所有三音素对应的所有统计量累加起来（就是把这些GaussClusterable的count_相加、stats_相加）；对split_stats的每个元素都执行这样的操作后，就得到了summed_stats。
+
+5. 根据sets.int指定的集合，累加同一个集合中音素的统计量。
+
+6. **调用TreeCluster()，对summed_stats_per_set进行聚类，生成相关信息。**TreeClusterer是使用自顶向下的树进行聚类的一个对象。points_中保存着初始化TreeClusterer对象时传递进来的每个点的统计量，该对象的聚类过程，就是为了把这些点分成一簇簇(cluster)。queue_是一个优先队列，队列中的每个元素是一个pair，这个pair的第二个数据保存着结点信息，这个pair的第一个数据是对该结点进行划分时所获得的似然的最大提升。使用优先队列则说明，对似然提升最大的结点优先进行划分，直到queue_为空。这个划分不是传统决策树的那种直接分裂，而是采用了聚类的方式进行。
+
+7. 调用ObtainSetsOfPhones()，由上一步得到的信息，生成问题集。大体流程为:  
+a. 得到每个cluster（叶子结点）中的音素集；  
+b. 将子结点的音素集加入到其父结点的音素集中（实现了“把从该结点可以到达的所有叶子结点合在一起构成一个问题”）；  
+c. 把原始的phone_set插入到问题集；  
+d. 过滤问题集的重复项、空项，生成最终的问题集。
+
+## compile-question 编译question
+
+它的输入为HMM的拓扑结构文件topo和上一步得到的question.txt，输出为question.qst。当key=0,1,2时，问题是对三音素中的每个音素分别问问题。当key=-1时问题是基于HMM的某个状态的，这和HMM的状态数目有关，通常为三个，得到的问题集为[[0],[0,1]], 如果为5个，则为[[0],[0,1],[0,1,2], [0,1,2,3]]。
+
+## build-tree 建立决策树tree
+
+它的输入为关于tree的统计量、root文件、问题集和topo文件，输出为决策树。它主要调用to_pdf函数，该函数由roots文件中的所有音素集首先用GetStubMap()递归构初始的决策树，总的来说**GetStubMap()对每一个音素集创建一个初始的叶子结点**，一个音素集就是roots.int中的一行中的音素的集合，**每个节点其实都是一个小决策树的树根**，之后会进一步由这个叶子节点划分。
+
+对于EvenType的每一个key（-1，0，1，2），在该key对应的问题集中（之前得到的对于HMM和音素的问题集）找到一个问题，使得对叶子结点划分后获得的似然提升最大。而后根据该问题进行分裂，直到叶子节点的类别满足要求或似然度提升小于阀值时停止分裂。此时每个叶子节点的音素集实现了状态绑定。
+
+## 三音素的训练
+
+三音素的训练和单音素模型的训练步骤之后就较为相似了，唯一需要注意的就是由于我们之前得到的是单音素模型的对齐序列，因此我们在使用它时要将其转换为三音素的，这个转换由convert-ali进行操作。根据每个单音素对齐序列中transition-id 我们可以直到表示单音素模型中哪个phone的哪个状态，因为虽然变成三音素了，中心位置phone和第几个状态没有变，根据决策树直接换成三音素模型中transition-id，输出新的对齐序列即可。从旧的tid转换成新的tid的流程大致如下：
+
+![](/img/in-post/Kaldi_note_4/kaldi_note_n4_1.png) 
+
+最后由convert-ali得到三音素莫心的对齐后，后面的GMM参数更新就和单音素GMM一样，采用EM算法。
+
+
+
+# 参考
+
+[决策树在Kaldi中如何使用](http://blog.csdn.net/chenhoujiangsir/article/details/51613144?from=singlemessage&isappinstalled=1)
+
+[Kaldi决策树状态绑定学习笔记（一）——如何累积相关统计量？](http://blog.csdn.net/u010731824/article/details/69668647)
+
+[Kaldi决策树状态绑定学习笔记（二）——如何自动生成问题集？](http://blog.csdn.net/u010731824/article/details/69667017)
+
+[Kaldi决策树状态绑定学习笔记（三）——EventMap及其派生类、roots文件 ](http://blog.csdn.net/u010731824/article/details/69666398)
+
+[Kaldi决策树状态绑定学习笔记（四）——如何构建决策树？](http://blog.csdn.net/u010731824/article/details/69666560)
+
+[kaldi 学习笔记-三音素训练1(Decision Tree) ](http://blog.csdn.net/fengzhou_/article/details/78066589)
+
+[ kaldi学习笔记-三音素训练2 训练 ](http://blog.csdn.net/fengzhou_/article/details/78070595)
+
+[Kaldi三音素GMM学习笔记](http://blog.csdn.net/u010731824/article/details/70161677)
