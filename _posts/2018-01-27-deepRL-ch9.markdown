@@ -1,0 +1,48 @@
+---
+layout:     post
+title:      "David Silver 强化学习 第九讲" 
+subtitle:   "探索与利用"
+date:       2018-01-27 05:15:18
+author:     "Pelhans"
+header-img: "img/post_deepRL.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Reinforment Learning
+---
+
+
+> 本部分主要介绍在强化学习领域如何进行有效的探索.
+
+* TOC
+{:toc}
+A;
+
+# 简介
+[**总结自叶强的David Silver强化学习公开课中文讲解及实践专栏**](https://zhuanlan.zhihu.com/reinforce)
+
+利用: 做出当前信息下的最佳决定.
+
+探索: 尝试不同的行为继而收集更多的信息.
+
+可以看出利用和探索是一对矛盾的策略.因此我们需要在二者之间均衡.一个理想的策略应该可以牺牲一些短期利益,通过探索收集足够多的信息得到整体上的最佳策略.几种基本的探索方法为:  
+
+1. **朴素探索**(Naive Exploration): 在贪婪搜索的基础上**增加一个Ɛ**以实现朴素探索.
+
+2. 乐观初始估计(Optimistic Initialization): 优先选择当前被认为是最高价值的行为，除非新信息的获取推翻了该行为具有最高价值这一认知.
+
+3. 不确定优先(Optimism in the Face of Uncertainty): 优先尝试不确定价值的行为.
+
+4. 概率匹配（Probability Matching): 根据当前估计的概率分布采样行为.
+
+5. 信息状态搜索(Information State Search): 将已探索的信息作为状态的一部分联合个体的状态组成新的状态，以新状态为基础进行前向探索.
+
+根据搜索过程中使用的数据结构,可将搜索分为:依据状态行为空间的探索(State-Action Exploration,根据算法尝试之前该状态下没有尝试的行为.)和参数化搜索（Parameter Exploration,用不同的参数设置实现探索)。
+
+# 多臂赌博机上的探索例子
+
+多臂赌博机简单来说就是那种拉一下就给出显示中没中奖那种机器,多臂就是很多个这种机器.原文图示是这种:
+
+![](/img/in-post/deepRL_ch9/deepRL_ch9_1.jpg)
+
+因此多臂赌博机可以看做行为空间和奖励组成的元组,不包含状态.<A, R>.假设该多臂赌博机由m个单臂的组成,行为就是落下某一个单臂赌博机,则数学表述为:在t时刻,个体从状态行为空间A选择一个行为$$a_{t}$$,随后环境产生一个即时的奖励$$r_{t}$$.采取行为a得到的即时奖励 r 服从一个个体未知的概率分布：$$R^{a} = P[r|a] $$.
