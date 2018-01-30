@@ -1,0 +1,168 @@
+---
+layout:     post
+title:      "Kaldi thchs30手札（五）" 
+subtitle:   "LDA与MLLT（line 78-85)"
+date:       2018-01-30 00:15:18
+author:     "Pelhans"
+header-img: "img/post_kaldi_note.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Kaldi
+---
+
+
+> 本部分是对Kaldi thchs30 中run.sh的代码的line 78-85 行研究和知识总结，内容涵盖LDA和MLLT部分。
+
+* TOC
+{:toc}
+
+#  概览
+
+首先放代码：
+<code class="hljs livecodeserver">{% highlight bash %}
+#lda_mllt
+steps/train_lda_mllt.sh --cmd "$train_cmd" --splice-opts "--left-context=3 --right-          context=3" 2500 15000 data/mfcc/train data/lang exp/tri1_ali exp/tri2b || exit 1;
+#test tri2b model
+local/thchs-30_decode.sh --nj $n "steps/decode.sh" exp/tri2b data/mfcc &
+#lda_mllt_ali
+steps/align_si.sh  --nj $n --cmd "$train_cmd" --use-graphs true data/mfcc/train data/lang    exp/tri2b exp/tri2b_ali || exit 1;
+# 以上为lda_mllt部分代码，包含在本讲的LDA、MLLT部分内。
+{% endhighlight %}
+
+上面依旧是三行代码，其中第一行为本讲的主要内容，用来做特征调整并训练新模型。第二行是解码测试，这个和之前的一样。第三行是训练好模型后根据模型对数据进行对齐。
+
+从本讲开始的三讲都是对三音素模型的调整。本讲包含第一行代码中的Splice，LDA，MLLT。以下对这些处理进行分别讲解。
+
+# LDA
+
+LDA在此处指的是线性判别分析（Linear Discriminant Analysis， LDA）它是一种监督学习的降维技术，也就是说它的数据集的每个样本是有类别输出的。
+
+LDA的核心思想为投影后类内方差最小，类间的方差最大。简单来说就是同类的数据集聚集的紧一点，不同类的离得远一点，其实这种思想在如今的人脸识别领域用的还蛮多的。来个图感受一下效果，其中右侧使我们想要的：
+
+![](/img/in-post/Kaldi_note_5/kaldi_note_n5_1.png)
+
+## 瑞利商
+
+瑞利商是指长成这样的函数：
+
+$$ R(A, x) = \frac{x^{H}Ax}{x^{H}x} $$
+
+其中x为非零向量，而A为nxn的Hermitan矩阵。它有一个很重要的性质为 **它的最大值等于矩阵A最大的特征值，而最小值等于矩阵A的最小的特征值.**
+
+有了瑞利商后给它推广到广义瑞利商：
+
+$$ R(A, x) = \frac{x^{H}Ax}{x^{H}Bx} $$
+
+其中x为非零向量，而A, B为nxn的Hermitan矩阵，B是正定的。则根据上面瑞利商的性质，我们可以将上式转为：
+
+$$ R(A, B,x^{'}) = \frac{x^{'H}B^{-\frac{1}{2}}AB^{-\frac{1}{2}}x^{'}}{x^{'H}x^{'}} $$
+
+这样我们就知道它的最大指就是矩阵$$B^{-\frac{1}{2}}AB^{-\frac{1}{2}}$$的最大特征值，其最小值也对应该矩阵的最小特征值。
+
+## 多类LDA原理
+
+假设我们的数据集
+
+$$D = {(x_1,y_1),(x_2,y_2),\ldots,(x_m,y_m)}$$
+
+其中任意样本$$x_i$$为n维向量，$$y_i\in{C_1,C_2,\ldots,C_k}$$。$$N_{j}(j=1,2,\ldots,k)$$为第j类样本的个数，$$X_{j}(j=1,2,\ldots,k)$$为第j类样本的结合，而$$u_{j}(j=1,2,\ldots,k)$$为第j类样本的均值向量，$$\sum\limits_{j}(j=1,2,\ldots,k) $$是第j类样本的协方差矩阵。
+
+假设我们要投影到的低维空间维度为d，对应的基向量为$$(w_1,w_2,\ldots,w_d)$$，基向量组成的矩阵为W，它是一个nxd的矩阵。那么我们的优化目标为：
+
+$$ 
+\begin{array}{l}
+\frac{W^{T}\sum\limits_{j=1}^{k}N_{j}(\mu_{j}\mu)(\mu_{j}-\mu)^{T}}{W^{T}\sum\limits_{j=1}^{k}\sum\limits_{x\in X_{j}}(x-\mu_{j})(x-\mu_{j})^{T}}\\
+= \frac{W^{T}S_{b}W}{W^{T}S_{w}W}
+\end{array}
+$$
+
+但仔细观察公式发现分子和分母的结果都是矩阵，不是标量，无法作为一个标量函数来优化。一般来说，我们可以用其他的一些替代优化目标来实现。常见的一个LDA多类优化目标函数为：
+
+$$ \arg\max\limits_{w}J(W) = \frac{\prod\limits_{diag}W^{T}S_{b}W}{\prod\limits_{diag}W^{T}S_{w}W} $$
+
+这样J(W)的优化就变成：
+
+$$
+J(W) = \frac{\prod\limits_{i=1}^{d}w_{i}^{T}S_{b}w_{i}}{\prod\limits_{i=1}^{d}w_{i}^{T}S_{w}w_{i}} = \prod\limits_{i=1}^{d}\frac{w_{i}^{T}S_{b}w_{i}}{w_{i}^{T}S_{w}w_{i}} $$
+
+这样右侧就可以直接用广义瑞利商的性质求出最大的d个值，此时对应的**矩阵W为这最大的d个特征值对应的特征向量张成的矩阵**。
+
+## LDA算法流程
+
+假设输入的数据集为$$D={(x_1,y_1), (x_2,y_2), \ldots,(x_m,y_m)}$$，其中x为n维向量。$$y_{i}\in{C_1,C_2\ldots,C_k} $$，希望降维降到维度d，输出为样本为降维后的样本集。
+
+1. 计算类内散度矩阵$$S_{w}$$。
+
+2. 计算类间散度矩阵$$S_{b}$$。
+
+3. 计算矩阵$$S_{w}^{-1}S_{b}$$
+
+4. 计算$$S_{w}^{-1}S_{b}$$的最大d个特征值和对应的d个特征向量$$(w_1,w_2,\ldots,w_d)$$，得到投影矩阵。
+
+5. 对样本集中的每一个样本特征$$x_{i}$$转化为新的样本$$z_{i}=W^{T}x_{i}$$
+
+6. 得到输出样本集$$D^{'} = {(z_{1},y_{1}), (z_{2},y_{2}),\ldots,(z_{m},y_{m})} $$。
+
+# MLLT
+
+Global Semi-tied Covariance (STC)/Maximum Likelihood Linear Transform (MLLT)即最大似然线性变换,它是一个平方特征变换矩阵（square feature-transformation matrix），来自于论文Semi-tied Covariance Matrices for Hidden Markov Models,用于建模方差，解决full convariance的参数量大的问题。
+
+相比于full convariance，该方法的每个高斯分量有两个方差矩阵：  
+1. diagonal convariance $$\Sigma_{diag}^{(m)}$$  
+2. semi-tied class-dependent nondiagonal matrix $$H^{r}$$，可以在多个高斯分量之间共享（比如所有monophone对用状态的高斯分量）.
+
+最终的方差矩阵：
+
+$$ \Sigma^{(m)} = H^{(r)}\Sigma_{diag}^{(m)}H^{(r)T} $$
+
+使用最大似然估计结合EM算法求解对应的参数。
+
+## MLLT流程
+
+这里直接给出Kaldi的原文，以免出现纰漏。
+
+
+1. Estimate the LDA transformation matrix (we only need the first rows of this, not the full matrix). Call this matrix $$\mathbf{M}$$.
+
+2. Start a normal model building process, always using features transformed with $$\mathbf{M}$$. At certain selected iterations (where we will update the MLLT matrix), we do the following:  
+a) Accumulate MLLT statistics in the current fully-transformed space (i.e., on top of features transformed with $$\mathbf{M}$$). For efficiency we do this using a subset of the training data.  
+b) Do the MLLT update; let this produce a square matrix $$\mathbf{T}$$.  
+c) Transform the model means by setting $$ \mu_{jm} \leftarrow \mathbf{T} \mu_{jm} $$.  
+d) Update the current transform by setting $$ \mathbf{M} \leftarrow \mathbf{T} \mathbf{M} $$
+
+# Splice 
+
+Splice在网上说它的也很少，这里采用Kaldi的原话：
+	
+Frame splicing (e.g. splicing nine consecutive frames together) is typically done to the raw MFCC features prior to LDA. The program splice-feats does this. A typical line from a script that uses this is the following: 
+
+feats="ark:splice-feats scp:data/train.scp ark:- 
+| transform-feats $dir/0.mat ark:- ark:-
+|"
+
+and the "feats" variable would later be used as an rspecifier (c.f. Specifying Table formats: wspecifiers and rspecifiers) by some program that needs to read features. In this example we don't specify the number of frames to splice together because we are using the defaults (–left-context=4, –right-context=4, or 9 frames in total).
+
+# train_lda_mllt.sh流程
+
+该脚本是简介中的第一行脚本，它的主要功能就是使用$$MFCC \rightarrow CMVN \rightarrow Splice \rightarrow LDA \rightarrow MLLT \rightarrow final.mat$$，然后训练GMM。
+
+该程序的执行流程为：
+
+1. 估计出LDA变换矩阵M，特征经过LDA转换。
+
+2. 用转换后的特征重新训练GMM。
+
+3. 计算MLLT的统计量。
+
+4. 更新MLLT矩阵T。
+
+5. 更新模型的均值$$\mu_{jm}\leftarrow T\mu_{jm}$$。
+
+6. 更新转换矩阵$$ M\leftarrow TM$$。
+
+# 参考
+
+[线性判别分析LDA原理总结](https://www.cnblogs.com/pinard/p/6244265.html)
+
+[Feature and model-space transforms in Kaldi](http://kaldi-asr.org/doc/transform.html)
