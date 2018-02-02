@@ -1,0 +1,125 @@
+---
+layout:     post
+title:      "Kaldi thchs30手札（六）" 
+subtitle:   "说话人自适应训练（SAT)、FMLLR以及quick训练（line 87-104)"
+date:       2018-02-02 00:15:18
+author:     "Pelhans"
+header-img: "img/post_kaldi_note.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Kaldi
+---
+
+
+> 本部分是对Kaldi thchs30 中run.sh的代码的line 87-104 行研究和知识总结，内容涵盖说话人自适应训练(Speaker Adaptive Training，SAT)以及特征空间最大似然线性回归(Feature-space Maximum Likelihood Linear Regression, FMLLR)以及quick训练。
+
+* TOC
+{:toc}
+
+#  概览
+
+首先放代码：
+<code class="hljs livecodeserver">{% highlight bash %}
+#sat
+steps/train_sat.sh --cmd "$train_cmd" 2500 15000 data/mfcc/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
+#test tri3b model
+local/thchs-30_decode.sh --nj $n "steps/decode_fmllr.sh" exp/tri3b data/mfcc &
+#sat_ali
+steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/tri3b exp/tri3b_ali ||  exit 1;
+#上面的部分以说话人适应训练为主。
+
+#quick训练
+#quick    
+steps/train_quick.sh --cmd "$train_cmd" 4200 40000 data/mfcc/train data/lang exp/tri3b_ali exp/tri4b  || exit 1;
+#test tri4b model
+local/thchs-30_decode.sh --nj $n "steps/decode_fmllr.sh" exp/tri4b data/mfcc &
+          
+#quick_ali                                                                                            
+steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/tri4b exp/tri4b_ali ||  exit 1;
+          
+#quick_ali_cv
+steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/dev data/lang exp/tri4b exp/tri4b_ali_cv || exit 1;
+{% endhighlight %}
+
+七行代码。第一行是对特征进行FMLLR，而后训练GMM模型。第二行是对自适应模型的解码及测试。第三行是根据FMLLR模型对数据进行对齐可以看出核心任务是对特征码本做FMLLR以达到说话人自适应的目的。第四行进行quick训练。第五行对quick训练得到的模型进行解码测试。第六行采用quick训练得到的模型对数据进行对齐。第七行是对开发数据集进行对齐。
+
+以下对说话人自适应训练和FMLLR以及quick训练做详细介绍。
+
+# SAT
+
+所谓说话人自适应技术是利用特定说话人数据对**说话人无关(Speaker Independent,SI)**的码本进行改造，其目的是得到说**话人自适应(SPeaker Adapted, SA)**的码本来提升识别性能。我们知道在某个说话人的训练数据足够多的时候，针对当前说话人数据采用传统的训练方法可以得到×**说话人相关(Speaker Dependent, SD)**的码本,由于SD码本很好的反应了当前说话人的特征，因此效果往往更好，但实际中往往缺少足够的数据，因此采用说话人自适应，这样我们只需要很少量的数据就可以得到比较大的性能提升。**其实质是利用自适应数据调整SI码本以符合当前说话人特性**。
+
+由于传统训练方法得到的 SI 码本不可避免地受训练集特性的影响, 在**训练集和自适应数据失配**时这会导致自适应效果变得不明显, **原始码本越具有说话人无关性, 在自适应时就越能迅速地趋近当前说话人的特征**。与自适应相结合的码本训练**对 SI 码本、训练集内每个说话人特性分别建立模型**, 因此可以得到更具说话人无关性的 SI 码本。
+
+# FMLLR
+
+Kaldi上对其的定义是"Constrained Maximum Likelihood Linear Regression (CMLLR), also known as feature-space MLLR (fMLLR), is an affine feature transform of the form$$x^{*}\leftarrow Ax+b$$",关于Kaldi中使用的CMLLR的详细解释可以看论文"Maximum likelihood linear transformations for HMM-based speech recognition"。
+
+我对FMLLR的理解是：针对特定的说话人，其码本可以用SI码本经过线性变换后的SA码本表示，即SA码本中的任意均值矢量可以表示为:
+
+$$x^{*} = Ax + b$$
+
+其中x表示N维SI码本的均值矢量，A为N$$\times$$N的线性变换矩阵,b表示偏移量，不同的均值矢量可以有不同的变换矩阵A。fMLLR码本自适应的目的就是估算变换矩阵A从而更新SA码本。
+
+那这个矩阵怎么得到呢？我们可以将其作为参数，使用参数估计的方法得到。
+
+假设有K个说话人的训练数据，每个说话人的SA码本均由SI码本线性变换得到，训练的目标是使得输出概率函数最大，即:
+
+$$ (A^{*},\lambda^{*}) = \arg\max\prod\limits_{k=1}^{K}\prod\limits_{t\in O(k)}P(o(t)|\lambda A_{k}) = \arg\min f(x,\Sigma,A) $$
+
+$$ f(x, \Sigma, A) = -\sum\limits_{k=1}^{K}\sum\limits_{t\in O(k)}\log[P(o(t)|\lambda A_{k}] $$
+
+式中$$\lambda$$表示SI码本的参数集合(均值和方差)，$$A_{k}$$表示第k个说话人的变换矩阵，$$A_{K} = [b_k, U_k]$$。$$O_{k}$$表示第k个说话人的训练数据集合，$$W^{*},\lambda^{*}$$表示参数的最佳估计。
+
+从码本包含信息的角度分析, 语音信号总是包含两部分的内容: 说话人信息( 这里指广义的说话人信息, 也包括环境变化造成的特征的不确定性) 和语意信息, 这可以看作两个相对独立的坐标轴。在训练说话人无关码本时希望码本尽量只与语意相关, 传统的训练方法对所有数据作平均, 这实际隐含着训练集中说话人信息部分可相互抵消的假设; 而自适应训练的做法是: 对每个说话人分别估计说话人信息, 期望在此基础上能够真正得到说话人无关码本, 对两部分的估计是同时进行的, 对训练集的要求相对较低。
+
+## 参数估计
+
+参数估计的目标是更新码本的均值、方差和每个说话人的线性变换矩阵以使得输出概率最大，由于多个优化参数的存在，需要分别实现参数更新。
+
+1. 初始时给定SI码本，转换矩阵A为单位矩阵。
+
+2. 更新说话人变换矩阵，首先根据SI码本和当前说话人矩阵A得到SA码本，依照SA码本对每个说话人训练数据做Viterbi分割，分割的结果是将每一帧分别归到某一个高斯分布，然后按照分割结果更新每个人的变换矩阵。
+
+3. 更新SI码本均值。把已经更新的变换矩阵A带入目标函数求解SI码本均值。
+
+4. 更新SI码本方差。利用更新后的说话人变换矩阵A和SI码本均值带入目标函数可以求解SI码本的方差。
+
+5. 判断统计量是否收敛，若不收敛重复2-4步进行迭代。
+
+代码流程为:
+
+check_phones_compatible.sh->ali-to-post->acc-tree-stats->sum-tree-stats->cluster-phones->compile-questions->build-tree->gmm-init-model->gmm-mixup->convert-ali->compile-train-graphs->{gmm-align-compiled->(ali-to-post->)gmm-acc-stats-ali->gmm-est}35->ali-to-post->gmm-est->analyze_alignments.sh
+
+# quick训练
+
+关于该部分在网上几乎找不到相关的说明，因此此处为防止我的理解有偏差，我主要以代码中的描述为主，把它整理出来，再加以少量的自己理解。
+
+在代码的注释中，它对自身的描述是在一个已经存在的特征的基础上训练模型。该脚本的模型初始化(即GMM模型)是基于之前模型的基础上的。具体实现思想是：对于当前模型的每个状态(构建完树后)，它把旧模型中与其相近的状态直接克隆过来，评判是否相近的标准就是看它们树统计量的重叠数目相似度。
+
+在代码上来说，模型初始化都是:
+
+	gmm-init-model tree treeacc topo 1.mdl
+
+现在使用旧模型初始化的话：
+
+	gmm-init-model tree treeacc topo 1.mdl prev/tree prev/30.mdl
+
+由于这种初始化后的高斯数量可能比我们想要的多或者少，因此我们需要在mixing-down或mixing-up目标高斯函数。
+
+除此之外的流程和正常的训练相似。也是强制对齐，累积统计量，更新参数等操作。 
+
+# 絮叨
+
+到这里经典的部分就结束了，之后就是DNN的部分了，前面都算是对它做的准备。但其最多也就是三讲的内容。然后就要转投深度学习了。。。虽然俗了点，毕竟效果确实好一些，而且要的资源少，希望深度学习有一天也能像以前的算法一样具备可解释性和数学上的美感。
+
+# 参考
+
+[Kaldi学习笔记（二）](http://blog.csdn.net/KanShiMeKan/article/details/71250135?locationNum=3&fps=1)
+
+[Feature and model-space transforms in Kaldi](http://kaldi-asr.org/doc/transform.html#transform_cmllr_global)
+
+[Kaldi Tools](http://kaldi-asr.org/doc/tools.html)
+
+[说话人自适应训练方法在连续语音识别中的应用](http://jcip.cipsc.org.cn/CN/abstract/abstract1869.shtml)
