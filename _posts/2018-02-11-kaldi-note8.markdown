@@ -48,7 +48,7 @@ Kaldi 中的代码流程较为简单。与之前的最大区别就是使用了�
 
 其执行流程为
 
-'compute_cmvn_stats.sh->{add-noise-mod.py->make_fbank.sh->compute_cmvn_stats.sh}[train,dev,test]->train.sh->nnet-concat->{{decode.sh}[phone,word]}[train,dev,test]'
+'compute_cmvn_stats.sh->{add-noise-mod.py->make_fbank.sh->compute_cmvn_stats.sh}[train,dev,test]->train.sh->nnet-concat->{{decode.sh}}[phone,word]}[train,dev,test]'
 
 文字表述为：
 
