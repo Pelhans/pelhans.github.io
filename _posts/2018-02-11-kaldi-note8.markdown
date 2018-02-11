@@ -1,0 +1,103 @@
+---
+layout:     post
+title:      "Kaldi thchs30手札（八）" 
+subtitle:   "DAE与TDNN（line 109-115)"
+date:       2018-02-11 00:15:18
+author:     "Pelhans"
+header-img: "img/post_kaldi_note.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Kaldi
+---
+
+
+> 本部分是对Kaldi thchs30 中run.sh的代码的line 109-115 行研究和知识总结，主要内容为带噪声的神经网络模型以及TDNN的训练。
+
+* TOC
+{:toc}
+
+#  概览
+
+首先放代码：
+<code class="hljs livecodeserver">{% highlight bash %}
+#train dae model                    
+#python2.6 or above is required for noisy data generation.
+#To speed up the process, pyximport for python is recommeded.
+local/dae/run_dae.sh --stage 0  $thchs || exit 1;
+                                    
+#train tdnn model using nnet3       
+local/nnet3/run_tdnn.sh --stage 0 --nj $n exp/tri4b || exit 1;
+{% endhighlight %}
+
+两行代码，第一行通过对语音数据添加噪声来得到有噪音的数据，而后调用nnet1/train_dnn.sh来对其进行训练，训练细节和dnn部分一样。第二行代码是调用nnet3/train_tdnn.sh对数据通过延时神经网络进行训练。
+
+由此可见这两行的重点分别为噪音的添加和延时神经网络。以下对其进行详细介绍。
+
+# DAE
+
+自动编码器(Auto Encoder, AE)是由自动关联器演变而来。自动关联器是一种MLP结构，其中输出、输入维度一样，并定义输出等于输入。为了能够在输出层重新产生输入，MLP得找出输入在隐藏层的而最佳表示。一旦训练完成从输入到隐藏层的第一层充当编码器，而隐藏层单元的值形成编码表示。从隐藏单元到输出单元的第二层充当解码器，由原信号的编码表示重构信号。
+
+因为输入是无标签数据，AE利用自动关联器的这一点，进而将重构原信号与原信号之间的差作为目标函数，以调整编码器(encoder)和解码器(decoder)的参数，使得这个重构误差最小：调整完毕后，从隐藏单元到输出单元的解码器权值参数就不需要了(被去掉)，直接将隐藏层单元的值，即编码值作为第二个自动编码器的输入，训练方式与之前一样。最后还可以在自动编码器的最顶编码曾添加一个分类器，通过有标签样本进行监督训练方法(SGD)对网络进行微调，就像DBN-DNN 那样。
+
+由多个编码器堆叠而成的网络称为深度自动编码器(Deep Autoencoder, DAE)，它属于无监督模型。而自动编码器还可以变形为去噪自动编码器(Denoising Autoencoder)和稀疏编码(Sparse Coding)。
+
+## Kaldi中的run_dae.sh
+
+Kaldi 中的代码流程较为简单。与之前的最大区别就是使用了带噪声的数据进行训练。其中带噪声数据由add-noise-mod.py脚本完成。其余部分和DNN部分类似。
+
+其执行流程为
+
+'compute_cmvn_stats.sh->{add-noise-mod.py->make_fbank.sh->compute_cmvn_stats.sh}[train,dev,test]->train.sh->nnet-concat->{{decode.sh}[phone,word]}[train,dev,test]'
+
+文字表述为：
+
+1. 计算CMVN及统计量。
+
+2. 使用add-noise-mod.py程序将提供的四种噪声加到原始数据上，
+
+3. 提取fbank特征。
+
+4. 计算CMVN及统计量，
+
+5. 训练模型。
+
+6. 解码测试。
+
+# TDNN
+
+TDNN是Time-Delay Neural Network 的缩写，即延时神经网络。它相当于CNN的前身，它的共享权值被限制在单一的维度上，并且没有池化层，适用于语音和时间序列的信号处理。
+
+通常的神经网络识别音素的结构如下图所示,这里假设gold音素为B，D，G。其中0-12代表每一帧的特征向量。
+
+![](/img/in-post/Kaldi_note_8/kaldi_note_n8_1.png)
+
+但这种结构只考虑了一帧的特征，我们知道上下文信息对于序列模型是很有帮助的，因此我们需要考虑更多帧。因此当我们考虑**延时为2**时，则连续的3帧都会被考虑。其中隐藏层起到特征抽取的作用，输入层每一个矩形内共有13个小黑点，代表该帧的13维MFCC特征。假设每个隐藏层有10个节点，那么连接的权重数目为:$$ 3 * 13 * 10 - 390$$个。用图表示为：
+
+![](/img/in-post/Kaldi_note_8/kaldi_note_n8_2.png)
+
+为了显示更多帧，将其紧凑表示为：
+
+![](/img/in-post/Kaldi_note_8/kaldi_note_n8_3.png)
+
+其中一条彩色线就代表13x10=130个权重值。如果我们持续的对网络进行输入，那么就变成了下图:
+
+![](/img/in-post/Kaldi_note_8/kaldi_note_n8_4.png)
+
+其中各色线的权重相同，相当于把权重延时。隐藏层和输出层之间也可以采用该方法，这样整体的权重值就大大减少。
+
+该网络的训练方法和传统方法一样，反向传播就可以。
+
+## Kaldi 中的TDNN
+
+thchs30的TDNN程序local/nnet3/run_tdnn.sh里面是通过调用WSJ的tdnn程序完成的，其余为参数设置。使用的网络为nnet3。关于这里中文没找到合适的资源，只有Kaldi网站上对其有一些介绍。建议观看[Context and chunk-size in the "nnet3" setup](http://kaldi-asr.org/doc/dnn3_scripts_context.html)。
+
+我看了半天感觉还是理解不好，等待以后补齐。
+
+# 参考
+
+[Context and chunk-size in the "nnet3" setup](http://kaldi-asr.org/doc/dnn3_scripts_context.html)
+
+[系统学习机器学习之神经网络（十一） --TDNN](http://blog.csdn.net/app_12062011/article/details/53433736)
+
+[深度学习在语音识别中的研究综述](http://www.doc88.com/p-1458607739327.html)
