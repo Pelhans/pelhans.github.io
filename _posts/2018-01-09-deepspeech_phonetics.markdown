@@ -34,17 +34,17 @@ tags:
 
 根据阻挡的部位的不同可以吧不同的辅音区别开来。最大阻挡形成的部位称为辅音的发音部位，辅音的发音部位包含唇音、齿音、齿龈音、上颚音、软腭音、喉音等。
 
-![](/img/in-post/deepspeech_ch3/deepspeech_ch3_1.jpg)
+![](/img/in-post/deepspeech_ch2/deepspeech_ch2_1.jpg)
 
 辅音也可以通过气流的阻挡方式不同来区分，这样的特征称为发音方法。对于辅音来说其发音方法为: 塞音、鼻音、擦音、半元音、颤音。
 
 类比于辅音，元音也可以通过发音部位来描述。元音有两个重要的参数：一个参数是发音时设为的高低，它大致相当于舌头最高部位所处的位置，另一个参数是发音时嘴唇的形状(圆唇或不圆唇)，下图给出了不同元音的舌位。
 
-![](/img/in-post/deepspeech_ch3/deepspeech_ch3_2.jpg)
+![](/img/in-post/deepspeech_ch2/deepspeech_ch2_2.jpg)
 
 除此之外还有不同的元音舌位高度的图示描述，称为元音舌位图。
 
-![](/img/in-post/deepspeech_ch3/deepspeech_ch3_3.jpg)
+![](/img/in-post/deepspeech_ch2/deepspeech_ch2_3.jpg)
 
 ## 声音波形
 
@@ -52,21 +52,21 @@ tags:
 
 信号点的取样为对信号的振幅为在特定的时间点测量。因此取样率为每秒取样的次数，举例来说对于频率为20,000Hz的波形来说，要想保证波形的不遗失，其对应的最小采样频率应为10,000Hz，称之为Nyquist frequency。常用手机的采样率为8 KHZ，麦克风的采样率为16KHz。存储采用证书存储，如8-bit或16-bit等。
 
-![](/img/in-post/deepspeech_ch3/deepspeech_ch3_4.jpg)
+![](/img/in-post/deepspeech_ch2/deepspeech_ch2_4.jpg)
 
 ### 频率、振幅； 音高(Pitch)、响度
 
 对于频率、振幅、响度的介绍就不多写了，这里主要介绍音高。音高的定义为感官神经对基音频率的感知。那什么是基音频率呢？其定义为声带的震动频率简记为F0，相应的周期为基音周期。我们可以通过音高追踪来画出F0的图。在下图中处于中间位置的就是F0。
 
-![](/img/in-post/deepspeech_ch3/deepspeech_ch3_5.jpg)
+![](/img/in-post/deepspeech_ch2/deepspeech_ch2_5.jpg)
 
 另一个比较有用的定义为生意的强度，即dB。它的定义公式为：
 
-![](/img/in-post/deepspeech_ch3/deepspeech_ch3_6.png)
+![](/img/in-post/deepspeech_ch2/deepspeech_ch2_6.png)
 
 前面提到音高是根据人的感觉定义的，但研究表明人类对于声音频率的感觉并不是线性的，一般来说当处于100Hz到1000Hz之间时的音高感觉是准确的、线性的。但对于那些在1000Hz以上的部分的准确度就会降低，频率与音高的关系为对数关系。对于此有很多不同的模型来描述这种关系，一种较为常用的是梅尔刻度(Mel Scale)。梅尔频率m与原始声音频率的关系为:
 
-![](/img/in-post/deepspeech_ch3/deepspeech_ch3_7.png)
+![](/img/in-post/deepspeech_ch2/deepspeech_ch2_7.png)
 
 有关梅尔刻度的问题在后面的特征提取MFCC那还会继续介绍。
 
