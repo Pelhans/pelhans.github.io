@@ -194,4 +194,59 @@ $$ SPARQL \rightarrow Datalog \rightarrow SQL $$
 
 * 步骤二： 将数据库关系表达式映射成Datalog原子
 
-    * 
+    ![](/img/in-post/xiaoxiangkg_note7/xiaoxiangkg_note7_17.png)
+
+* 步骤三：将从SPARQL以及数据库重写过来的Datalog 规则整合进行查询
+
+    ![](/img/in-post/xiaoxiangkg_note7/xiaoxiangkg_note7_18.png)
+
+### [Ontop 工具](http://obda.inf.unibz.it/)
+
+* 最先进的OBDA 系统，兼容RDFs、OWL 2 QL、R2RML、SPARQL标准    
+* 支持主流关系数据库： Oracle、MySQL、SQL Server、Postgres
+
+## 基于产生式规则的方法
+
+产生式系统是一种前向推理系统，可以按照一定机制执行规则从而达到某些目标，与一阶逻辑类似，但也有区别。被应用于自动规划、专家系统上。
+
+产生式系统由: **事实集合(Working Memory)、产生式/规则集合、推理引擎**组成:
+
+* 事实集/运行内存(Working Memory, WM): 是事实的集合，用于存储当前系统中所有事实。    
+    * 事实(Working Memory Element, WME)，包含描述对象和描述关系。描述对象形如$$ (type attr_1 : val_1 attr_2 : val_2 ... attr_n : val_n )$$,其中type, attr_i , val_i 均为原子 (常量)， 例如 (student name: Alice age: 24)。描述关系(Refication)，例如 (basicFact relation: olderThan firstArg: John secondArg: Alice)简记为(olderThan John Alice)。
+* 产生式集合(Production Memory, PM)就是产生式的集合。。。。产生式就是类似于$$ IF conditions THEN actions $$这种的语句。其中conditions 是由条件组成的集合，又称为LHS。 actions 是由动作组成的序列，称为RHS 。    
+    * LHS 是条件(condition)的集合，各条件之间是且的关系，当LHS 中所有条件均被满足，则该规则触发。条件的形式为: $$ ( type attr_1 : spec_1 attr_2 : spec_2 ... attr_n : spec_n ) $$
+    * RHS是动作序列，即执行时的顺序，是依次执行的，动作的种类包含 ADD pattern、 REMOVE i、MODIFY i( attr spec ) 。
+    * 举个例子: IF (Student name:x ) Then ADD (Person name:x )    
+* 推理引擎： 它可以控制系统的执行，包含 模式匹配(用规则的条件**部分匹配**事实集中的事实,整个LHS都被满足的规则被触发,并被加入议程(agenda))、解决冲突(按一定的策略从被触发的多条规则中选择一条)、执行动作(执行被选择出来的规则的RHS,从而对WM进行一定的操作)。
+
+产生式系统的执行流程如下图所示:
+
+![](/img/in-post/xiaoxiangkg_note7/xiaoxiangkg_note7_19.png)
+
+上面的WM 和产生式集合是我们定义的数据，相当于ABox 和 TBox，中间部分是推理引擎。其实大部分推理系统都是由这三部分组成。
+
+### 模式匹配 RETE 算法
+
+**模式匹配即 用每条规则的条件部分匹配当前WM。**，一种高效的模式匹配算法是RETE 算法，1979年由Charles Forgy (CMU)提出， 将产生式的LHS组织成判别网络形式，是一种典型的以空间换时间的算法。其流程如下图所示:
+
+![](/img/in-post/xiaoxiangkg_note7/xiaoxiangkg_note7_20.png)
+
+### 相关工具介绍
+
+#### Drools
+
+Drools 是商用规则管理系统，其中提供了一个规则推理引擎，核心算法是基于RETE算法的改进。提供规则定义语言 ，支持嵌入Java代码。
+
+#### Jena
+
+Jena 用于构建语义网应用Java 框架，提供了处理RDF、RDFs、OWL 数据的接口，还提供了一个规则引擎。提供了三元组的内存存储于查询。
+
+#### RDF4J
+
+RDF4J 是一个处理RDF 数据的开源框架，支持语义数据的解析、存储、推理和查询。能够关联几乎所有RDF存储系统，能够用于访问远程RDF存储。
+
+#####  相关工具总结
+
+![](/img/in-post/xiaoxiangkg_note7/xiaoxiangkg_note7_21.png)
+
+
