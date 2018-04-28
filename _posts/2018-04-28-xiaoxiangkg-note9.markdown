@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "知识图谱入门 (九)" 
-subtitle:   "语义问答"
+subtitle:   "知识问答"
 date:       2018-04-28 00:15:18
 author:     "Pelhans"
 header-img: "img/post-bg-universe.jpg"
