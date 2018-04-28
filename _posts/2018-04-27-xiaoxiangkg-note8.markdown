@@ -149,3 +149,7 @@ $${o | \exists s:s\in S \wedge (s, R, o)} $$并将其作为AIS返回
 ![](/img/in-post/xiaoxiangkg_note8/xiaoxiangkg_note8_9.png)
 
 上图中的OPT(occur probity table, 发生概率表)分为线上和线下两个步骤。对于线下步骤，数据图存储于DBMS中，除Entldx中的三元组(个体，关键词，"xxx")外，Doc 图存储在Docldx中，注释存储在Anntldx中。线上步骤将混合查询分解为一组原子查询(atomic queries)；使用DB和IR引擎执行原子查询；根据生成的查询树合并部分结果；对最后的答案排序。
+
+# Ref
+ 
+[王昊奋知识图谱教程](http://www.chinahadoop.cn/course/1048)

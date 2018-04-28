@@ -249,4 +249,6 @@ RDF4J 是一个处理RDF 数据的开源框架，支持语义数据的解析、�
 
 ![](/img/in-post/xiaoxiangkg_note7/xiaoxiangkg_note7_21.png)
 
-
+# Ref
+ 
+[王昊奋知识图谱教程](http://www.chinahadoop.cn/course/1048)

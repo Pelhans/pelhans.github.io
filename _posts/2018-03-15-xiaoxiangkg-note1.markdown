@@ -130,3 +130,7 @@ JSON for Linking Data: 适用于作为程序之间做数据交换,在网页中�
 ## 知识众包
 
 允许各网站基于一定的方式如RDFa、JASON-LD等方式在网页和邮件等数据源中嵌入语义化数据，让个人和企业定制自己的知识图谱信息。
+
+# Ref
+
+[王昊奋知识图谱教程](http://www.chinahadoop.cn/course/1048)

@@ -262,4 +262,6 @@ Neo4j的优点为：
 * A\*算法    
 * 数据优先
 
-
+# Ref
+ 
+[王昊奋知识图谱教程](http://www.chinahadoop.cn/course/1048)

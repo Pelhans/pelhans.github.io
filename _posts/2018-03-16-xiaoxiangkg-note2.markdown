@@ -262,3 +262,7 @@ RDFa(Resource Description Framework in attributes)是网页标记语言，也是
 Microdata微数据,是在网页标记标记语言嵌入机器可读的属性数据，微数据使用可以来自自定义词汇表、带作用域的键/值对给DOM做标记。用户可以自定义微数据词汇表,在自己的网页中嵌入自定义的属性。微数据是给那些已经在页面上可见的数据施加额外的语义。当HTML的词汇不够用时,使用微数据可以取得较好的效果。
 
 ![](/img/in-post/xiaoxiangkg_note2/xiaoxiangkg_note2_21.png)
+
+# Ref
+ 
+[王昊奋知识图谱教程](http://www.chinahadoop.cn/course/1048)

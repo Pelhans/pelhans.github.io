@@ -189,6 +189,8 @@ KBQA 与深度学习结合的两个方向，第一个是利用深度学习对于
 
 # Ref
 
+[王昊奋知识图谱教程](http://www.chinahadoop.cn/course/1048)
+
 [Semantic parsing via paraphrasing](https://nlp.stanford.edu/joberant/homepage_files/publications/ACL14.pdf)
 
 [Template-based question answering over RDF data](https://www2012.universite-lyon.fr/proceedings/proceedings/p639.pdf)
@@ -207,4 +209,4 @@ question-answer pairs](http://pdfs.semanticscholar.org/042d/b0977555fcd7d5eac67b
 [A Graph Traversal Based Approach to Answer Non-Aggregation Questions over DBpedia ](http://pdfs.semanticscholar.org/9222/c69ca851b26e8338b0082dfafbc663d1be50.pdf)
 
 [Automated Template Generation for Question Answering over Knowledge Graphs](http://pdfs.semanticscholar.org/2230/816965e900ba76f3fe75a9575a927b3466d5.pdf)
-
+ 

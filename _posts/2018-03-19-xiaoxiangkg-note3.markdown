@@ -236,3 +236,7 @@ tags:
 对于监督学习我们知道标注数据是它的短板，因此我们想到自动抽取的方法。网站中的数据通常是用很少的一些模板来编码的,通过挖掘多个数据记录中的重复模式来寻找这些模板是可能的。自动抽取的流程如图所示：
 
 ![](/img/in-post/xiaoxiangkg_note3/xiaoxiangkg_note3_19.png)
+
+# Ref
+ 
+[王昊奋知识图谱教程](http://www.chinahadoop.cn/course/1048)

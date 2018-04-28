@@ -307,3 +307,7 @@ $$ m(x, y) \le m(x, z) + m(z, y) $$
 $$ m(x, y) - m(y, z) > \theta \rightarrow m(x, z) > \theta $$
 
 上式中y相当于样本点。因为样本点E的数量是远小于目标数据集T的数量,所以过滤这一步会急剧减少后续相似性比较的次数,因而对大规模的web数据,这是非常高效的算法。
+
+# Ref
+ 
+[王昊奋知识图谱教程](http://www.chinahadoop.cn/course/1048)
