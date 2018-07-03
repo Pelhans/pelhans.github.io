@@ -17,7 +17,7 @@ tags:
 * TOC
 {:toc}
 
-# P1  sed 命令的使用
+# sed 命令的使用
 
 ## 概述
 
@@ -669,6 +669,7 @@ $ ls -l *.txt | awk '{sum+=$6} END {print sum}'
 seq 9 | sed 'H;g' | awk -v RS='' '{for(i=1;i<=NF;i++)printf("%dx%d=%d%s", i, NR, i*NR, i==NR?"\n":"\t")}'
 ```
 
-#Ref
+# Ref
 [sed winwill2012的回答 - 知乎](https://www.zhihu.com/question/30074714/answer/64706509)
+
 [awk 菜鸟教程](http://www.runoob.com/linux/linux-comm-awk.html)
