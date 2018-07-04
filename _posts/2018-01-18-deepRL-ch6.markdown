@@ -40,7 +40,7 @@ $$ q_{*}(s, a ,w) \approx q_{\pi}(s, a) $$
 
 # 递增方法 (Incremental Methods)
 
-##　线性函数近似－特征向量（Linear Function Approximation - Feature Vectors）
+## 线性函数近似－特征向量（Linear Function Approximation - Feature Vectors）
 
 用一个特征向量表示一个状态,每一个状态是由以w表示的不同强度的特征来线性组合得到:
 
