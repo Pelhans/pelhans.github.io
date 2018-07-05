@@ -8,7 +8,7 @@ header-img: "img/speech_process.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - Linux
+    - speech process
 ---
 
 
