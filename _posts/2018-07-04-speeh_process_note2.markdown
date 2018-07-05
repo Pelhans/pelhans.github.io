@@ -54,7 +54,7 @@ $$ SNR(dB) = 6.02B - 7.2 $$
 
 首先给出短时平均能量的定义：
 
-$$ E_{n} = \Sigma_{m=-\infty}^{\infty}[x(m)w(n-m)]^{2} = \Sigma_{m=n-N+1}^{n}[x(m)w(n-m)]^{2} $$
+$$ E_{n} = \sum_{m=-\infty}^{\infty}[x(m)w(n-m)]^{2} = \sum_{m=n-N+1}^{n}[x(m)w(n-m)]^{2} $$
 
 E(n)为语音信号一个短时间段内的能量，且以n为标志。其中w(n)是窗函数,x(m)表示语音信号，N为窗口内采样的总数(不确定，书上公式各变量含义完全没给)。下图给出短时平均能量计算的说明：
 
@@ -62,7 +62,7 @@ E(n)为语音信号一个短时间段内的能量，且以n为标志。其中w(n
 
 进一步整理，上式可改写为：
 
-$$ E_{n} = \Sigma_{m=-\infty}^{\infty} x^{2}(m)h(n-m) = x^{2}(n)*h(n) $$ 
+$$ E_{n} = \sum_{m=-\infty}^{\infty} x^{2}(m)h(n-m) = x^{2}(n)*h(n) $$ 
 
 其中：
 
@@ -82,7 +82,7 @@ $$
 
 相应数字滤波器的频率特性为：
 
-$$H(e^{jwT}) = \Sigma_{n=0}^{N-1}e^{-jwT} = \frac{sin(NwT/2)}{sin(w/2)}e^{-jwT(N-1)/2} $$
+$$H(e^{jwT}) = \sum_{n=0}^{N-1}e^{-jwT} = \frac{sin(NwT/2)}{sin(w/2)}e^{-jwT(N-1)/2} $$
 
 具有线性相频特性。
 
@@ -106,7 +106,7 @@ $$
 
 语音信号x(n)的短时平均过零数为：
 
-$$ Z_{n} = \Sigma_{m=-\infty}^{\infty}|sgnx(m)] - sgn[x(m-1)]| w(n-m) $$
+$$ Z_{n} = \sum_{m=-\infty}^{\infty}|sgnx(m)] - sgn[x(m-1)]| w(n-m) $$
 
 其中w(n)是窗口序列，sgn是符号函数。
 
@@ -120,11 +120,11 @@ $$ Z_{n} = \Sigma_{m=-\infty}^{\infty}|sgnx(m)] - sgn[x(m-1)]| w(n-m) $$
 
 对于确定性信号序列，自相关函数的定义为：
 
-$$ R(k) = \Sigma_{m=-\infty}^{\infty} x(m)x(m+k) $$
+$$ R(k) = \sum_{m=-\infty}^{\infty} x(m)x(m+k) $$
 
 对于随机性或周期性信号序列，自相关函数定义为：
 
-$$ R(k) = lim_{N\rightarrow\infty}\frac{1}{2N+1}\Sigma_{m=-N}^{N}x(m)x(m+k) $$
+$$ R(k) = lim_{N\rightarrow\infty}\frac{1}{2N+1}\sum_{m=-N}^{N}x(m)x(m+k) $$
 
 上式中，k表示计算k次自相关滞后。由上式可知：
 
@@ -137,7 +137,7 @@ $$ R(k) = lim_{N\rightarrow\infty}\frac{1}{2N+1}\Sigma_{m=-N}^{N}x(m)x(m+k) $$
 
 短时自相关函数的定义为：
 
-$$ R_{n}(k) = \Sigma_{m=-\infty}^{\infty} x(m)w(n-m)x(m+k)w(n-m-k) $$
+$$ R_{n}(k) = \sum_{m=-\infty}^{\infty} x(m)w(n-m)x(m+k)w(n-m-k) $$
 
 相当于在确定性信号序列上加了窗。若定义:
 
@@ -145,7 +145,7 @@ $$ h_{k}(n) = w(n)w(n+k) $$
 
 则：
 
-$$ R_{n}(k) = \Sigma_{m=-\infty}^{\infty}[x(m)x(m-k)]h_{k}(n-m) = [x(n)x(n-k)] * h_{k}(n) $$
+$$ R_{n}(k) = \sum_{m=-\infty}^{\infty}[x(m)x(m-k)]h_{k}(n-m) = [x(n)x(n-k)] * h_{k}(n) $$
 
 因此，短时自相关函数可以看做x(n)x(n-k)通过单位函数响应为$h_{k}(n)$的数字滤波器的输出。
 
@@ -157,7 +157,7 @@ $$ R_{n}(k) = \Sigma_{m=-\infty}^{\infty}[x(m)x(m-k)]h_{k}(n-m) = [x(n)x(n-k)] *
 
 在语音处理中，计算自相关函数所用的窗口长度与平均能量等情况有所不同，其至少要大于二倍基因周期，否则找不到第二个最大值点。另一方面N要尽可能小来保证短时性。为了解决这一问题，可以用修正的短时自相关函数代替短时自相关函数，以便使用较窄的窗。修正的短时自相关函数定义为：
 
-$$ \overset{\^}{R_{n}} = \Sigma_{m=-\infty}^{\infty}x(m)w_{1}(n-m)x(m+k)w_{2}(n-m-k) $$
+$$ \overset{\^}{R_{n}} = \sum_{m=-\infty}^{\infty}x(m)w_{1}(n-m)x(m+k)w_{2}(n-m-k) $$
 
 可以看出，相比于原公式，其w1和w2用了不同长度，这样可以消除可变上限引起的自相关函数的下降。选取w2使其包括w1的非零间隔外的取样。
 
