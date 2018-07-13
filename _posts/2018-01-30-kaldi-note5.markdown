@@ -106,7 +106,9 @@ J(W) = \frac{\prod\limits_{i=1}^{d}w_{i}^{T}S_{b}w_{i}}{\prod\limits_{i=1}^{d}w_
 
 # MLLT
 
-Global Semi-tied Covariance (STC)/Maximum Likelihood Linear Transform (MLLT)即最大似然线性变换,它是一个平方特征变换矩阵（square feature-transformation matrix），来自于论文Semi-tied Covariance Matrices for Hidden Markov Models,用于建模方差，解决full convariance的参数量大的问题。
+Global Semi-tied Covariance (STC)/Maximum Likelihood Linear Transform (MLLT)即最大似然线性变换,在最大似然（ML）准则下使用一个线性变换矩阵对参数特征矢量进行解相关。它是一个平方特征变换矩阵（square feature-transformation matrix），来自于论文Semi-tied Covariance Matrices for Hidden Markov Models,用于建模方差，解决full convariance的参数量大的问题。
+
+**在ML准则下，评价一个模型‘好坏’的标准是训练数据与模型匹配的似然度，如果似然度越高的话，我们说这个模型越好**。MLLT的作者给出了在最大似然准则下（ML）使用对角协方差矩阵的缺点，及其对训练数据集描述似然度的损失，造成模型精度下降。而做了线性变换以后，在新的空间中，模型与训练集的似然度增加。
 
 相比于full convariance，该方法的每个高斯分量有两个方差矩阵：  
 1. diagonal convariance $$\Sigma_{diag}^{(m)}$$  
