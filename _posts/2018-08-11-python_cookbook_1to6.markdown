@@ -234,4 +234,207 @@ class Node:
 ```
 在这个例子中，__iter__()方法将迭代请求转发给对象内部持有的_children属性上。
 
+## 4.3 yield from
 
+大意是说 yield from 表达式允许一个生成器代理另一个生成器, 这样就允许生成器被替换为另一个生成器, 子生成器允许返回值。yield from 在涉及写成和给予生成器的并发型高级程序中有着更加重要的作用。
+```python
+def g1(x):     
+     yield  range(x)
+def g2(x):
+     yield  from range(x)
+
+it1 = g1(5)
+it2 = g2(5)
+
+print( [ x for x in it1] )
+#out [range(0, 5)]
+print( [ x for x in it2] )
+#out [0, 1, 2, 3, 4]
+```
+可以看到 , yield返回一个生成器 , 这个生成器就是range自身 , yield from 也返回一个生成器, 这个生成器是由range代理的, yield from 在递归程序中较为常用。
+
+## 4.4 反向迭代 reversed()
+
+假如想要反向迭代序列中的元素，可以使用内建的 reversed()函数。也可以在自己的类中实现__reversed__()方法。具体实现类似于__iter__()方法。
+
+```python
+a = [1, 2, ,3 ,4]
+for x in reversed(a):
+    print(x)
+```
+
+## 4.5 定义带有额外状态的生成器函数
+
+想定义一个生成器函数，但它还涉及一些额外的自定义值，可以通过将self的一些属性放到__iter__()函数里。这样在迭代的过程中就可以持续的访问内部属性。
+
+## 4.6 对迭代器做切片操作 itertools.islice
+
+对生成切做切片操作，普通的切片不能用，可以使用itertools.islice()函数
+
+'''python
+In [3]: def count(n):
+   ...:     while True:
+   ...:         yield n
+   ...:         n += 1
+   ...:   
+In [5]: c = count(0)
+In [6]: c
+Out[6]: <generator object count at 0x7f92899b3c80>
+----> 1 c[0]
+TypeError: 'generator' object has no attribute '__getitem__'
+
+import itertools
+In [10]: for x in itertools.islice(c, 10, 20):
+    ...:     print(x)
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+'''
+
+## 4.7 迭代所有可能的组合或排列 itertools.permutations, itertools.combinations, itertools.combinations_with_replacement
+
+itertools.permutations 接受一个元素集合，将其中所有的元素重排列为所有可能的情况，并以元组序列的形式返回。combinations 不考虑元素间的实际顺序，同时已经原则过的元素将从从可能的候选元素中移除。若想解除这一限制，可用combinations_with_replacement。
+
+```python
+In [11]: from itertools import permutations
+In [12]: items = ['a', 'b', 'c']
+In [13]: for p in permutations(items):
+    ...:     print(p)
+    ...:     
+('a', 'b', 'c')
+('a', 'c', 'b')
+('b', 'a', 'c')
+('b', 'c', 'a')
+('c', 'a', 'b')
+('c', 'b', 'a')
+
+In [14]: from itertools import combinations
+In [16]: for c in combinations(items, 3):
+    ...:     print(c)
+    ...:     
+('a', 'b', 'c')
+
+```
+
+## 4.8 在不同的容器中进行迭代 itertools.chain()
+
+我们需要对许多对象执行相同的操作，但是这些对象包含在不同的容器内，而我们希望可以避免写出嵌套的循环处理，保持代码的可读性。使用itertools.chain()方法可以用来简化这个任务。
+
+```python
+from itertools import chain
+
+In [18]: a = [1, 2, 3, 4]
+In [19]: b = ['x', 'y', 'z']
+In [20]: for x in chain(a, b):
+    ...:     print (x)
+    ...:     
+1
+2
+3
+4
+x
+y
+z
+```
+
+## 4.9 创建处理数据的管道
+
+定义一些裂小型的生成器函数，每个函数执行特定的独立任务。这样就每次把生成器产生的一批数据处理完。由于处理过程的迭代特性，这里只会用道非常少的内存
+
+## 4.10 用迭代器取代 while循环
+
+关于内建函数iter()，一个少有人知的特性是他可以选择性接受一个无参的可调用对象以及一个哨兵（结束）值作为输入。例如:
+
+```python
+CHUNKSIZE = 8192
+def reader(s):
+    for chunk in iter(lambda: s.recv(CHUNKSIZE), 'b'):
+        process_data(data)
+```
+
+# 第五章 文件和 I/O
+
+## 5.1 在字符串上执行I/O操作 io.StringIO() 和 io.BytesIO()
+
+可以模仿文件输入，下列是StringIO()， BytesIO()和这个的操作是一样的。
+
+```python
+In [1]: import io
+In [2]: s = io.StringIO()
+In [3]: s.write(u'hello world\n')
+Out[3]: 12
+In [4]: print('This is a test', file=s)
+In [6]: s.getvalue()
+Out[6]: 'hello world\nThis is a test\n'
+```
+
+## 5.2 将二进制数据读到可变缓冲区中
+
+我们想将二进制数据直接读取到一个可变缓冲区中，中间不经过任何拷贝环节。例如我们想原地修改数据再将它写回到文件中去。
+
+```python
+import os.path
+def read_into_buffer(filename):
+    buf = bytearray(os.path.getsize(filename))
+    with open(filename, 'rb') as f:
+        f.readinto(buf)
+    return buf
+
+with open('sample.bin', 'wb') as f:
+    f.write(b'hello world')
+
+buf = read_into_buffer('sample.bin')
+In [16]: buf
+Out[16]: bytearray(b'hello world')
+```
+
+## 5.3 将已有的文件描述符包装为文件对象 
+
+以python 文件对象来包装这个文件描述符，它与一般打开的文件相比是有区别的。区别在于，文件描述符只是一个由操作系统分配的整数句柄，用来指代某种系统I/O通道。
+
+```python
+import os 
+fd = os.open('somefile.txt', os.O_WRONLY | os.O_CREAT)
+
+f = open(fd, 'wt')
+f.write('hello world \n')
+f.close()
+```
+
+# 第六章 数据编码与处理
+
+## 6.1 读写CSV数据
+
+对大部分类型的CSV数据，都可以用csv库来处理。如csv.reader()、、csv.writer()、csv.DictReader()、csv.DictWriter()
+
+## 6.2 读写JSON数据
+
+这个比较常见，主要使用的是JSON模块。两个主要的函数为json.dunps 和 json.loads()。如果是对文件进行处理而不是字符串的话，可以选择使用json.dump 和json.load 来编码和解码JSON数据。
+
+## 6.3 解析简单的XML文档 xml.etree.ElementTree
+
+xml.etree.ElementTree可以从简单的XML文档中提取数据。
+
+```python
+from urllib.request import urlopen
+from xml.etree.ElementTree import parse
+
+u = urlopen('http://planet.python.org/rss20.xml')
+doc = parse(u)
+In [24]: for item in doc.iterfind('channel/item'):
+   ....:     title = item.findtext('title')
+   ....:     date = item.findtext('pubDate')
+   ....:     link = item.findtext('link')
+   ....:     print (title)
+   ....:     print(date)
+   ....:     print(link)
+   ....:     print()
+   ....: 
+```
