@@ -271,7 +271,7 @@ for x in reversed(a):
 
 对生成切做切片操作，普通的切片不能用，可以使用itertools.islice()函数
 
-'''python
+```python
 In [3]: def count(n):
    ...:     while True:
    ...:         yield n
@@ -296,7 +296,7 @@ In [10]: for x in itertools.islice(c, 10, 20):
 17
 18
 19
-'''
+```
 
 ## 4.7 迭代所有可能的组合或排列 itertools.permutations, itertools.combinations, itertools.combinations_with_replacement
 
