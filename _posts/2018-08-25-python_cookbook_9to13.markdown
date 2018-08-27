@@ -91,4 +91,97 @@ def logged(level, name=None, message=None):
     return decorate
 ```
 
-## 9.4 
+## 9.4 定义一个属性可由用户修改的装饰器
+
+我们想编写一个装饰器来包装函数，但是可以让用户调整装饰器的属性，这样在运行时能够控制装饰器的行为。为了达到这个目的我们需要使用访问器函数。访问器函数以属性的形式附加到了包装函数上，每个访问器函数允许对nonlocal 变量赋值来调整内部参数。如果所有的装饰器都使用了@functools.wraps的话，访问器函数可以跨越多个装饰器内层进行传播。
+
+```python
+from functools import wraps, partial
+import logging
+
+def attach_wrapper(obj, func=None):
+    if func is None:
+        return partial(attach_wrapper, obj)
+    setattr(obj, func.__name__, func)
+    return func
+
+def logged(level, name=None, message=None):
+    def decorate(func):
+        logname = name if name else func.__moudle__
+        log = logging.getLogger(logname)
+        logmsg = message if message else func.__name__
+
+        @wraps
+        def wrapper(*args, **kwargs):
+            log.log(level, logmsg)
+            return func(*args, **kwargs)
+
+        @attach_wrapper(wrapper)
+        def set_level(newlevel):
+            nonlocal level
+            level = newlevel
+
+        @attach_wrapper(wrapper):
+        def set_message(newmsg):
+            nonlocal logmsg
+            logmsg = newmsg
+
+        return wrapper
+    return decorate
+
+@logged(logging.DEBUG)
+def add(x, y):
+    return x + y
+
+@logged(logging.CRITICAL, 'example')
+def spam():
+    print('Spam!')
+```
+
+## 9.5 定义一个能接受可选参数的装饰器
+
+通过使用 functools.partial 来实现。
+
+```python
+from functools import wraps, partial
+import logging
+
+def logged(func=None, *, level=logging.DEBUG, name=None, message=None):
+    if func is None:
+        return partial(logged, level=level, name=name, message=message)
+    
+    logname = name if name else func.__moudle__
+    log = logging.getLogger(logname)
+    logmsg = message if message else func.__name__
+    @wraps
+    def wrapper(*args, **kwargs):
+        log.log(level, logmsg)
+        return func(*args, **kwargs)
+    return wrapper
+```
+
+## 9.6 利用装饰器对函数参数强制执行类型检查
+可以使用 inspect.signature()函数来实现，这个函数允许我们从一个可调用的对象中提取出参数签名信息。
+
+```python
+from inspect import signature
+
+def spam(x, y, z=42):
+    pass
+
+sig = signature(spam)
+print(sig)
+out: (x, y, z=42)
+```
+
+bind_partial() 方法可以对提供的类型到参数名做部分绑定。
+
+```python
+bound_types = sig.bind_partial(int, z=int)
+bound_types
+out: <inspect.BoundArguments object at 0x10069bb50>
+bound_types.arguments
+out: OrderDict([('x', <class 'int'), ('z', <class 'int')])
+```
+
+可以看到，缺失的参数被简单的忽略掉了。还有另外一种方法sig.bind()，只是它不允许出现缺失的参数。
