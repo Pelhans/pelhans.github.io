@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "Python Cookbook总结"
-subtitle:   "9-12 章"
+subtitle:   "9-10 章"
 date:       2018-08-25 00:15:18
 author:     "Pelhans"
 header-img: "img/speech_process.jpg"
@@ -12,7 +12,7 @@ tags:
 ---
 
 
-> 包含第9、10、12 章的内容。
+> 包含第9、10 章的内容。
 
 * TOC
 {:toc}
@@ -399,3 +399,109 @@ class Mydate(type):
 ## 9.15 在类中强制规定编码约定
 
 元类的一个核心功能就是允许在定义类的时候对类本身的内容进行检查。在重新定义的 __init__()方法中，我们可以自由地检查类字典、基类以及其他更多信息。此外一旦为某个类指定了元类，该类的所有子类都会自动继承这个特性。
+
+## 9.16 通过编程的方式来定义类
+
+编写的代码最终需要创建一个新的类对象。我们想将组成类定义的源代码发送到一个字符串中，然后利用类似 exec() 这样的函数来执行。除此之外，我们可以使用函数 types.new_class() 来实例化新的类对象。所有要做的就是提供类的名称、父类名组成的元组、关键字参数以及一个用来产生类的字典的回调，类字典中包含着类的成员。
+
+```python
+import types
+
+# 返回实例(类名，父类，keyword-only, 产生类字典的回调)
+Stock = types.new_class('Stock', (), {}, lambda ns: ns.update(cls_dict)) 
+Stock.__module__ = __name__
+```
+
+上述代码中，每当定义一个类时，其 __module__ 属性中包含的名称就是定义该类时所在的模块名。这个名称会用来为 __repr__() 这样的方法产生输出，同事也会被各种库所利用。因此为了让创建的类称为一个正常的类，需要保证将 __module__ 属性设置妥当。
+
+另外 types.new_class 的第四个参数实际上是一个接受映射型对象的函数，用来产生类的命名空间。这通常都会是一个字典，但实际上可以是任何由 __prepare__() 方法返回的对象。
+
+## 9.17 在定义的时候初始化类成员
+
+想要在定义类的时候初始化而不是在创建类实例的时候完成是元类的经典用途。从本质上说，元类是在定义类的时候触发执行，此时可以执行额外的步骤。
+
+```python
+import operator
+
+class StructTupleMeta(type):
+    def __init__(cls, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for n, name in enumerate(cls.fields):
+            setattr(cls, name, property(operator.itemgetter(n)))
+
+class StructTuple(tuple, metaclass=StructTupleMeta):
+    _fields = []
+    def __new__(cls, *args):
+        if len(args) != len(cls._fields):
+            raise ValueError('{} arguments required'.format(len(cls._fields)))
+        return super().__new__(cls, args)
+```
+
+函数 operator.itemgetter() 创建了一个访问器函数，而函数property() 将其转化成一个 property属性。
+
+## 9.18 通过函数注解来实现方法重载
+
+可以利用 python 允许对参数进行注解这个特点来实现，并且在实现过程中使用了元类及描述符来实现。本节干货较多，建议直接看书。其实现的大体思路还是比较简单的。
+
+元类 MultiMeta 使用 __prepare__()方法来提供一个定制化的类字典，将其作为 MultiDict的一个类实例。与普通的字典不同，当设定字典中的条目时， MultiDict会检查条目是否已经存在。如果已经存在，则重复的调幅会被合并到 MultiMethod 的一个类实例中去。
+
+MultiMethod 的类实例会通过构建一个类型签名到函数的映射关系来将方法收集到一起。在构建的时候，我们通过函数注解来收集这些签名并构建出映射关系。这些都是在 MultiMethod.register() 方法中完成。关于这个映射，一个至关重要的地方在于为了实现多重方法重载，必须给所有的参数都指定类型，否则就会出错。
+
+为了让 MultiMethod 的类实例能够表现为一个可调用的对象，我们实现了 __call__() 方法。该方法通过所有的参数(除了 self 外)构建处一个类型元祖，然后在内部的映射关系中找到对应的方法并调用它。
+
+实现 __get__() 方法是为了让 MultiMethod的类实例能够在类定义中正常工作。
+
+## 9.19 以简单的额方式定义上下文管理器
+
+想要编写一个新的上下文管理器，我们之前学过定义一个带有 __enter__() 和 __exit__()方法的类。除此之外，我们还可以只用 contextlib 模块中的 @contextmanager 装饰器。需要注意的是 @contextmanager 只适用于编写自给自足型的上下文管理器函数。如果有一些对象(比如文件、网络连接或者锁)需要支持在with语句中使用，那么还是需要分别实现 __enter__() 和 __exit__()方法。
+
+# 第10 章 模块和包
+
+## 10.1 重新加载模块
+
+要加载一个之前已经加载过的模块，可以使用 imp.reload() 来实现。该操作会擦除模块底层字典 (__dict__)的内容，并重新通过执行模块的源代码来刷新它。模块对象本身的标示并不会改变，因此，这个操作会使得已经导入到程序中的模块得到更新。在生产环境中应避免重新加载模块。
+
+## 10.2 读取包中的数据文件 pkguil
+
+pkguil.get_data() 函数是一种高级的工具，无论包以什么样的形式安装或安装到了哪里，都能够用它来获取数据文件。它能够完成工作并吧文件内容以字节串的形式返回给我们。
+
+## 10.3 使用字符串中给定的名称来导入模块  importlib.import_module()
+
+当模块或包的名称以字符串的形式给出时，可以使用 importlib.import_module() 函数来手动导入这个模块。
+
+```python
+import importlib
+
+math = importlib.import_module('math')
+math.sin(2)
+out: 0.9092974
+```
+
+## 10.4 利用 import 钩子从远端机器上加载
+
+从服务器加载源代码，最简单的方式是通过urlopen()将源代码下载下来后加载。此外还可以使用自定义的元路径导入器和钩子两种方法。很复杂，建议直接看书。
+
+## 10.5 发布自定义的包
+
+要想发布，首先编写一个 setup.py 文件，如
+
+```python
+from distuils.core import setup
+
+setup(name='projectname',
+      version='1.0',
+      author='Your Name',
+      author_email='you@youraddress.com',
+      url='http://www.you.com/projectname',
+      packages=['projectname', 'projectname.utils']
+     )
+```
+
+然后创建一个 MANIFEST.in 文件，并列出各种希望包含在包中的非源代码文件
+
+```python
+#MANIFEST.in
+include *.txt
+recursive-include examples * 
+recursive-include Doc *
+```
