@@ -95,4 +95,55 @@ class Tests(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 ```
+## 14.4 创建自定义的异常
 
+创建自定义的异常是非常简单的,只要将它们定义成继承自Exception 的类即可(也可以继承自其他已有的异常类型,如果这么做更有道理的话)。自定义的类应该总是继承自内建的Exception类，或者继承自一些本地定义的基类，而这个基类本身又是继承自Exception 的。虽然所有的异常也都继承自 BaseException，但不应该将它作为基类来产生新的异常。BaseException 是预留给系统退出异常的，比如 KeyboardInterrupt。因此捕获这些异常并不适用于它们本来的用途。
+
+```
+class NetworkError(Exception):
+    pass
+
+class HostnameError(NetworkError):
+    pass
+
+# when used
+try:
+    msg = s.s.recv()
+except HostnameError as e:
+    ...
+```
+
+如果打算定义一个新的异常并且改写 Exception 的 __init__()方法，请确保总是用所有传递过来的参数调用 Exception.__init__()。
+
+```python
+class CustomError(Exception):
+    def __init__(self, message, status):
+        super().__init__(message, status)
+        self.message = message
+        self.status = status
+```
+
+## 14.5 通过引发异常来响应另一个异常
+
+要将异常串联起来，可以用 raise from 语句来代替普通的 raise。还可以通过查看异常对象的 __cause__属性来跟踪所希望的异常链。
+
+```python
+def example():
+    try:
+        int('N/A')
+    except ValueError as e:
+        raise RuntimeError('A PARSING ERROR OCCURED') from e...
+
+```
+
+## 14.6 让你的程序运行的更快
+
+下面列出一些常见简单的优化策略：
+
+* 有选择的消除属性访问：每次使用句点操作符(.)来访问属性时都会带来开销。在底层，这会触发调用特殊方法，比如 __getattribute__() 和 __getattr__()，而调用这些方法常常会导致字典查询操作。    
+* 理解变量所处的位置：通常来说，访问局部变量要比全局变量要快。对于需要频繁访问的名称，想要提高运行速度，可以通过让这些名称尽可能成为局部变量来达成。    
+* 避免不必要的抽象：任何时候当使用额外的处理层比如装饰器、属性或者描述符来包装代码时，代码的速度就会变慢。    
+* 使用内建的容器：内建的数据类型处理速度一般要比自己写的快的多。    
+* 避免产生不必要的数据结构或者拷贝操作
+
+# 第15章 C语言扩展
