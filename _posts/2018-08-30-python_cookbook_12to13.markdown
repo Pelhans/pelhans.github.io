@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "Python Cookbook总结"
-subtitle:   "12-15 章"
+subtitle:   "12-13 章"
 date:       2018-08-30 00:15:18
 author:     "Pelhans"
 header-img: "img/python_cookbook.jpg"
@@ -12,7 +12,7 @@ tags:
 ---
 
 
-> 包含第12、13、14、15章的内容。
+> 包含第12、13章的内容。
 
 * TOC
 {:toc}
@@ -285,4 +285,85 @@ class PollableQueue(queue.Queue):
 
 # 第十三章 实用脚本和系统管理
 
-## 13.1 
+## 13.1 通过重定向、管道或输入文件来作为脚本的输入
+
+python 内置的 fileinput模块可以对一个或多个文件中的内容进行迭代、遍历等操作。也可以将从命令中产生输出给脚本、把文件重定向给脚本等。
+
+```python
+import fileinput
+              
+with fileinput.input() as f_input:
+    for line in f_input:      
+        print(line, end='')
+
+# when used
+chmod +x filein.py
+ls | ./filein.py
+```
+
+## 13.2 执行外部命令并获取输出
+
+可以使用 subprocess.check_output()来完成，如
+
+```python
+import subprocess
+out_bytes = subprocess.check_output(['netstat', '-a'])
+```
+
+默认情况下，check_out()只会返回写入到标准输出中的结果。如果希望标准输出和标准错误输出都能获取到，可以使用参数stderr。另外如果需要命令的执行通过shell来解释，那么需要提供sehll=True。
+
+## 13.3 读取配置文件
+
+可以使用 configparser 模块来读取如.ini 格式所编写的配置文件。
+
+```python
+#cinfig.ini
+; config.init
+; sample configuration file
+
+[installation]
+library=%(prefix)s/lib
+include=%(prefix)s/include
+
+[debug]
+log_errors=true
+show_warnings=False
+
+# use configparser to read this ini
+from configparser import configParser
+cfg = configParser()
+cfg.read('config.ini')
+out: ['config.ini']
+cfg.sections()
+out: ['installation', 'debug']
+cfg.get('installation', 'library')
+out: '/usr/local/lib'
+cfg.set('server', 'port', '9000') # write new config
+```
+
+## 13.4 给脚本添加日志记录
+
+给程序简单的添加日志功能，最简单的方法就是使用 logging 模块了。 logging 的调用 (critical()、error()、warning()、info()、debug())分别代表着不同的严重级别，以降序排列。basicConfig()的 level参数是一个过滤器，所有等级低于此设定的消息都会被忽略掉。
+
+```python
+import logging
+
+def main():
+    logging.basicConfis(
+        filename='app.log'
+        levelel=logging.ERROR
+        )
+    hostname = 'www.python.org'
+    item = 'spam'
+    filename = 'data.csv'
+    mode = 'r'
+    
+    logging.critical('Host %s unknown', hostname)
+    logging.error("Couldn't find %r", item)
+    logging.warning('Feature is deprecated')
+    logging.info('Opening file %r, mode=%r', filename, mode)
+    logging.debug('Got here')
+
+if __name__ == '__main__':
+    main()
+```
