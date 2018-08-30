@@ -147,3 +147,51 @@ def example():
 * 避免产生不必要的数据结构或者拷贝操作
 
 # 第15章 C语言扩展
+
+## 15.1 利用Ctypes来访问C代码
+
+对于C语言编写的小程序，使用Python标准库中的ctypes模块来访问通常是非常容易的。要使用ctypes，必须首先确保想要访问的C代码已经被编译为与Python解释器兼容(即采用同样的体系结构，字长，编译器等)的共享库了。
+
+```python
+import ctypes
+import os
+
+_file = 'libsample.so'
+_path = os.path.join(*(os.path.split(__file__)[:-1] + (_file,)))
+_mod = ctypes.cdll.LoadLibrary(_path)
+
+# int gcd(int, int)
+gcd = _mod.gcd
+gcd.argtypes = (ctypes.c_int, ctypes.c_int)
+gcd.restype = ctypes.c_int
+
+# int divide(int, int, int *)
+_divide = _mod.divide
+_divide.argtypes = (ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int))
+_divide.restype = ctypes.c_int
+
+def divide(x, y):
+    rem = ctypes.c_int()
+    quot = _divide(x, y, rem)
+    return quot, rem.value
+
+# in c code
+int gcd(int x, int y){
+    int g = y;
+    while (x > 0){
+        g = x;
+        x = y % x;
+        y = g;
+    }
+    return g;
+}
+
+# Divide two numbers
+int divide(int a, int b, int *remainder){
+    int quot = a / b;
+    *remainder = a % b;
+    return quot
+}
+```
+
+## 15.2
