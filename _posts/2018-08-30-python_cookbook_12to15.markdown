@@ -4,7 +4,7 @@ title:      "Python Cookbook总结"
 subtitle:   "12-15 章"
 date:       2018-08-30 00:15:18
 author:     "Pelhans"
-header-img: "img/speech_process.jpg"
+header-img: "img/python_cookbook.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
@@ -285,4 +285,4 @@ class PollableQueue(queue.Queue):
 
 # 第十三章 实用脚本和系统管理
 
-
+## 13.1 
