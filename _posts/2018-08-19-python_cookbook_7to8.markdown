@@ -4,11 +4,11 @@ title:      "Python Cookbook总结"
 subtitle:   "7-8 章"
 date:       2018-08-19 00:15:18
 author:     "Pelhans"
-header-img: "img/speech_process.jpg"
+header-img: "img/python_cookbook.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - speech process
+    - python
 ---
 
 
