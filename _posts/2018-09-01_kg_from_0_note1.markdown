@@ -1,0 +1,345 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（一）"
+subtitle:   "半结构化数据的获取"
+date:       2018-08-31 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 从零开始构建影视知识图谱。漫漫长征第一步，半结构化数据的获取。目标网站是百度百科和互动百科，用基于scrapy框架的爬虫爬取。
+
+* TOC
+{:toc}
+
+# 简介
+
+本文章针对半结构化数据的获取，介绍基于scrapy构建的百度百科爬虫和互动百科爬虫。同时为了练手还根据教程制作了基于BeautifulSoup和urllib2的百度百科爬虫、微信公众号爬虫和虎嗅网爬虫。
+
+目前百度百科爬虫，爬取电影类数据，包含电影22219部，演员13967人。互动百科爬虫， 爬取电影类数据，包含电影13866部，演员5931 人。
+
+[从零开始构建知识图谱项目链接](https://github.com/Pelhans/Z_knowledge_graph)
+
+## Mysql建库
+
+库内包含 演员、电影、电影类型、演员->电影、电影->类型 五张表：
+
+* 演员 ：爬取内容为 ID, 简介， 中文名，外文名，国籍，星座，出生地，出生日期，代表作品，主要成就，经纪公司；    
+* 电影 ：ID，简介，中文名，外文名，出品时间，出品公司，导演，编剧，类型，主演，片长，上映时间，对白语言，主要成就；    
+* 电影类型： 爱情，喜剧，动作，剧情，科幻，恐怖，动画，惊悚，犯罪，冒险，其他；    
+* 演员->电影： 演员ID， 电影ID；    
+* 电影-> 类型： 电影ID， 类型ID；    
+
+与其相对应的建表语句即要求请参考craw_without_spider/mysql/creat_sql.txt文件。 在修改目标库的名称后即可通过```sehll
+mysql -uroot -pnlp < creat_sql.txt``` 命令创建数据库。
+
+## 百度百科爬虫
+
+该爬虫对应与crawl 下的baidu_baike 文件夹。该爬虫基于scrapy框架，爬取电影类数据，包含电影22219部，演员13967人，演员电影间联系1942个，电影与类别间联系23238,其中类别为‘其他’的电影有10个。对应数据集可在[坚果云下载](https://www.jianguoyun.com/p/Dfga9AgQq_6CBxiw8Go)
+
+### 修改item.py
+
+在安装scrapy 后，可以通过 scrapy startproject baidu_baike 初始化爬虫框架，它的目录结构为：
+
+.:    
+baidu_baike  scrapy.cfg    
+./baidu_baike:    
+__init__.py   items.py   middlewares.py   pipelines.py   settings.py   spiders    
+__init__.pyc  items.pyc  middlewares.pyc  pipelines.pyc  settings.pyc    
+./baidu_baike/spiders:    
+baidu_baike.py  baidu_baike.pyc  __init__.py  __init__.pyc    
+
+baidu_baike/目录下的文件是需要我们手动修改的。其中 items.py 对需要爬取的内容进行管理，便于把抓取的内容传递进pipelines进行后期处理。现在我们对 ```baidu_baike/baidu_baike/item.py```进行修改，添加要爬取的项。
+
+```python
+import scrapy
+
+class BaiduBaikeItem(scrapy.Item):
+    # define the fields for your item here like:
+    # name = scrapy.Field()
+    # 包含演员相关属性
+    actor_id = scrapy.Field()
+    actor_bio = scrapy.Field()
+    actor_chName = scrapy.Field()
+    actor_foreName = scrapy.Field()
+    actor_nationality = scrapy.Field()
+    actor_constellation = scrapy.Field()
+    actor_birthPlace = scrapy.Field()
+    actor_birthDay = scrapy.Field()
+    actor_repWorks = scrapy.Field()
+    actor_achiem = scrapy.Field()
+    actor_brokerage = scrapy.Field()
+
+    # 电影相关属性
+
+    movie_id = scrapy.Field()
+    movie_bio = scrapy.Field()
+    movie_chName = scrapy.Field()
+    movie_foreName = scrapy.Field()
+    movie_prodTime = scrapy.Field()
+    movie_prodCompany = scrapy.Field()
+    movie_director = scrapy.Field()
+    movie_screenwriter = scrapy.Field()
+    movie_genre = scrapy.Field()
+    movie_star = scrapy.Field()
+    movie_length = scrapy.Field()
+    movie_rekeaseTime = scrapy.Field()
+    movie_language = scrapy.Field()
+    movie_achiem = scrapy.Field()
+```
+
+在爬虫运行过程中，我们主要爬取电影和演员两类及其对应的各项属性。对于电影->类别 和 演员->电影两个表会在爬取数据后进行建立。
+
+## 修改 pipelines.py
+
+pipelines.py 用来将爬取的内容存放到MySQL数据库中。类内有初始化__init__()、处理爬取内容并保存process_item()、关闭数据库close_spider()三个方法。
+
+```pytthon
+from __future__ import absolute_import
+from __future__ import division     
+from __future__ import print_function
+
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
+import pymysql
+from pymysql import connections
+from baidu_baike import settings
+
+class BaiduBaikePipeline(object):
+    def __init__(self):
+
+        # 初始化并连接到mysql数据库
+        self.conn = pymysql.connect(
+            host=settings.HOST_IP,
+#            port=settings.PORT,
+            user=settings.USER,
+            passwd=settings.PASSWD,
+            db=settings.DB_NAME,
+            charset='utf8mb4',
+            use_unicode=True
+            )   
+        self.cursor = self.conn.cursor()
+
+    def process_item(self, item, spider):
+        # process info for actor
+        actor_chName = str(item['actor_chName']).decode('utf-8')
+        actor_foreName = str(item['actor_foreName']).decode('utf-8')
+        movie_chName = str(item['movie_chName']).decode('utf-8')
+        movie_foreName = str(item['movie_foreName']).decode('utf-8')
+
+	if (item['actor_chName'] != None or item['actor_foreName'] != None) and item['movie_chName'] == None:
+            actor_bio = str(item['actor_bio']).decode('utf-8')
+            actor_nationality = str(item['actor_nationality']).decode('utf-8')
+            actor_constellation = str(item['actor_constellation']).decode('utf-8')
+            actor_birthPlace = str(item['actor_birthPlace']).decode('utf-8')
+            actor_birthDay = str(item['actor_birthDay']).decode('utf-8')
+            actor_repWorks = str(item['actor_repWorks']).decode('utf-8')
+            actor_achiem = str(item['actor_achiem']).decode('utf-8')
+            actor_brokerage = str(item['actor_brokerage']).decode('utf-8')
+
+            self.cursor.execute("SELECT actor_chName FROM actor;")
+            actorList = self.cursor.fetchall()
+            if (actor_chName,) not in actorList :
+                # get the nums of actor_id in table actor
+                self.cursor.execute("SELECT MAX(actor_id) FROM actor")
+                result = self.cursor.fetchall()[0]
+                if None in result:
+                    actor_id = 1
+                else:
+                    actor_id = result[0] + 1
+                sql = """
+                INSERT INTO actor(actor_id, actor_bio, actor_chName, actor_foreName, actor_nationality, actor_constellation, actor_birthPlace, actor_birthDay, actor_repWorks, actor_achiem, actor_brokerage ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                self.cursor.execute(sql, (actor_id, actor_bio, actor_chName, actor_foreName, actor_nationality, actor_constellation, actor_birthPlace, actor_birthDay, actor_repWorks, actor_achiem, actor_brokerage ))
+                self.conn.commit()
+            else:
+                print("#" * 20, "Got a duplict actor!!", actor_chName)
+        elif (item['movie_chName'] != None or item['movie_foreName'] != None) and item['actor_chName'] == None:
+            movie_bio = str(item['movie_bio']).decode('utf-8')
+            movie_prodTime = str(item['movie_prodTime']).decode('utf-8')
+            movie_prodCompany = str(item['movie_prodCompany']).decode('utf-8')
+            movie_director = str(item['movie_director']).decode('utf-8')
+            movie_screenwriter = str(item['movie_screenwriter']).decode('utf-8')
+            movie_genre = str(item['movie_genre']).decode('utf-8')
+            movie_star = str(item['movie_star']).decode('utf-8')
+            movie_length = str(item['movie_length']).decode('utf-8')
+            movie_rekeaseTime = str(item['movie_rekeaseTime']).decode('utf-8')
+            movie_language = str(item['movie_language']).decode('utf-8')
+            movie_achiem = str(item['movie_achiem']).decode('utf-8')
+
+            self.cursor.execute("SELECT movie_chName FROM movie;")
+            movieList = self.cursor.fetchall()
+            if (movie_chName,) not in movieList :
+                self.cursor.execute("SELECT MAX(movie_id) FROM movie")
+                result = self.cursor.fetchall()[0]
+                if None in result:
+                    movie_id = 1
+                else:
+                    movie_id = result[0] + 1
+                sql = """
+                INSERT INTO movie(  movie_id, movie_bio, movie_chName, movie_foreName, movie_prodTime, movie_prodCompany, movie_director, movie_screenwriter, movie_genre, movie_star, movie_length, movie_rekeaseTime, movie_language, movie_achiem ) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                self.cursor.execute(sql, ( movie_id, movie_bio, movie_chName, movie_foreName, movie_prodTime, movie_prodCompany, movie_director, movie_screenwriter, movie_genre, movie_star, movie_length, movie_rekeaseTime, movie_language, movie_achiem ))
+                self.conn.commit()
+            else:
+                print("Got a duplict movie!!", movie_chName)
+        else:
+            print("Skip this page because wrong category!! ")
+        return item
+    def close_spider(self, spider):
+        self.conn.close()
+```
+
+## 修改中间件 middlewares.py
+
+middlewares.py 内包含一些UserAgent 和 代理来防止被封。可以自己搜集把自带的替换掉，也可以直接用我项目内的。
+
+## 修改 settings.py
+
+settings.py 包含了爬虫相关的设置，通常我们需要修改我们自定义的pipelines、中间件、随机延迟等信息。这里只需要注意的是，使用爬虫时最好设置一些延迟，尤其目标网站较小时。
+
+## 编写 baidu_baike,py 
+
+```python
+from __future__ import absolute_import
+from __future__ import division     
+from __future__ import print_function
+
+
+from baidu_baike.items import BaiduBaikeItem
+import scrapy
+from scrapy.http import Request
+from bs4 import BeautifulSoup
+import re
+import urlparse
+
+class BaiduBaikeSpider(scrapy.Spider, object):
+    # 定义爬虫名称
+    name = 'baidu'
+    # 设置允许的域，不以这个开头的链接不会爬取
+    allowed_domains = ["baike.baidu.com"]
+    # 爬虫开始的的网址
+    start_urls = ['https://baike.baidu.com/item/%E5%91%A8%E6%98%9F%E9%A9%B0/169917?fr=aladdin']
+#    start_urls = ['https://baike.baidu.com/item/%E4%B8%83%E5%B0%8F%E7%A6%8F']
+    
+    # 将返回的标签列表提取文本并返回
+    def _get_from_findall(self, tag_list):
+        result = []        
+                           
+        for slist in tag_list:
+            tmp = slist.get_text()
+            result.append(tmp)
+        return result
+    
+    # 程序的核心，可以获取页面内的指定信息，并获取页面内的所有链接做进一步的爬取
+    # response 是初始网址的返回
+    def parse(self, response):
+        # 分析 response来提取出页面最下部的标签信息，如果包含演员或电影则进行爬取，否则跳过
+        page_category = response.xpath("//dd[@id='open-tag-item']/span[@class='taglist']/text()").extract()
+        page_category = [l.strip() for l in page_category]
+        item = BaiduBaikeItem()
+
+        # tooooo ugly,,,, but can not use defaultdict
+        for sub_item in [ 'actor_bio', 'actor_chName', 'actor_foreName', 'actor_nationality', 'actor_constellation', 'actor_birthPlace', 'actor_birthDay', 'actor_repWorks', 'actor_achiem', 'actor_brokerage','movie_bio', 'movie_chName', 'movie_foreName', 'movie_prodTime', 'movie_prodCompany', 'movie_director', 'movie_screenwriter', 'movie_genre', 'movie_star', 'movie_length', 'movie_rekeaseTime', 'movie_language', 'movie_achiem' ]:
+            item[sub_item] = None
+
+        # 如果包含演员标签则认为是演员
+        if u'演员' in page_category:
+            print("Get a actor page")
+            soup = BeautifulSoup(response.text, 'lxml')
+            summary_node = soup.find("div", class_ = "lemma-summary")
+            item['actor_bio'] = summary_node.get_text().replace("\n"," ")
+   
+            # 使用 bs4 对页面内信息进行提取并保存到对应的item内
+            all_basicInfo_Item = soup.find_all("dt", class_="basicInfo-item name")
+            basic_item = self._get_from_findall(all_basicInfo_Item)
+            basic_item = [s.strip() for s in basic_item]
+            all_basicInfo_value = soup.find_all("dd", class_ = "basicInfo-item value" )
+            basic_value = self._get_from_findall(all_basicInfo_value)
+            basic_value = [s.strip() for s in basic_value]
+            for i, info in enumerate(basic_item):
+                info = info.replace(u"\xa0", "")
+                if info == u'中文名':
+                    item['actor_chName'] = basic_value[i]
+                elif info == u'外文名':
+                    item['actor_foreName'] = basic_value[i]
+                elif info == u'国籍':
+                    item['actor_nationality'] = basic_value[i]
+                elif info == u'星座':
+                    item['actor_constellation'] = basic_value[i]
+                elif info == u'出生地':
+                    item['actor_birthPlace'] = basic_value[i]
+                elif info == u'出生日期':
+                    item['actor_birthDay'] = basic_value[i]
+                elif info == u'代表作品':
+                    item['actor_repWorks'] = basic_value[i]
+                elif info == u'主要成就':
+                    item['actor_achiem'] = basic_value[i]
+                elif info == u'经纪公司':
+                    item['actor_brokerage'] = basic_value[i]
+            yield item
+        elif u'电影' in page_category:
+            print("Get a movie page!!")
+
+            soup = BeautifulSoup(response.text, 'lxml')
+            summary_node = soup.find("div", class_ = "lemma-summary")
+            item['movie_bio'] = summary_node.get_text().replace("\n"," ")
+            all_basicInfo_Item = soup.find_all("dt", class_="basicInfo-item name")
+            basic_item = self._get_from_findall(all_basicInfo_Item)
+            basic_item = [s.strip() for s in basic_item]
+            all_basicInfo_value = soup.find_all("dd", class_ = "basicInfo-item value" )
+            basic_value = self._get_from_findall(all_basicInfo_value)
+            basic_value = [s.strip() for s in basic_value]
+            for i, info in enumerate(basic_item):
+                info = info.replace(u"\xa0", "")
+                if info == u'中文名':
+                    item['movie_chName'] = basic_value[i]
+                elif info == u'外文名':
+                    item['movie_foreName'] = basic_value[i]
+                elif info == u'出品时间':
+                    item['movie_prodTime'] = basic_value[i]
+                elif info == u'出品公司':
+                    item['movie_prodCompany'] = basic_value[i]
+                elif info == u'导演':
+                    item['movie_director'] = basic_value[i]
+                elif info == u'编剧':
+                    item['movie_screenwriter'] = basic_value[i]
+                elif info == u'类型':
+                    item['movie_genre'] = basic_value[i]
+                elif info == u'主演':
+                    item['movie_star'] = basic_value[i]
+                elif info == u'片长':
+                    item['movie_length'] = basic_value[i]
+                elif info == u'上映时间':
+                    item['movie_rekeaseTime'] = basic_value[i]
+                elif info == u'对白语言':
+                    item['movie_language'] = basic_value[i]
+                elif info == u'主要成就':
+                    item['movie_achiem'] = basic_value[i]
+            yield item
+        
+        # 使用 bs4 对页面内的链接进行提取，而后进行循环爬取
+        soup = BeautifulSoup(response.text, 'lxml')
+        links = soup.find_all('a', href=re.compile(r"/item/"))
+        for link in links:
+            new_url = link["href"]
+            new_full_url = urlparse.urljoin('https://baike.baidu.com/', new_url)
+            yield scrapy.Request(new_full_url, callback=self.parse)
+```
+
+# 互动百科爬虫
+
+该爬虫对应与crawl 下的hudong_baike 文件夹。该爬虫基于scrapy框架，爬取电影类数据，包含电影13866部，演员5931人，演员电影间联系800个，电影与类别间联系14558,其中类别为‘其他’的电影有0个。对应数据集可在[坚果云下载](https://www.jianguoyun.com/p/Db3wsKQQq_6CBxi7tGs)
+
+互动百科爬虫的结构和百度百科相同。二者的主要不同之处在于二者的 info box 的格式不一致，因此采用了不同的方法进行提取。此处不再赘述。
+
+# 总结
+
+本文章对半结构化数据，即百度百科和互动百科做了爬取并保存到数据库中。这样就相当于我们获得了一份结构化的数据。下篇文章将使用直接映射和D2RQ将其转化为三元组的形式。
