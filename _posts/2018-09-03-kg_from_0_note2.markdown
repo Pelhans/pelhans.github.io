@@ -1,0 +1,119 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（二）"
+subtitle:   "数据库到 NTriples 以及通过Apache jena 访问NT"
+date:       2018-09-03 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 结构化数据到RDF由两种主要方式，一个是通过direct mapping，另一个通过R2RML语言这种，基于R2RML语言的方式更为灵活，定制性强。对于R2RML有一些好用的工具，此处我们使用d2rq工具，它基于R2RML-KIT。关于这两步，SimmerChan的专栏[实践篇（一）：数据准备和本体建模](https://zhuanlan.zhihu.com/p/32552993)已经介绍的很详细，此处我把针对本项目的细节和代码交代一下。
+
+* TOC
+{:toc}
+
+# Direct mapping
+
+本质上是通过编写启发式规则将数据库中的表转换为RDF三元组。其对应规则如下：
+
+* table to class    
+* cloumn to property    
+* row to resource    
+* cell to literal value    
+* in addition cell to URI    
+    * if there is a forgin key constraint
+
+也就是把表结构映射到对应的三元组中。对应于我们的数据库，可以编写规则得到如下映射结果：
+
+```python
+@base <http://movie.baidubaike/DB/> .
+@prefix xsd:<http://www.w3.org/2001/XMLSchema#> .
+
+<actor/actor_id=1> rdf:type <actor> .
+<actor/actor_id=1> <actor#actor_id> 1 .
+<actor/actor_id=1> <actor#actor_chName> "周星驰" .
+<actor/actor_id=1> <actor#actor_bio> "周星驰是。。。"
+<actor/actor_id=1> <actor#actor_repWorks> "赌圣" .
+<actor/actor_id=1> <actor#ref-movie> <movie/movie_id=1> .
+...."其他属性"
+
+<movie/movie_id=1> rdf:type <movie> .
+<movie/movie_id=1> <movie#movie_id> 1.
+<movie/movie_id=1> <movie#movie_chName> "赌圣" .
+...
+```
+
+# D2RQ
+
+The D2RQ Platform is a system for accessing relational databases as virtual, read-only RDF graphs. It offers RDF-based access to the content of relational databases without having to replicate it into an RDF store. Using D2RQ you can:
+
+* query a non-RDF database using SPARQL    
+* Zccess the content of the database as Linked Data over the Web    
+* create custom dumps of the database in RDF formats for loading into an RDF store    
+* access information in a non-RDF database using the Apache Jena API
+
+上面是官方对D2RQ的介绍，可以看到它的主要功能是提供以虚拟的、只读的RDF图形式进入到关系型数据库中。也就是说比如你通过SPARQL端口查询，输入是SPARQL查询语言，D2RQ通过mapping文件将其转换为SQL语句在关系数据库上查询，因此实际上访问的是关系型数据库。
+
+D2RQ 由自己的mapping语言，R2RML-kit。它和W3C推荐的R2RML类似。你可以通过D2RQ提供的工具来根据数据库自动生成mapping文件。你可以根据自己的需求去修改定制自己的mapping文件。
+
+```
+./generate-mapping -uroot -p nlp -o kg_demo_mapping_baidu_baike.ttl jdbc:mysql:///baidu_baike
+```
+
+对上一篇文章的数据库，您可以通过struct_to_rdf/get_ttl.sh 脚本去自动生成mapping文件。对应代码如下：
+
+```
+#!/bin/bash
+
+echo "Downloaing d2rq tools"
+wget https://github.com/downloads/d2rq/d2rq/d2rq-0.8.1.tar.gz;
+echo"Done"
+tar -xvzf d2rq-0.8.1.tar.gz;
+cd d2rq-0.8.1;
+for x in {hudong_baike,baidu_baike}; do
+#\
+    echo "Generating ttl and nt files for $x"
+    name_ttl=`echo "kg_demo_mapping_$x.ttl"`
+    name_nt=`echo "$x.nt"`
+    ./generate-mapping -u root -p nlp -o $name_ttl jdbc:mysql:///$x;
+    sed -i '/\@prefix vocab.* \./d' $name_ttl # delete vocab prefix    
+    sed -i 's/vocab/ /g' $name_ttl    
+    sed -i 's/actor_actor/actor/g' $name_ttl    
+    sed -i 's/d2rq\:jdbcDSN "jdbc\:mysql.*;/d2rq\:jdbcDSN "jdbc\:mysql\:\/\/\/hudong_baike\?useUnicode=true\&characterEncoding=utf8";/g' $name_ttl
+    sed -i '8a \@prefix : <http://www.kgdemo.com#> .' $name_ttl;
+    ./dump-rdf -o $name_nt $name_ttl; # get NTriples
+done
+#\
+if [ $? -ne 0  ]; then
+        echo "Generate mapping and nt files failed. Terminated."
+        exit 1 
+```
+
+根据默认生成的ttl文件被保存到坚果云上，您可以下载后查阅，[百度百科mapping 文件](https://www.jianguoyun.com/p/DeYhwnkQq_6CBxiKtGw)、[互动百科 mapping 文件](https://www.jianguoyun.com/p/DVDl5b0Qq_6CBxiQtGw)。
+
+在生成mapping文件后，您可以通过：``` ./dump-rdf -o baidu_baike.nt kg_demo_mapping_baidu_baike.ttl; ``` 命令将数据转换为Ntriples。文件存放在坚果云盘中，[百度百科](https://www.jianguoyun.com/p/DfRZwwoQq_6CBxjmkGw)、[互动百科](https://www.jianguoyun.com/p/Db9tA1AQq_6CBxjnkGw)。
+
+# Apache jena
+
+## NTriples to TDB
+
+TDB 是Jena用于存储RDF的组件，是属于存储层面的技术。在单机情况下，它能够提供非常高的RDF存储性能。在下载完apache-jena后，运行 ./tdbloader --loc="../tdb/" "path/to/NTriples" 把 NTriples 加载到TDB中。
+
+## Apache jena fuseki 的运行
+
+在Apache Jena fuseki服务器的配置文件中，可以指定本体，从而实现推理机制。该本体文件是从顶向下定义的，采用protege软件编辑生成，格式为Turtle，放在struct_to_rdf/kg_movie_tultle.owl。该配置文件中另一个需要修改的是TDB文件夹的路径，改成上面TDB 文件夹路径即可。
+
+需要注意的是，每次运行fuseki服务器后，会在TDB文件夹内生成一些以prefix*开头的文件，重新运行fuseki服务的话不删除它们可能会报错。
+
+## Apache jena SPARQL endpoint
+
+Jena fuseki开启服务后，可以通过网页端和命令行方式进行SPQRQL查询。接下来我们可以直接进行SPARQL查询，也可以把自然语言转换为 SPARQL 模板后进行查询。
+
+# 本体建模
+
+为了能够让Jena在我们的本体上进行推理，需要提供自定义的本体文件。本项目的本体通过protege 生成，详细流程请查看SimmerChan的专栏[实践篇（一）：数据准备和本体建模](https://zhuanlan.zhihu.com/p/32552993)。根据上述流程生成的针对本项目的本体文件为struct_to_rdf/kg_movie_tultle.owl。
