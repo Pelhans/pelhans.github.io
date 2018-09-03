@@ -1,0 +1,161 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（三）"
+subtitle:   "基于REfO的简单知识问答"
+date:       2018-09-03 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 本次我们基于浙江大学在openKG上提供的[ 基于REfO的KBQA实现及示例](http://openkg.cn/tool/eb483ee4-3be1-4d4b-974d-970d35307e8d)，在自己的知识图谱上实现简单的知识问答系统。
+
+* TOC
+{:toc}
+
+# 简介
+
+基于浙江大学在openKG上提供的[ 基于REfO的KBQA实现及示例](http://openkg.cn/tool/eb483ee4-3be1-4d4b-974d-970d35307e8d)。代码部分浙大方面已经完成绝大部分，这里主要将其应用到自己的知识图谱上。在运行KBQA代码前，应按照前面的教程将电影类知识图谱导入到Jena的TDB数据库中，并运行fuseki服务器，这样我们才能进行访问查询。
+
+## 代码结构 
+   
+代码结构为               
+.:           
+data/  get_dict.sh  query.py  utils/     
+./data:        
+actorName.txt  get_dict.txt  movieName.txt    
+./utils:        
+__init__.py  __init__.pyc  rules.py  rules.pyc  word_tagging.py  word_tagging.pyc    
+             
+* 其中data 目录存放由数据库倒出生成的字典文件，用于扩展jieba分词，由 get_dict.sh 生成。    
+* utils/ 内存放查询预处理的模块。word_tagging.py 用于将词的文本和词性打包，视为词对象，对应:class:Word(token, pos)。rules.py 内定义各种规则并将自然语言转换为SPARQL查询语言，最终以JSON返回结果。    
+* query.py 为程序入口，运行它来进行简单的KBQA。
+
+## 示例                                      
+<p align="center">                            
+<img src="/img/in-post/kg_from_0/example_REfO_KBQA.png">         
+<br/> 基于REfO的KBQA                          
+</p>
+
+# 具体实现
+
+基于REfO的简单知识问答的原理很简单，就是通过REfo提供的匹配能力，在输入的自然语言问题中进行匹配查找。如果找到我们预先设定的词或词性组合，那么就认为该问题与这个词或词性组合匹配。而一个词或词性的组合又对应着一个SPARQL查询模板，这样我们就借助REfO完成了自然语言到查询模板的转换。得到查询模板后，我们就利用Jena fuseki 服务器提供的端口进行查询得到返回的结果。
+
+## 模块一 word_tagging部分
+
+该部分利用jieba分词对中文句子进行分词和词性标注。将词的文本和词性进行打包，视为词对象，对应 :class:Word(token, pos)。
+
+```python
+class Word(object):    
+    def __init__(self, token, pos):
+        self.token = token
+        self.pos = pos 
+                       
+                       
+class Tagger:          
+    def __init__(self, dict_paths):
+        # TODO 加载外部词典
+        for p in dict_paths:
+            jieba.load_userdict(p)
+                       
+    def get_word_objects(self, sentence):
+        """            
+        Get :class:WOrd(token, pos)
+        """            
+        return [Word(word.encode('utf-8'), tag) for word, tag in pseg.cut(sentence)]
+```
+
+## 模块二 rules 部分
+
+该部分为程序核心，负责将自然语言转换为SPARQL模板。
+
+下面为rules的程序入口，customize_rules 函数：
+
+```python
+def customize_rules():
+    # some rules for matching
+    # TODO: customize your own rules here
+    person = (W(pos="nr") | W(pos="x") | W(pos="nrt"))
+    movie = (W(pos="nz"))
+    place = (W("出生地") | W("出生"))
+    intro = (W("简介") | W(pos="介绍"))
+                                
+    rules = [      
+                                
+        Rule(condition=W(pos="r") + W("是") + person | \ 
+                       person + W("是") + W(pos="r"),
+             action=who_is_question),
+                            
+        Rule(condition=person + Star(Any(), greedy=False) + place + Star(Any(), greedy=False),
+             action=where_is_from_question),
+                            
+        Rule(condition=movie + Star(Any(), greedy=False) + intro + Star(Any(), greedy=False) ,
+             action=movie_intro_question)
+                            
+    ]         
+    return rules
+```
+
+该函数中我们设置了一些简单的匹配规则，例如我们设置 '''movie = (W(pos="nz"))'''，即movie 的词性应该是nz。其中的W()是我们在继承REfO的Predicate方法的基础上扩展更新了match方法。您可以简单的把它理解为re中compile后的match，只不过多个W()间出现的顺序可以变化。这样通过多个定制的W()和Star(Any(), greedy=False)(相当于.*?)这种通配符的组合，我们就定义了一组匹配规则，当遇到符合该规则的句子时，就选取该规则后action对应的查询模板。
+
+例如当输入为“周星驰是谁”这样的问题时，会匹配到rules 中的 第一条规则。而后执行该规则后对应的action， who_is_question。而who_is_question对应的查询模板为：
+
+```python
+def who_is_question(x):
+    select = u"?x0"               
+         
+    sparql = None
+    for w in x:
+        if w.pos == "nr" or w.pos == "x":
+            e = u" ?a :actor_chName '{person}'. \n \
+            ?a :actor_bio ?x0".format(person=w.token.decode("utf-8"))
+         
+            sparql = SPARQL_TEM.format(preamble=SPARQL_PREAMBLE,
+                                       select=select,
+                                       expression=INDENT + e)
+            break
+    return sparql
+```
+
+有了查询模板后，我们通过SPARQLWrapper 模块的SPARQLWrapper 执行该查询，并对返回的结果进行转换得到回答。对应的代码如下：
+
+```python
+from SPARQLWrapper import SPARQLWrapper, JSON    
+from utils.word_tagging import Tagger
+from utils.rules import customize_rules                   
+                 
+if __name__ == "__main__":    
+    print("init...........")    
+    sparql_base = SPARQLWrapper("http://localhost:3030/kg_demo_movie/query")
+    #加载外部词典，提升分词准确性和词性标注准确性
+    tagger = Tagger(['data/actorName.txt', 'data/movieName.txt'])
+    #初始化并获取规则列表
+    rules = customize_rules()   
+    print("done \n")    
+                 
+    while True:    
+        print("Please input your question: ")    
+        default_question = raw_input()    
+        # 获取wordclass
+        seg_list = tagger.get_word_objects(default_question)
+                 
+        for rule in rules:    
+            # 将规则列表应用到问题上得到查询模板
+            query = rule.apply(seg_list)    
+            if query:    
+                # 设置查询相关
+                sparql_base.setQuery(query)    
+                sparql_base.setReturnFormat(JSON)         
+                # 得到返回结果并做转换
+                results = sparql_base.query().convert()   
+                 
+                if not results["results"]["bindings"]:    
+                    print("No answer found :(")    
+                    continue    
+                for result in results["results"]["bindings"]:
+                    print "Result: ", result["x0"]["value"]
+```
