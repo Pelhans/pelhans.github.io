@@ -1,8 +1,8 @@
 ---
 layout:     post
-title:      "从零开始构建知识图谱（三）"
-subtitle:   "基于REfO的简单知识问答"
-date:       2018-09-03 00:15:18
+title:      "从零开始构建知识图谱（四）"
+subtitle:   "基于ElasticSearch的简单语义搜索"
+date:       2018-09-04 00:15:18
 author:     "Pelhans"
 header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
