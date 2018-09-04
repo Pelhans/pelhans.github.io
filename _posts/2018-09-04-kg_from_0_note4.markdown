@@ -1,0 +1,148 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（三）"
+subtitle:   "基于REfO的简单知识问答"
+date:       2018-09-03 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 本次我们基于浙江大学在openKG上提供的[基于elasticsearch的KBQA实现及示例](http://openkg.cn/tool/elasticsearch-kbqa)，我们将其精简并将应用到自己的知识图谱上。目前的精力在知识图谱构建上，等有时间希望能完成一个自己的语义搜索和KBQA...
+
+* TOC
+{:toc}
+
+# 简介
+
+ElasticSearch是一个基于Lucene的搜索服务器。它提供了一个分布式多用户能力的全文搜索引擎，基于RESTful web接口。我们将通过提供的接口进行查询，例如查询朱一龙的相关信息，可以通过下列命令进行查询：
+
+```bash
+curl -XGET 'localhost:9200/demo/baidu_baike/_search?&pretty' -H 'Content-Type:application/json' -d' 
+{
+    "query":{
+        "bool":{
+            "filter":{
+                "term":{"subj":"朱一龙"}
+            }
+        }
+    }      
+}
+'
+```
+
+我们的目的就是在数据导入elasticsearch后，通过将输入的自然语言分解来构建这样的查询模板，从而实现搜索功能。
+
+# elasticsearch 的安装与运行
+
+直接取 [elasticsearch 官网](https://www.elastic.co/cn/downloads/elasticsearch)下载安装包，而后运行 ```./bin/elasticsearch.sh```即可开启服务。
+
+在开启服务后，您可以通过 ```curl 'http://localhost:9200'```来访问 elasticsearch。
+
+# 数据准备
+
+## 数据库到JSON
+
+elasticsearch 要求文档的输入格式为 JSON，因此我们需要把数据库中的数据转化为JSON形式。比如：
+
+```python
+{
+    "subj": "周星驰", 
+    "po": [ {"pred": "actor_foreName", "obj": "Stephen Chow"},
+           {"pred": "actor_nationality", "obj": "中国"}, 
+           {"pred": "actor_constellation", "obj": "巨蟹座"}, 
+           {"pred": "actor_birthPlace", "obj": "香港"}, 
+           {"pred": "actor_birthDay", "obj": "1962年6月22日"} ]
+           ...
+}
+```
+
+对应代码为./utils/get_json.py，该程序的工作流程为对数据库进行查表，而后将对应信息保存到字典里。通过 json.dumps()将Python对象转化为JSON格式并写成文件。
+
+## 属性同义词扩展
+
+为了支持对同一类问题的不同询问方式，我们采用同意属性映射来扩展属性，当遇到同义属性时，我们将其映射到数据集中的属性上，对应于./data/attr_mapping.txt 文件：
+
+```python
+actor_chName 中文名 名字 姓名
+actor_foreName 英文名 外文名
+actor_bio 简介 简历 介绍
+actor_nationality 国籍
+actor_constellation 星座
+actor_birthPlace 出生地 老家
+actor_birthPlace 出生日期 生日
+actor_repWorks 代表作 作品
+actor_achiem 成就 获奖 奖项
+actor_birthPlace 经纪公司
+movie_chName 片名
+movie_foreName 英文片名 外文片名
+movie_prodTime 出品时间
+movie_foreName 出品公司 制作方
+movie_director 导演
+movie_screenwriter 编剧
+movie_genre 类型
+movie_star 主演 演员 参演人员
+movie_length 片长 时长
+movie_rekeaseTime 上映时间
+movie_language 对白语言 语言 语种
+movie_achiem 奖项 获奖 成就
+```
+
+## 建立属性间映射 get_ac_attr.py
+
+我们通过cpikle 对属性间映射进行打包，其中属性间的映射通过ahocorasic.Automaton()进行处理。对应的输出为./data/attr_ac.pkl.
+
+## 获取属性值和属性间的映射 get_total_val.py
+
+通过对数据库进行查表得到各个实体的属性和属性值，而后将其存储为./data/total_val.txt 文件在搜索时使用。
+
+## 获取所有实体
+
+我们直接通过Mysql的的操作得到所有实体的倒出并存储为一个文件，名为./data/all_entity.txt。
+
+# 将数据导入到 elasticsearch
+
+## 在 elasticsearch 中新建 index 和 type
+
+这里我们遵循教程中的要求，采用下列命令建立 index 和 type：
+
+```python
+curl -XPUT 'localhost:9200/demo?pretty' -H 'Content-Type: application/json' -d'
+{
+    "mappings": {
+        "person": {        
+            "properties": {
+                "subj": {"type": "keyword"},
+                "height": {"type": "integer"},
+                "weight": {"type": "integer"},
+                "po":{
+                    "type": "nested",
+                    "properties":{
+                        "pred":{"type":"keyword"},
+                        "obj":{"type":"keyword"}
+                    }
+                }            
+            }
+        }
+    }
+}
+'
+```
+
+## 数据导入 insert.py
+
+我们直接调用浙大的./utils/inset.py 程序，修改数据路径为我们的即可。
+
+```python
+begin_insert_job("demo", "baidu_baike", "../data/baidu_baike.json")
+```
+
+此时已经可以通过curl方式检索知识库了。您可以直接运行 ./utils/query_cmd.sh 进行简单查询。
+
+# 程序核心 ./utils/views.py
+
+改程序对输入的自然语言问题进行解析，识别出出现在其中的实体名、属性及属性值，并将其转换为对应的logical form。总体流程和浙大的类似，我只是将其从Django 中提取出来方便对于框架不懂的人直接使用。关于views.py的详细解释请看[浙大的教程](http://openkg1.oss-cn-beijing.aliyuncs.com/76c540e4-c26c-41f6-9c98-4871a06b9eae/demo.pdf)
