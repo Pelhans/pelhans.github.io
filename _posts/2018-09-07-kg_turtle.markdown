@@ -1,0 +1,224 @@
+---
+layout:     post
+title:      "RDF 1.1 Turtle 中文翻译"
+subtitle:   ""
+date:       2018-09-07 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+>  本文档对RDF 1.1 Turtle 的文档做一个翻译，防止自己每次看都很费劲。。。
+
+* TOC
+{:toc}
+
+# 摘要
+
+资源描述框架（RDF）是一种用于在Web中表示信息的通用语言。本文档定义了一个名为Turtle的RDF的文本语法，它允许RDF图完全以紧凑和自然的文本形式编写，并带有常用用法模式和数据类型的缩写。 Turtle提供了相当程度的N-Triples [N-TRIPLES]格式以及SPARQL W3C推荐的三元组模型语法的兼容。
+
+# 目录
+
+* 1.Introduction    
+* 2.Turtle Language    
+    * 2.1 Simple Triples    
+    * 2.2 Predicate Lists    
+    * 2.3 Object Lists    
+    * 2.4 IRIs    
+    * 2.5 RDF Literals    
+        * 2.5.1 Quoted Literals    
+        * 2.5.2 Numbers    
+        * 2.5.3 Booleans    
+   * 2.6 RDF Blank Nodes    
+   * 2.7 Nesting Unlabeled Blank Nodes in Turtle    
+   * 2.8 Collections    
+* 3.Examples    
+* 4.Turtle compared to SPARQL    
+* 5.Conformance    
+   * 5.1 Media Type and Content Encoding    
+* 6.Turtle Grammar    
+   * 6.1 White Space    
+   * 6.2 Comments    
+   * 6.3 IRI References    
+   * 6.4 Escape Sequences    
+   * 6.5 Grammar    
+* 7.Parsing    
+   * 7.1 Parser State    
+   * 7.2 RDF Term Constructors    
+   * 7.3 RDF Triples Constructors    
+   * 7.4 Parsing Example    
+* A. Embedding Turtle in HTML documents    
+   * A.1 XHTML    
+   * A.2 Parsing Turtle in HTML    
+* B. Internet Media Type, File Extension and Macintosh File Type    
+* C. Acknowledgements    
+* D. Change Log    
+   * D.1 Changes since January 2014 Proposed Recommendation    
+   * D.2 Changes from February 2013 Candidate Recommendation to January 2014 Proposed Recommendation    
+   * D.3 Changes from August 2011 First Public Working Draft to Candidate Recommendation    
+   * D.4 Changes from January 2008 Team Submission to First Public Working Draft    
+* E. References    
+   * E.1 Normative references    
+   * E.2 Informative references    
+
+# 1. 简介
+
+本部分不具有规范性。
+
+本文档定义了简练的RDF 三元组语言 Turtle，是RDF[RDF 11-CONCEPTS]的具体语法。
+
+Turtle文档是RDF图的文本表示。 以下Turtle文档描述了Green Goblin和Spiderman之间的关系。
+
+```python
+# 例1
+
+@base <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix rel: <http://www.perceive.net/schemas/relationship/> .
+
+<#green-goblin>
+    rel:enemyOf <#spiderman> ;
+    a foaf:Person ;    # in the context of the Marvel universe
+    foaf:name "Green Goblin" .
+
+<#spiderman>
+    rel:enemyOf <#green-goblin> ;
+    a foaf:Person ;
+    foaf:name "Spiderman", "Человек-паук"@ru .
+```
+
+上面的例子介绍了很多Turtle语言的特性，如： @base and Relative IRIs, @prefix and prefixed names, 由';分开的'predicate 列表，由','分开的objects列表，象征(token)项a以及字符串。
+
+三元组的Turtle语法是TriplesBlock的SPARQL 1.1查询语言[SPARQL11-QUERY]语法的子集。这两个语法尽可能共享生产和终端名称。
+
+从Turtle文档构建RDF图是在Turtle 语法和解析中定义的。
+
+# 2. Turtle 语言
+
+本部分不具有规范性。
+
+Turtle文档允许以紧凑的文本形式得到RDF图。 RDF图由三元组组成，包括主语，谓词和宾语。
+
+可以在“＃”之后给出注释，该“＃”不是另一个词法标记的一部分并继续到该行的末尾。
+
+## 2.1 简单三元组(Simple Triples)
+
+最简单的三元组表示是一系列（主语(subject)，谓语(predicate)，宾语(object)）项，由空格分隔，以'.'结尾。
+
+```python
+# 例2
+<http://example.org/#spiderman> <http://www.perceive.net/schemas/relationship/enemyOf> <http://example.org/#green-goblin> .
+```
+
+## 2.2 Predicate List
+
+通常，同一 subject 将被许多 predicates 引用。 predicateObjectList 生成一系列具有相同subject的 predicates 和 objects 列表，结尾用';'分隔。 这表示一系列具有相同subject，变化predicate and object 得到的RDF三元组。因此，使用 ';' 符号来重复三元组的subject，仅改变RDF 项的 predicate 和 object。
+
+下面两个例子是关于 Spiderman 的等价三元组表示。
+
+```python
+# 例3
+<http://example.org/#spiderman> <http://www.perceive.net/schemas/relationship/enemyOf> <http://example.org/#green-goblin> ;
+				<http://xmlns.com/foaf/0.1/name> "Spiderman" .
+```
+
+```python
+# 例4
+<http://example.org/#spiderman> <http://www.perceive.net/schemas/relationship/enemyOf> <http://example.org/#green-goblin> .
+<http://example.org/#spiderman> <http://xmlns.com/foaf/0.1/name> "Spiderman" .
+```
+
+## 2.3 Object List
+
+和 predicates一样，通常会有重复 subject 和 predicate 但 object 不变的情况。因此 objectList 用来表示在predicate 后的一系列的 object 列表，用','来分开不同的 object。这表示一系列含有相同subject 和 predicate，仅 object 变化的一系列的 RDF 三元组。因此，','符号用来表示只改变 object 但重复 subject 和 predicate 的RDF三元组。
+
+```python
+# 例5
+<http://example.org/#spiderman> <http://xmlns.com/foaf/0.1/name> "Spiderman", "Человек-паук"@ru .
+```
+
+```python
+# 例6
+<http://example.org/#spiderman> <http://xmlns.com/foaf/0.1/name> "Spiderman" .
+<http://example.org/#spiderman> <http://xmlns.com/foaf/0.1/name> "Человек-паук"@ru .
+```
+
+RDF概念中定义了三种类型的RDF术语：国际化资源标识符(Internationalized Resource Identifiers，IRI)，文字和空白节点。 Turtle 为它们提供了多种表示方法。
+
+# 2.4 IRIs
+
+IRIs 可以写为相对的或绝对的IRIs 或前缀名称。相对的或绝对的IRIs 被'<' 和 '>'包围，可能包含数字转义序列(如下所述)。如：<http://example.org/#green-goblin>。
+
+相对的 IRIs 如 <#green-goblin> 会在当前的基础IRI上进行解析。一个新的基础 IRI 能够通过 '@base' 或这 'BASE' 指令来定义。详细的定义操作可参考6.3 节。
+
+示例中的项 'a'是处于 predicate位置上的，用来表示 http://www.w3.org/1999/02/22-rdf-syntax-ns#type 这个 IRI。
+
+一个前缀名字是前置标签和本地部分，用冒号':'分割。通过连接与前缀和本地部分相关的 IRI，将带有前缀的名称转换为IRI。'@prefix'或 'PREFIX' 指令将前缀标签和IRI相关联。随后的 '@prefix'或'PREFIX'指令可能会重新映射相同的前缀标签。
+
+> 注意：Turtle语言最初只允许使用包含'@'字符的语法来编写前缀和基本指令。 添加了不区分大小写的'PREFIX'和'BASE'表单以将Turtle的语法与SPARQL的语法对齐。 建议使用'@prefix'和'@base'表单序列化RDF，直到广泛使用RDF 1.1 Turtle解析器。
+
+使用带前缀的名称编写 http://www.perceive.net/schemas/relationship/enemyOf：
+
+    * 为此表IRI定义前缀标签 http://www.perceive.net/schemas/relationship/ 作为 somePrefix    
+    * 然后可以得到 somePrefix:enemyOf ，相当于写 <http://www.perceive.net/schemas/relationship/enemyOf>    
+
+这可以使用原始Turtle 语法作为前缀声明编写：
+
+```python
+# 例 7
+@prefix somePrefix: <http://www.perceive.net/schemas/relationship/> .
+
+<http://example.org/#green-goblin> somePrefix:enemyOf <http://example.org/#spiderman> .
+```
+
+或者 SPARQL 的前缀声明语法：
+
+```python
+PREFIX somePrefix: <http://www.perceive.net/schemas/relationship/>
+
+<http://example.org/#green-goblin> somePrefix:enemyOf <http://example.org/#spiderman> .
+```
+
+> 注意：带前缀的名称是XML QNames的超集。它们的不同之处在于前缀名称的本地部分，这可能包括：    
+    * leading digits，如 leg:3032571 or isbn13:9780136019701    
+    * non leading colons，如 og:video:height    
+    * reserved character escape sequences，如 wgs:lat\-long
+
+以下Turtle文档包含在Turtle中编写IRI的所有不同方法的示例。
+
+```python
+# 例 9
+
+# A triple with all absolute IRIs
+<http://one.example/subject1> <http://one.example/predicate1> <http://one.example/object1> .
+
+@base <http://one.example/> .
+<subject2> <predicate2> <object2> .     # relative IRIs, e.g. http://one.example/subject2
+
+BASE <http://one.example/>
+<subject2> <predicate2> <object2> .     # relative IRIs, e.g. http://one.example/subject2
+
+@prefix p: <http://two.example/> .
+p:subject3 p:predicate3 p:object3 .     # prefixed name, e.g. http://two.example/subject3
+
+PREFIX p: <http://two.example/>
+p:subject3 p:predicate3 p:object3 .     # prefixed name, e.g. http://two.example/subject3
+
+@prefix p: <path/> .                    # prefix p: now stands for http://one.example/path/
+p:subject4 p:predicate4 p:object4 .     # prefixed name, e.g. http://one.example/path/subject4
+
+@prefix : <http://another.example/> .    # empty prefix
+:subject5 :predicate5 :object5 .        # prefixed name, e.g. http://another.example/subject5
+
+:subject6 a :subject7 .                 # same as :subject6 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> :subject7 .
+
+<http://伝言.example/?user=أكرم&amp;channel=R%26D> a :subject8 . # a multi-script subject IRI .
+```
+
+> 注意：'@prefix'和'@base'指令需要在IRI后加'.'，但等价表示'PREFIX'和'BASE'后不可以加'.'。
