@@ -12,10 +12,12 @@ tags:
 ---
 
 
->  本文档对RDF 1.1 Turtle 的文档做一个翻译，防止自己每次看都很费劲。。。
+>  本文档对RDF 1.1 Turtle 的文档做一个翻译，防止自己每次看都很费劲。。。[W3C RDF 1.1 Turtle原文](https://www.w3.org/TR/turtle/)
 
 * TOC
 {:toc}
+
+欢迎大家关注我的博客，所有文章都将在那里第一时间更新哦~ [pelhans 的博客](http://pelhans.com)
 
 # 摘要
 
@@ -51,23 +53,8 @@ tags:
    * 7.2 RDF Term Constructors    
    * 7.3 RDF Triples Constructors    
    * 7.4 Parsing Example    
-* A. Embedding Turtle in HTML documents    
-   * A.1 XHTML    
-   * A.2 Parsing Turtle in HTML    
-* B. Internet Media Type, File Extension and Macintosh File Type    
-* C. Acknowledgements    
-* D. Change Log    
-   * D.1 Changes since January 2014 Proposed Recommendation    
-   * D.2 Changes from February 2013 Candidate Recommendation to January 2014 Proposed Recommendation    
-   * D.3 Changes from August 2011 First Public Working Draft to Candidate Recommendation    
-   * D.4 Changes from January 2008 Team Submission to First Public Working Draft    
-* E. References    
-   * E.1 Normative references    
-   * E.2 Informative references    
 
 # 1. 简介
-
-本部分不具有规范性。
 
 本文档定义了简练的RDF 三元组语言 Turtle，是RDF[RDF 11-CONCEPTS]的具体语法。
 
@@ -100,8 +87,6 @@ Turtle文档是RDF图的文本表示。 以下Turtle文档描述了Green Goblin�
 从Turtle文档构建RDF图是在Turtle 语法和解析中定义的。
 
 # 2. Turtle 语言
-
-本部分不具有规范性。
 
 Turtle文档允许以紧凑的文本形式得到RDF图。 RDF图由三元组组成，包括主语，谓词和宾语。
 
@@ -222,3 +207,424 @@ p:subject4 p:predicate4 p:object4 .     # prefixed name, e.g. http://one.example
 ```
 
 > 注意：'@prefix'和'@base'指令需要在IRI后加'.'，但等价表示'PREFIX'和'BASE'后不可以加'.'。
+
+# 2.5 RDF Literals
+
+文字(Literals)用于标识字符串，数字，日期等值。
+
+```python
+# 例 10
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+<http://example.org/#green-goblin> foaf:name "Green Goblin" .
+
+<http://example.org/#spiderman> foaf:name "Spiderman" .
+```
+
+## 2.5.1 Quoted Literals
+
+引用的文字(QuotedLiterals)（语法生成RDF Literal）有一个词法形式，后面跟着一个语言标签，一个数据类型IRI，或两者都没有。词法形式的表示由初始定界符，例如，“（U + 0022），一系列合法的字符或数字转义序列或字符串转义序列，以及最终的分隔符组成。相应的RDF词法形式是分隔符之间的字符，在处理任何转义序列之后。如果存在，语言标记之前是'@'（U + 0040）。如果没有语言标记，可能有一个数据类型IRI，前面是'^^'（U + 005E U + 005E）.Turtle中的数据类型IRI可能被写入使用绝对IRI，相对IRI或前缀名称。如果没有数据类型IRI且没有语言标记，则数据类型为xsd：string。
+
+'\'（U + 005C）可能不会出现在任何带引号的文字中，除非作为转义序列的一部分。 其他限制取决于分隔符：
+
+* 由'（U + 0027）分隔的文字可能不包含字符'，LF（U + 000A）或CR（U + 000D）。    
+* 由“，可能不包含字符”，LF或CR分隔的文字。    
+* 由'''分隔的文字可能不包含字符序列'''。    
+* 由“”“分隔的文字可能不包含字符序列”“”。
+
+```python
+# 例 11
+
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix show: <http://example.org/vocab/show/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+show:218 rdfs:label "That Seventies Show"^^xsd:string .            # literal with XML Schema string datatype
+show:218 rdfs:label "That Seventies Show"^^<http://www.w3.org/2001/XMLSchema#string> . # same as above
+show:218 rdfs:label "That Seventies Show" .                                            # same again
+show:218 show:localName "That Seventies Show"@en .                 # literal with a language tag
+show:218 show:localName 'Cette Série des Années Soixante-dix'@fr . # literal delimited by single quote
+show:218 show:localName "Cette Série des Années Septante"@fr-be .  # literal with a region subtag
+show:218 show:blurb '''This is a multi-line                        # literal with embedded new lines and quotes
+literal with many quotes (""""")
+and up to two sequential apostrophes ('').''' .
+```
+
+## 2.5.2 Numbers
+
+数字可以像其他文字一样用词法形式和数据类型编写（例如“-5.0”^^ xsd：decimal）。Turtle具有写入整数值，任意精度十进制值和双精度浮点值的简写语法。
+
+![](/img/in-post/turtle1.1/numbers.png)
+
+```python
+# 例 12
+
+@prefix : <http://example.org/elements> .                                                                              
+<http://en.wikipedia.org/wiki/Helium>                                                                                  
+    :atomicNumber 2 ;               # xsd:integer                                                                      
+    :atomicMass 4.002602 ;          # xsd:decimal                                                                      
+    :specificGravity 1.663E-4 .     # xsd:double  
+```
+
+## 2.5.3 Booleans
+
+布尔值可以写为“true”或“false”（区分大小写），并使用数据类型xsd：boolean表示RDF文字。
+
+```python
+# 例 13
+
+@prefix : <http://example.org/stats> .
+<http://somecountry.example/census2007>
+    :isLandlocked false .           # xsd:boolean
+```
+
+# 2.6 RDF Blank Nodes
+
+RDF空白节点表示为_：后跟空白节点标签，后者是一系列名称字符。标签中的字符构建在PN_CHARS_BASE之上，放宽限制如下：
+
+* 字符_和数字可以出现在空白节点标签中的任何位置。    
+* 字符 . 可能出现在除了第一个或最后一个字符外的任意位置。    
+* 除第一个字符外，都允许使用字符 - ，U + 00B7，U + 0300到U + 036F和U + 203F到U + 2040。
+
+为文档中的每个唯一空节点标签分配新的RDF空白节点。重复使用相同的空白节点标签标识相同的RDF空白节点。
+
+```python
+# 例 14
+
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+_:alice foaf:knows _:bob .
+_:bob foaf:knows _:alice .
+```
+
+# 2.7 Nesting Unlabeled Blank Nodes in Turtle(在Turtle中嵌套未标记的空白节点)
+
+在Turtle中，当匹配产生blankNodePropertyList和终端ANON时，也分配新的RDF空白节点。这两者都可能出现在三元组的subject或object的位置（参见turtle语法）。该subject或object是新的RDF空白节点。此空白节点还用作通过匹配嵌入在blankNodePropertyList中的predicateObjectList生成而生成的三元组的subject。Predict 列表中描述了这些三元组的生成。还为下面描述的集合分配空白节点。
+
+```python
+# 例 15
+
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+# Someone knows someone else, who has the name "Bob".
+[] foaf:knows [ foaf:name "Bob"  ] .
+```
+
+Turtle语法允许嵌套blankNodePropertyLists。在这种情况下，每个内部括号[建立一个新的主题空白节点，到]处完成建立，并作为当前subject 的 predicate 对象列表。
+
+在blankNodePropertyList中使用predicateObjectList是表示节点的一系列属性的常用习惯用法。
+
+```python
+# 简写
+# 例 16
+
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+[ foaf:name "Alice"  ] foaf:knows [
+    foaf:name "Bob" ;
+    foaf:knows [
+    foaf:name "Eve" ] ;
+    foaf:mbox <bob@example.com> 
+]
+```
+
+```python
+# 上述代码对应简单三元组
+# 例 17
+
+
+_:a <http://xmlns.com/foaf/0.1/name> "Alice" .
+_:a <http://xmlns.com/foaf/0.1/knows> _:b .
+_:b <http://xmlns.com/foaf/0.1/name> "Bob" .
+_:b <http://xmlns.com/foaf/0.1/knows> _:c .
+_:c <http://xmlns.com/foaf/0.1/name> "Eve" .
+_:b <http://xmlns.com/foaf/0.1/mbox> <bob@example.com> .
+```
+
+# 2.8 Collections
+
+RDF为RDF节点列表提供Collection [RDF11-MT]结构。Collections的Turtle语法可能是由（）括起来的RDF项的空列表。该cllection 表示一个 rdf:first/rdf:rest 列表结构，其中包含rdf:first 对象序列语句被()括起来。
+
+（...）语法必须出现在三元组的subject 或object 位置（参见Turtle Grammar）。列表头部的空白节点是包含三元组的subject 或object对象。
+
+```python
+# 例 18
+
+@prefix : <http://example.org/foo> .
+# the object of this triple is the RDF collection blank node
+:subject :predicate ( :a :b :c  ) .
+
+# an empty collection value - rdf:nil
+:subject :predicate2 () .
+```
+
+# 3 Examples
+
+此示例是RDF / XML语法规范（example1.ttl）中示例7的Turtle转换：
+
+```python
+# 例 19
+
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix ex: <http://example.org/stuff/1.0/> .
+
+<http://www.w3.org/TR/rdf-syntax-grammar>
+  dc:title "RDF/XML Syntax Specification (Revised)" ;
+  ex:editor [
+          ex:fullname "Dave Beckett";
+          ex:homePage <http://purl.org/net/dajobe/>
+        
+  ] .
+```
+
+两个文字的RDF collection 示例：
+
+```python
+# 例 20
+
+
+PREFIX : <http://example.org/stuff/1.0/>
+:a :b ( "apple" "banana"  ) .
+```
+
+它是 example2.ttl 的精简版：
+
+```python
+# 例 21
+
+@prefix : <http://example.org/stuff/1.0/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+:a :b
+  [ rdf:first "apple";
+    rdf:rest [ rdf:first "banana";
+             rdf:rest rdf:nil ]
+    ] .
+```
+
+包含换行符的文字对象的两个相同三元组的示例，以纯文本和长文本形式编写。此示例中的换行符是LINE FEED字符（U + 000A）。
+
+```python
+# 例 22
+
+@prefix : <http://example.org/stuff/1.0/> .
+
+:a :b "The first line\nThe second line\n  more" .
+
+:a :b """The first line
+The second line
+  more""" .
+```
+
+如语法所示。collection可以使subject 或 object。如果collection 具有一个或多个 object或rdf:nil当collection为空时，那么该subject或object将是第一个 object的新空白节点。
+
+例如：
+
+```python
+# 例 23
+
+@prefix : <http://example.org/stuff/1.0/> .
+(1 2.0 3E1) :p "w" .
+```
+
+是语法糖（注意到空白节点b0，b1和b2不会出现在RDF图中的任何其他位置）：
+
+```python
+# 例 24
+
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+    _:b0  rdf:first  1 ;
+          rdf:rest   _:b1 .
+    _:b1  rdf:first  2.0 ;
+          rdf:rest   _:b2 .
+    _:b2  rdf:first  3E1 ;
+          rdf:rest   rdf:nil .
+    _:b0  :p         "w" . 
+```
+
+RDF集合可以嵌套，并且可以涉及其他语法形式：
+
+```python
+# 例 25
+
+PREFIX : <http://example.org/stuff/1.0/>
+(1 [:p :q] ( 2 ) ) :p2 :q2 .
+```
+
+上例是下例的语法糖：
+
+```python
+# 例 26
+
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+    _:b0  rdf:first  1 ;
+          rdf:rest   _:b1 .
+    _:b1  rdf:first  _:b2 .
+    _:b2  :p         :q .
+    _:b1  rdf:rest   _:b3 .
+    _:b3  rdf:first  _:b4 .
+    _:b4  rdf:first  2 ;
+          rdf:rest   rdf:nil .
+    _:b3  rdf:rest   rdf:nil .
+```
+
+# 4 Turtle compared to SPARQL
+
+SPARQL 1.1查询语言F（SPARQL）[SPARQL11-QUERY]对其TriplesBlock生成使用Turtle样式语法。该产品与Turtle语言的不同之处在于：
+
+* SPARQL允许RDF文字作为RDF三元组的主题。    
+* SPARQL允许在表单三元组的任何部分中使用变量（?name或$ name）。    
+* Turtle允许在三元组之外的任何地方使用前缀和基本声明。在SPARQL中，它们仅允许在Prologue中（在SPARQL查询的开头）。    
+* SPARQL使用不区分大小写的关键字，“a”除外。Turtle的@prefix和@base声明区分大小写，SPARQL的PREFIX和BASE不区分大小写。    
+* 'true'和'false'在SPARQL中不区分大小写，在Turtle中区分大小写。TrUe在Turtle中不是有效的布尔值。    
+
+有更进一步的信息，请参阅SPARQL查询文档[SPARQL11-QUERY]的IRI和SPARQL语法部分的语法。
+
+# 5 Conformance
+
+(译者注：本部分是把本文档内的用词形式等做一个一致性说明)
+
+除了标记为非规范性的部分外，本规范中的所有创作指南，图表，示例和注释都是非规范性的。本规范中的其他所有内容都是规范性的。
+
+本说明书中的关键词必须，不得，必须，应该，不应该，推荐，可以和可选的解释如[RFC2119]中所述。
+
+该规范定义了以下的一致性标准：
+
+* turtle 语法    
+* turtle 解析器
+
+符合标准的Turtle文档是一个Unicode字符串，符合第6节中定义的语法和其他约束。Turtle 语法，从turtleDoc生成开始。Turtle文档序列化为RDF图。
+
+
+符合标准的Turtle解析器是一个能够代表应用程序读取Turtle文档的系统。它生成序列化的RDF数据集，如第7节中所定义的。通常通过某种形式的API来解析，用于应用程序。
+
+识别Turtle语言的IRI是：http：//www.w3.org/ns/formats/Turtle。
+
+> 注意：此规范未定义Turtle解析器如何处理不符合要求的输入文档。
+
+# 5.1 Media Type and Content Encoding
+
+Turtle的媒体类型是text / turtle。 Turtle内容的内容编码始终为UTF-8。 对于mime类型的字符集参数是必需的，直到文本/媒体类型树允许在没有charset参数的情况下发送UTF-8。有关媒体类型注册表单，请参阅B. Internet媒体类型，文件扩展名和Macintosh文件类型。
+
+# 6 Turtle Grammar
+
+Turtle文档是以UTF-8编码的Unicode [UNICODE]字符串。仅允许在U + 0000到U + 10FFFF范围内的Unicode字符。
+
+## 6.1 White Space
+
+空白(white space, 简写WS）用于分离两个端点，否则这两个端点将被（错误地）识别为一个端点。 大写下面的规则名称表示空白区域的重要性; 这些形成了构建Turtle解析器的端点的可能选择。
+
+空白在产生String中很重要。
+
+## 6.2 Comments
+
+Turtle中的注释采用'＃'形式，在IRIREF或String之外，如果注释后没有行结束，则继续到行尾（由字符U + 000D或U + 000A标记）或文件结尾标记。注释被视为空白区域。
+
+## 6.3 IRI References
+
+根据统一资源标识符（URI）使用基本IRI解析相对IRI：通用语法[RFC3986]仅使用5.2节中的基本算法。既不执行基于语法的规范化也不执行基于方案的规范化（在RFC3986的6.2.2和6.2.3节中描述）。根据国际化资源标识符（IRI）[RFC3987]的第6.5节，IRI引用中另外允许的字符的处理方式与URI引用中处理非保留字符的方式相同。
+
+@base或BASE指令定义用于根据RFC3986第5.1.1节“内容中嵌入的基本URI”解析相对IRI的基本IRI。第5.1.2节“封装实体的基本URI”定义了范围内基本IRI如何来自封装文档，例如带有xml：base指令的SOAP信封或带有Content-Location标头的mime多部分文档。5.1.3中标识的“检索URI”，基础“来自检索URI的URI”，是从中检索特定Turtle文档的URL。如果以上都不指定基URI，则使用默认的基本URI（第5.1.4节“默认基本URI”）。相对于前一个,每个@base或BASE指令设置一个新的In-Scope Base URI。
+
+## 6.4 Escape Sequences
+
+Turtle 文件中使用了三种形式的转义：
+
+* 数字转义序列表示Unicode代码点：    
+
+![](/img/in-post/turtle1.1/grammer_1.png)    
+
+* 字符串转义序列表示传统上在字符串文字中转义的字符：    
+
+![](/img/in-post/turtle1.1/grammer_2.png)    
+
+* 保留字符转义序列由一个'\'后跟一个〜.-！$＆'（）* + ,; = /？＃@％_组成，并代表'\'右边的字符。
+
+![](/img/in-post/turtle1.1/grammer_3.png)  
+
+## 6.5 Grammar
+
+这里使用的EBNF在XML 1.0 [EBNF-NOTATION]中定义。得到的标签由数字和最终's'组成，例如[60s]，在SPARQL 1.1查询语言语法[SPARQL11-QUERY]中使用该数字引用生成。
+
+注意：
+
+* 单引号中的关键字（'@ base'，'@ prefix'，'a'，'true'，'false'）区分大小写。双引号中的关键字（“BASE”，“PREFIX”）不区分大小写。    
+* 转义序列UCHAR和ECHAR区分大小写。    
+* 标记输入并选择语法规则时，选择最长匹配。    
+* 当具有大写名称的规则用作终端时，Turtle语法是LL（1）和LALR（1）。    
+* 语法的入口点是turtleDoc。    
+* 在带符号的数字中，符号和数字之间不允许有空格。    
+* [162s] ANON :: ='['WS *']'项允许[] s之间的任何数量的空格和注释。为了清楚起见，在语法中使用单个版本。    
+* 字符串'@prefix'和'@base'匹配LANGTAG的模式，但“prefix”和“base”都不是注册语言子标签。此规范未定义引用的文字后跟这些标记中的任何一个（例如“A”@base）是否为Turtle语言。
+
+![](/img/in-post/turtle1.1/grammer_4.png)
+
+![](/img/in-post/turtle1.1/grammer_5.png)
+
+# 7 Parsing
+
+RDF 1.1概念和抽象语法规范[RDF11-CONCEPTS]定义了三种类型的RDF术语：IRI，文字和空白节点。文字由词法形式和可选语言标签[BCP47]或数据类型IRI组成。在解析期间使用额外类型前缀将字符串标识符映射到命名空间IRI。本节通过将匹配产物和词汇标记的字符串映射到RDF术语或其组件（例如语言标签，文字的词汇形式），将符合6.5语法的语法的字符串映射到一组三元组。Grammer production改变解析器状态并产生三元组。
+
+## 7.1 Parser State
+
+解析 Turtle 需要五个状态：
+
+* IRI baseURI - 当达到base production时，第二个规则参数IRIREF是用于相对IRI解析的基URI。    
+* Map [prefix - > IRI]名称空间 - prefixID生成中的第二个和第三个规则参数（PNAME_NS和IRIREF）为前缀（PNAME_NS）分配名称空间名称（IRIREF）。 在prefixID生成之外，所有PNAME_NS都将替换为命名空间。请注意，根据PNAME_NS生成，前缀可能是空字符串：（PN_PREFIX）?":"。    
+*  Map [string - > blank node] bnodeLabels - 从字符串到空白节点的映射。    
+* RDF_Term curSubject - curSubject绑定到subject production。    
+* RDF_Term curPredicate - curPredicate与动词生成绑定。RDF_Term curPredicate - curPredicate与动词生成绑定。 如果token匹配为“a”，则curPredicate绑定到IRI http://www.w3.org/1999/02/22-rdf-syntax-ns#type。
+
+## 7.2 RDF Term Constructors
+
+此表将production和词汇标记映射到第7节中列出的RDF术语或RDF术语的组件。解析：
+
+
+![](/img/in-post/turtle1.1/grammer_6.png)
+
+## 7.3 RDF Triples Constructors
+
+Turtle文档定义了由一组RDF三元组组成的RDF图。subject production 设置了 curPredicate。文档中的每个对象N生成一个RDF三元组：curSubject curPredicate N。
+
+属性列表：
+
+开始时，blankNodePropertyList production 记录curSubject和curPredicate，并将curSubject设置为一个新的空白节点B。完成时，blankNodePropertyList production 恢复 curSubject和curPredicate 。通过匹配blankNodePropertyList生成的节点是空白节点B。
+
+收集：
+
+开始时，收集 production 记录curSubject和curPredicate。集合 production 中的每个 object 都有一个curSubject设置为一个新的空白节点B，一个curPredicate设置为rdf：first。对于每个object-objectn，在生成第一个三元组之后：objectn-1 rdf：rest objectn。完成收集 production 会创建一个额外的三个curSubject rdf：rest rdf：nil。并恢复curSubject和curPredicate匹配集合生成的节点是非空列表的第一个空白节点B和空列表的rdf：nil。
+
+## 7.4 Parsing Example
+
+以下信息示例显示了使用LALR（1）解析器解析此Turtle文档时执行的语义操作：
+
+```python
+# 例 27
+
+
+@prefix ericFoaf: <http://www.w3.org/People/Eric/ericP-foaf.rdf#> .
+@prefix : <http://xmlns.com/foaf/0.1/> .
+ericFoaf:ericP :givenName "Eric" ;
+              :knows <http://norman.walsh.name/knows/who/dan-brickley> ,
+                      [ :mbox <mailto:timbl@w3.org> ] ,
+                      <http://getopenid.com/amyvdh> .
+```
+
+* 将前缀ericFoaf映射到IRI http://www.w3.org/People/Eric/ericP-foaf.rdf#。    
+* 将空前缀映射到IRI http://xmlns.com/foaf/0.1/。    
+* 分配IRI http://www.w3.org/People/Eric/ericP-foaf.rdf#ericP 给 curSubject。    
+* 将curPredicate分配给IRI http://xmlns.com/foaf/0.1/givenName。    
+* 返回一个RDF三元组：<... rdf #ericP> <... / givenName>“Eric”。    
+* 将curPredicate分配给IRI http://xmlns.com/foaf/0.1/knows。    
+* 返回一个RDF三元组：<... rdf＃ericP> <... / knows> <... who / dan-brickley>。    
+* 返回一个RDF三元组：<... rdf＃ericP> <... / knows> _：1。    
+* 保存curSubject并重新分配给空白节点_：1。    
+* 保存 curPredicate。    
+* 将curPredicate分配给IRI http://xmlns.com/foaf/0.1/mbox。    
+* 返回RDF三元组：_：1 <... / mbox> <mailto：timbl@w3.org>。    
+* 恢复curSubject和curPredicate到他们保存的值（<... rdf＃ericP>，<... / knows>）。    
+* 返回一个RDF三元组：<... rdf＃ericP> <... / knows> <http://getopenid.com/amyvdh>。
+
+# 感慨
+
+翻译比想象的要难的多。。。自己原以为理解的东西，一翻译就和原文对不上了。。。关于 JSON-LD的等能力提升再翻译吧。。。。那时再修改这篇翻译。
