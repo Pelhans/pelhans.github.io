@@ -1,0 +1,84 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（五）"
+subtitle:   "Deepdive抽取演员-电影间关系"
+date:       2018-10-10 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 前面完成了针对结构化数据和半结构化数据的知识抽取工作，本节我们进行基于Deepdive框架的非结构化文本关系抽取。所采用的文本来自于百度百科的人物介绍。
+
+* TOC
+{:toc}
+
+# 简介
+
+Deepdive是由斯坦福大学InfoLab实验室开发的一个开源知识抽取系统。它通过弱监督学习，从非结构化的文本中抽取结构化的关系数据 。本次实战基于OpenKG上的[支持中文的deepdive：斯坦福大学的开源知识抽取工具（三元组抽取）](http://www.openkg.cn/dataset/cn-deepdive)，我们基于此，抽取电影领域的演员-电影关系。
+
+# 环境准备
+## 软件的安装与配置
+
+先到[百度网盘](https://pan.baidu.com/s/1slLpYVz)下载CNdeepdive 软件，运行install.sh 选择1 安装deepdive。选择6 安装postgresql。
+
+运行 ''' echo 'export PATH="/root/local/bin:$PATH"' > ~/.bashrc ''' 设置环境变量。
+
+运行 nlp_setup.sh 配置中文 stanford_nlp 环境。
+
+接下来建立postgresql 的数据库，首先运行sudo -i -u postgres 进入到postgresql账户。输入psql进入到postgresql命令界面。
+
+运行'''CREATE DATABASE movie'''  建立数据库。输入\q退出psql。
+
+运行'''su yourusername''' 回到自己的程序目录。
+
+## 项目框架搭建
+
+建立自己的项目文件夹，如deepdive，运行 ''' echo "postgresql://localhost:5432/movie" >db.url '''建立数据库配置文件。
+
+在deepdive内建立输入数据文件夹 input，用户定义函数文件夹udf，用户配置文件app.ddlog，模型配置文件deepdive.conf。
+
+# 数据准备
+
+## 先验数据导入
+
+为了对样本进行打标，我们需要一定的先验数据，它包含确定的演员-电影关系对。我们直接从结构化数据的数据库中抽取出演员和对应的代表作作为先验数据。您可以通过脚本 udf/get_actor_movie.py 获取 input/actor_movie_dbdata.csv 文件，也可以通过[坚果云](https://www.jianguoyun.com/p/DeQf_LUQq_6CBxiPl3k)直接下载该文件。
+
+获取该文件后，我们需要将其导入到数据库中以进行处理。首先我们在app.ddlog 中定义相应的数据表:
+
+```python
+@source
+actor_movie_dbdata(
+        @key
+        actor_name text,
+        @key
+        movie_name text
+    ).
+```
+
+而后通过命令行生成 postgresql 数据表
+
+'''python
+deepdive compile && deepdive do actor_movie_dbdata
+'''
+
+其中每次对 app.ddlog 的修改都要进行 deepdive compile。生成新的数据表的命令都是 deepdive do some_table 这种。运行上述命令后，deepdive 会去 input 文件夹下找和表名相同的csv文件并导入。
+
+执行deepdive do some_table 时，deepdive 会在当前命令行⾥生成⼀个执⾏计划⽂文件，和 vi 语法一样，审核后使用 :wq 保存并执行。
+
+## 待抽取文章的导入
+
+为了获取到大量的电影和演员相关文章，我们直接套用之前的半结构化数据爬虫来获取非结构文本。位于udf/baidu_baike/。您可以直接取坚果云上下载已经爬取好的[articles.txt文件](https://www.jianguoyun.com/p/DVnFNZMQq_6CBxiClnk)。接下来为了将其导入
+
+接下来将其导入到数据库中，首先在 app.ddlog 中建立相应的 articles 表：
+
+```python
+articles(
+        id text,
+        content text
+    ).
+```
