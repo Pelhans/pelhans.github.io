@@ -42,6 +42,8 @@ Deepdive是由斯坦福大学InfoLab实验室开发的一个开源知识抽取�
 
 在deepdive内建立输入数据文件夹 input，用户定义函数文件夹udf，用户配置文件app.ddlog，模型配置文件deepdive.conf。
 
+为了调用 stanford_nlp 进行文本处理，将下载的CNdeepdive 文件夹中的transaction/udf/bazzar 复制到自己的 udf 文件夹下，并在udf/bazzar/parser/ 目录下运行 sbt/sbt stage 进行编译。编译完成后会在 target 中生成可执行文件。
+
 # 数据准备
 
 ## 先验数据导入
@@ -72,13 +74,66 @@ deepdive compile && deepdive do actor_movie_dbdata
 
 ## 待抽取文章的导入
 
-为了获取到大量的电影和演员相关文章，我们直接套用之前的半结构化数据爬虫来获取非结构文本。位于udf/baidu_baike/。您可以直接取坚果云上下载已经爬取好的[articles.txt文件](https://www.jianguoyun.com/p/DVnFNZMQq_6CBxiClnk)。接下来为了将其导入
+为了获取到大量的电影和演员相关文章，我们直接套用之前的半结构化数据爬虫来获取非结构文本。位于udf/baidu_baike/。您可以直接取坚果云上下载已经爬取好的[articles.txt文件](https://www.jianguoyun.com/p/DVnFNZMQq_6CBxiClnk)。接下来为了将其导入到数据库中，需要将其转换为csv格式，这里可以使用程序 udf/trans.py 进行转换。在更改名字即可。
+
+因为下面的 stanford_nlp 进行句法分析时速度特别的慢，因此我抽取出 articles.csv 的头10 行得到 small_articles.csv进行实验。
 
 接下来将其导入到数据库中，首先在 app.ddlog 中建立相应的 articles 表：
 
 ```python
-articles(
+samll_articles(
         id text,
         content text
     ).
+```
+
+而后执行 ''' deepdive do small_articles ''' 将文章导入到 postgresql中。
+
+## 用 stanford_nlp 模块进行文本处理
+
+deepdive 默认采⽤standfor nlp进⾏⽂本处理。输⼊⽂本数据，nlp模块将以句子为单位，返回每句的分词、lemma、pos、NER和句法分析的结果，为后续特征抽取做准备。我们将这些结果存入sentences表中。
+
+首先在 app.ddlog 中建立 sentences 表：
+
+```python
+sentences(
+        doc_id text,
+        sentence_index int,
+        sentences_text text,
+        tokens text[],
+        lemmas text[],
+        pos_tags text[],
+        ner_tags text[],
+        doc_offsets int[],
+        dep_types text[],
+        dep_tokens int[]
+    ).
+```
+
+而后定义NLP 处理的函数 nlp_markup 来调用自定义的脚本 udf/nlp_markup.sh 进行文本处理。
+
+```
+function nlp_markup over (
+            doc_id text,
+            content text,
+    ) returns rows like sentences
+    implementation "udf/nlp_markup.sh" handles tsv lines.
+```
+
+使用如下语法调用 nlp_markup 函数，将函数的输出存储到sentences 表中：
+
+```
+sentences += nlp_markup(doc_id, content) :-
+    small_articles(doc_id, content).
+```
+
+编译并执行 ''' deepdive compile && deepdive do sentences ''' 生成 sentences 表。
+
+您可以通过以下命令来查询生成的结果：
+
+```python
+deepdive query '
+doc_id, index, tokens, ner_tags | 5
+?- sentences(doc_id, index, text, tokens, lemmas, pos_tags, ner_tags, _, _, _).
+'
 ```
