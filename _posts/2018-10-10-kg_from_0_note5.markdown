@@ -131,9 +131,432 @@ sentences += nlp_markup(doc_id, content) :-
 
 您可以通过以下命令来查询生成的结果：
 
-```python
+```
 deepdive query '
 doc_id, index, tokens, ner_tags | 5
 ?- sentences(doc_id, index, text, tokens, lemmas, pos_tags, ner_tags, _, _, _).
 '
 ```
+
+```
+ doc_id | index |                                       tokens                                        |                           ner_tags                           
+--------+-------+-------------------------------------------------------------------------------------+--------------------------------------------------------------
+ 2      |     1 | {香港,电影,《,龙,的,传人,》,由,万,能,影业,有限,公司,于,1991年,出品,。}                | {MISC,O,O,MISC,MISC,MISC,O,O,MISC,O,O,O,O,O,MISC,O,O}
+ 2      |     2 | {该,片,由,李修贤,执导,，,周星驰,、,梁家仁,、,毛舜筠,、,元华,等,领衔,主演,。}        | {O,O,O,PERSON,O,O,PERSON,O,PERSON,O,PERSON,O,PERSON,O,O,O,O}
+ 2      |     3 | {影片,讲述,了,周,小龙,、,毛毛,一,对,欢喜,冤家,在,香港,周旋,于,赌球,集团,的,故事,。} | {O,O,O,O,O,O,O,O,O,O,O,O,GPE,O,O,O,O,O,O,O}
+ 2      |     4 | {(,1,),周,飞鸿,（,元,华饰,）,是,大屿山,大澳,村,的,教头,，,性格,刚直,。}             | {O,O,O,O,O,O,MISC,MISC,O,O,LOC,LOC,O,O,O,O,O,O,O}
+ 2      |     5 | {其,子,周,小龙,（,周星驰饰,）,幼,受,父亲,剧照,熏陶,也,是,正直,纯洁,的,年轻,人,。}   | {O,O,PERSON,PERSON,O,PERSON,O,O,O,O,O,O,O,O,O,O,O,O,O,O}
+(5 rows)
+```
+
+## 实体抽取及候选实体对的生成
+
+本部分包含两步：
+
+* 获取候选实体    
+    * 获取演员候选实体    
+    * 获取电影候选实体    
+* 生成候选实体对，即演员-电影实体对
+
+### 候选实体的生成
+
+首先介绍演员候选实体的生成。首先我们在app.ddlog 中定义实体数据表：
+
+```
+actor_mention(
+        mention_id text,
+        mention_text text,
+        doc_id text,
+        sentences_index int,
+        begin_index int,
+        end_index int
+    ).
+```
+
+该表包含了实体的id、内容、所在文本的id、所在句子的索引、起始和终止位置索引。
+
+而后继续定义实体抽取函数：
+
+```
+function map_actor_mention over(
+        doc_id text,
+        sentence_index int,
+        tokens text[],
+        pos_tags text[],
+        ner_tags text[]
+    ) returns rows like actor_mention
+implementation "udf/map_actor_mention.py" handles tsv lines.
+```
+
+其中 udf/map_actor_mention.py 脚本遍历数据库中的句子，找到连续NER标记为PERSON 且 POS 标记为NR的序列，再对其做过滤整合处理，返回候选实体。
+
+最后我们在 app.ddlog 中调用函数，将 函数的输出存储到 actor_mention 表中。
+
+```
+actor_mention += map_actor_mention(
+    doc_id, sentence_index, tokens, pos_tags, ner_tags
+    ) :-                   
+    sentences(doc_id, sentence_index, _, tokens, _, pos_tags, ner_tags, _, _, _).
+```
+
+现在我们可以编译并执行得到 actor_mention 表了。
+
+```
+deepdive compile && deepdive do actor_mention
+```
+
+同理可以得到 电影类的实体表 movie_mention ：
+
+```
+movie_mention(
+        mention_id text,  
+        mention_text text,
+        doc_id text,      
+        sentences_index int,
+        begin_index int,
+        end_index int
+    ).
+
+function map_movie_mention over(
+    doc_id text,
+    sentence_index int,
+    tokens text[],
+    pos_tags text[],
+    ner_tags text[]
+) returns rows like movie_mention
+implementation "udf/map_movie_mention.py" handles tsv lines.
+                
+movie_mention += map_movie_mention(
+doc_id, sentence_index, tokens, pos_tags, ner_tags
+) :-            
+    sentences(doc_id, sentence_index, _, tokens, _, pos_tags, ner_tags, _, _, _).
+```
+
+查询看一下得到的实体：
+
+```
+deepdive query '
+mention_id, mention_text, doc_id | 5
+?- movie_mention(mention_id, mention_text, doc_id, _, _, _).
+'
+```
+
+```
+ mention_id | mention_text | doc_id 
+------------+--------------+--------
+ 6_5_28_28  | 赌圣         | 6
+ 6_7_6_6    | 大话西游     | 6
+ 6_7_11_11  | 华语         | 6
+ 6_8_6_6    | 喜剧         | 6
+ 6_9_4_4    | 少林足球     | 6
+(5 rows)
+```
+
+### 生成候选实体对
+
+这一步我们要生成候选实体对，首先定义数据表如下：
+
+```
+play_candidate(
+    p1_id text,
+    p1_name text,
+    p2_id text,
+    p2_name text
+).
+```
+
+包含实体1/2 的id 和内容。接下来统计每个句子的实体数量以限制同一句内出现过多实体：
+
+```
+num_entity(doc_id, sentence_index, COUNT(p) + COUNT(q)) :-
+	actor_mention(p, _, doc_id, sentence_index, _, _),
+	movie_mention(q, _, doc_id, sentence_index, _, _).
+```
+
+而后定义过滤函数：
+
+```
+function map_play_candidate over (
+    p1_id text,
+    p1_name text,
+    p2_id text,
+    p2_name text
+) returns rows like play_candidate
+implementation "udf/map_play_candidate.py" handles tsv lines.
+```
+
+该函数内您可以定义一些规则对候选实体对进行筛选。
+
+接下来调用上述函数并结合一些规则对实体对进行进一步的筛选，将筛选结果存储到 play_candidate 数据表中：
+
+```
+play_candidate += map_play_candidate(p1, p1_name, p2, p2_name) :-
+    num_entity(same_doc, same_sentence, num_e),
+    actor_mention(p1, p1_name, same_doc, same_sentence, p1_begin, _),
+    movie_mention(p2, p2_name, same_doc, same_sentence, p2_begin, _),
+    num_e < 5,  
+    p1_name != p2_name,
+    p1_begin != p2_begin.
+```
+
+编译并执行得到候选实体对表：
+
+```
+deepdive compile && deepdive do play_candidate
+```
+
+查询一下看看结果：
+
+```
+deepdive query '
+p1_text, p2_text | 5
+?- play_candidate(_, p1_text, _, p2_text).
+'
+`
+```
+
+```
+ p1_text | p2_text 
+---------+---------
+ 周星驰  | 北斗
+ 龙炳基  | 北斗
+ 赵子龙  | 生命
+ 郑佩佩  | 审死官
+ 郑佩佩  | 首
+(5 rows)
+```
+
+## 特征抽取
+
+现在我们要用deeodive自带的 ddlib 库抽选实体对的文本特征。
+
+首先定义特征表：
+
+```
+play_feature(                 
+    p1_id text,               
+    p2_id text,               
+    feature text              
+). 
+```
+
+该特征是实体对间一系列文本特征的集合。
+
+而后我们定义特征提取函数得到各种 POS/NER/次序列的窗口特征等。
+
+```
+function extract_play_features over (
+    p1_id          text,     
+    p2_id          text,     
+    p1_begin_index int,      
+    p1_end_index   int,      
+    p2_begin_index int,      
+    p2_end_index   int,      
+    doc_id         text,     
+    sent_index     int,    
+    tokens         text[],   
+    lemmas         text[],   
+    pos_tags       text[], 
+    ner_tags       text[], 
+    dep_types      text[], 
+    dep_tokens     int[]   
+) returns rows like play_feature
+implementation "udf/extract_play_features.py" handles tsv lines.
+```
+
+而后调用该函数：
+
+```
+play_feature += extract_play_features(
+p1_id, p2_id, p1_begin_index, p1_end_index, p2_begin_index, p2_end_index,
+doc_id, sent_index, tokens, lemmas, pos_tags, ner_tags, dep_types, dep_tokens
+) :-                       
+    actor_mention(p1_id, _, doc_id, sent_index, p1_begin_index, p1_end_index),
+    movie_mention(p2_id, _, doc_id, sent_index, p2_begin_index, p2_end_index),
+    sentences(doc_id, sent_index, _, tokens, lemmas, pos_tags, ner_tags, _, dep_types, dep_tokens).
+```
+
+编译并执行：
+
+```
+deepdive compile && deepdive do play_feature
+```
+
+查询看一下特征：
+
+```
+deepdive query '| 5 ?- play_feature(_, _, feature).'
+```
+
+```
+WORD_SEQ_[的 处女作 ； ( 2 ) 1984 ， 主演 了 古装 武侠剧 《 笑傲 江湖 》 ， 因 饰演 岳灵姗 而 为人 熟悉 ； ( 3 ) 1988年 ， 主演 了 台湾 剧集 《 情义 无价 》 ， 在 台湾 和 内地 走红 ， 该 剧 也 是 戚美珍 唯一 参演 的 台湾 剧集 ； ( 4 ) 1992年 ， 戚美珍 与 苗 侨伟 结婚 后 淡出 娱乐圈 ； 2009年 ， 戚美珍 复出 ， 主演 了 无线台 庆剧 《]
+ LEMMA_SEQ_[的 处女作 ； ( 2 ) 1984 ， 主演 了 古装 武侠剧 《 笑傲 江湖 》 ， 因 饰演 岳灵姗 而 为人 熟悉 ； ( 3 ) 1988年 ， 主演 了 台湾 剧集 《 情义 无价 》 ， 在 台湾 和 内地 走红 ， 该 剧 也 是 戚美珍 唯一 参演 的 台湾 剧集 ； ( 4 ) 1992年 ， 戚美珍 与 苗 侨伟 结婚 后 淡出 娱乐圈 ； 2009年 ， 戚美珍 复出 ， 主演 了 无线台 庆剧 《]
+ NER_SEQ_[O O O O O O O O O O O O O MISC MISC O O O O O O O O O O O O MISC O O O GPE O O O O O O O GPE O O O O O O O O PERSON O O O GPE O O O O O MISC O PERSON O O O O O O O O MISC O PERSON O O O O O O O]
+ POS_SEQ_[DEG NN PU PU CD PU NT PU VV AS NN NN PU VV NN PU PU P VV NR MSP VV VA PU PU CD PU NT PU VV AS NR NN PU NN NN PU PU P NR CC NN VV PU DT NN AD VC NR JJ VV DEC NR NN PU PU CD PU NT PU NR CC NR NN VV LC VV NN PU NT PU NR VV PU VV AS NN VV PU]
+ W_LEMMA_L_1_R_1_[是]_[》]
+```
+
+## 样本打标
+
+这一步，我们希望在候选实体对中标出部分正负例，即利用已知的实体对和候选实体对关联，而后利用规则打部分正负标签。我们将其分为两步：
+
+* 存放有监督数据，设置初始权重    
+* 定义逻辑规则，对文本进行预标记    
+
+### 有监督数据处理
+
+首先在 app.ddlog 中定义 play_label 表存放有监督数据：
+
+```
+@extraction             
+play_label(             
+    @key                
+    @references(relation="has_play", column="p1_id", alias="has_play")
+    p1_id text,         
+    @key                
+    @references(relation="has_play", column="p2_id", alias="has_play")
+    p2_id text,         
+    @navigable          
+    label int,          
+    @navigable          
+    rule_id text        
+). 
+```
+
+rule_id 表示相关性的规则名称，label 为正值表示正相关，负值表示负相关。绝对值越大，相关性越大。
+
+初始化定义，复制 play_candidate 表，label 初始化为0，rule_id 为 NULL：
+
+```
+paly_label(p1, p2, 0, NULL) :- play_candidate(p1, _, p2, _).
+```
+
+接下来将最开始导入的有监督数据表 actor_movie_dbdata 导入到 play_label 中，并赋予权重3：
+
+```
+play_label(p1, p2, 3, "from_dbdata") :-
+    play_candidate(p1, p1_name, p2, p2_name),
+    actor_movie_dbdata(n1, n2),
+    [lower(n1) = lower(p1_name), lower(n2) = lower(p2_name)].
+```
+
+### 预标记
+
+接下来定义一些逻辑规则对文本进行预标记：
+
+```
+function supervise over (      
+    p1_id text, p1_begin int, p1_end int,
+    p2_id text, p2_begin int, p2_end int,
+    doc_id text,               
+    doc_id text,               
+    sentence_index int,        
+    sentence_text text,        
+    tokens text[],             
+    lemmas text[],             
+    pos_tags text[],           
+    ner_tags text[],           
+    dep_types text[],          
+    dep_tokens int[]           
+) returns (p1_id text, p2_id text, label int, rule_id text)
+implementation "udf/supervise_play.py" handles tsv lines.
+```
+
+程序 udf/supervise_play.py 里通过一些指定的规则如 出演这种特征来进行预标记。给出label和rule_id的值。
+
+接下来调用标记函数，将规则抽到的数据写到play_label 表中：
+
+```
+play_label += supervise(
+    p1_id, p1_begin, p1_end,
+    p2_id, p2_begin, p2_end,
+    doc_id, sentence_index, sentence_text,
+    tokens, lemmas, pos_tags, ner_tags, dep_types, dep_tokens_indexes
+    ) :-
+    play_candidate(p1_id, _, p2_id, _),
+    actor_mention(p1_id, p1_text, doc_id, sentence_index, p1_begin, p1_end),
+    movie_mention(p2_id, p2_text, _, _, p2_begin, p2_end),
+    sentences(  doc_id, sentence_index, sentence_text,
+                tokens, lemmas, pos_tags, ner_tags, _, dep_types, dep_tokens_indexes
+    ).
+```
+
+由于不同的规则可能覆盖了相同的实体对，因此利用 vote方法进行综合给出最终标记：
+
+```
+play_label_resolved(p1_id, p2_id, SUM(vote)) :-
+    play_label(p1_id, p2_id, vote, rule_id).
+```
+
+最后编译并执行：
+
+```
+deepdive do play_label_resolved
+```
+
+# 模型构建
+
+deepdive 是通过因子图的方式进行推理的。我们知道，有向图和无向图都使得若干个变量的一个全局函数能够表示为这些变量的子集上的因子的乘积。因子图显示地表示出了这个分解。方法是在表示变量的节点的基础上，引入额外的节点表示因子本身。基于因子图，我们可以高效的进行推断。
+
+## 变量表定义
+
+首先定义最终存储的表格，[?]表示此表是用户模式下的变量表，即需要推到关系的表。这里我们需要推到的是演员和电影间是否存在演出关系。
+
+```
+@extraction
+has_play?(
+    p1_id text,
+    p2_id text
+). 
+```
+
+根据打标结果，写入已知的变量：
+
+```
+has_play(p1_id, p2_id) = if l > 0 then TRUE
+                    else if l < 0 then FALSE
+                    else NULL end :-
+                    play_label_resolved(p1_id, p2_id, l).
+```
+
+此时表中部分变量的label 已知，成为了先验变量。编译并执行：
+
+```
+deepdive compile && deepdive do has_play
+```
+
+## 构建因子图
+
+将每一对 has_play 中的实体对和特征表连接起来，通过特征因子连接，全局学习这些特征的权重 f
+
+```
+@weight(f)
+has_play(p1_id, p2_id) :-
+    play_candidate(p1_id, _, p2_id, _),
+    play_feature(p1_id, p2_id, f).
+```
+
+编译并生成最终的概率模型：
+
+```
+deepdive compile && deepdive do probabilities
+```
+
+就完成了我们的推断，现在查询我们预测的演员-电影间的交易关系概率：
+
+```
+deepdive sql "SELECT p1_id, p2_id, expectation FROM has_play_label_inference ORDER BY random() LIMIT 5"
+```
+
+```
+   p1_id    |    p2_id    | expectation 
+------------+-------------+-------------
+ 5_115_0_0  | 5_115_12_12 |       0.062
+ 6_38_20_20 | 6_38_44_44  |       0.974
+ 6_39_41_41 | 6_39_94_95  |       0.002
+ 0_38_20_20 | 0_38_44_44  |       0.971
+ 5_111_0_0  | 5_111_18_21 |       0.836
+(5 rows)
+```
+
+至此，使用deepdive 抽取非结构文本的演员-电影关系实战完成。
