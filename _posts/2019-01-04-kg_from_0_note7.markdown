@@ -1,0 +1,225 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（七）"
+subtitle:   "百科知识图谱构建（一）百度百科的知识抽取"
+date:       2019-01-04 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 之前做的知识图谱还是太小，而且单一领域的图谱构建技术和通用百科类图谱间的技术差别也较大，因此根据前人的论文，尝试构建百科类知识图谱。需要注意的是，由于本人对知识图谱是自学的，所以有可能在构建过程中存在一些错误的地方，希望大家指正。
+
+* TOC
+{:toc}
+
+# 简介
+
+为了构建中文百科类知识图谱，我们参考漆桂林老师团队做的[zhishi.me](http://zhishi.me/)。目标是包含百度百科、互动百科、中文wiki百科的知识，千万级实体数量和亿级别的关系数目。目前已完成百度百科部分，获得词条4,190,390条，存入 neo4j 后得到节点 10,416,647个，关系 37,317,167 条，属性 45,049,533个。目前遇到的问题是由于我是根据网页内的链接去寻找新的词条，然而在获取400多万的词条后，爬虫就停止运行了，我猜测原因是没有新的未被爬取的网址进来，这400多万的词条组成一个闭环，而那1000W的词条我却不知道怎么去获取，我尝试了更换几个起始页面，但都已经被爬取过了。如果有大佬知道解决办法，还请指点，多谢了。
+
+[项目链接](https://github.com/Pelhans/Z_knowledge_graph)
+
+希望在该图谱上尝试应用以下技术：    
+
+* 关系抽取：    
+    * 神经网络关系抽取 [OpenNRE](https://github.com/thunlp/OpenNRE) 采用清华团队的OpenNRE框架    
+    * DeepDive 关系抽取    
+    * 制作类似于NYT的远程监督学习语料
+* 知识融合(TODO)：    
+    * LIMES 实战    
+    * Silk 实战
+* 自底向上的本体构建技术(TODO)：    
+* 知识表示(TODO)：    
+    * TransE    
+* 知识存储    
+    * Jena    
+    * Neo4j    
+* 知识挖掘(TODO):   
+* KBQA    
+    * 基于Refo和固定模板的QA    
+    * TODO
+
+# 数据获取
+
+爬虫我们还是采用 scrapy框架，采用多个爬虫同时爬取的方法来加速。下面我们分块对该爬虫进行介绍。
+
+## 目标内容
+
+对于每个词条内抽取哪些信息，我们参考zhishi.me的方法，获取如下条目：    
+
+* 标题 title：以下面图片中的词条上海为例，位于网页上方的“上海”两个字作为本词条的标题    
+* 标题ID title_id：给每个title一个id，zhishi.me里是根据百度链接中的id，但由于互动百科里没有这个，所以我就都根据它们的获取顺序给它们一个id值。    
+* 消岐名称 disambi：有些词条可能存在多个含义，如“上海”就包含“中华人民共和国直辖市”或者“小行星”等等的多个含义，因此我们将“上海（中华人民共和国直辖市）”这样的名字作为“上海”这个标题的消岐名称。   
+* 多义词 redirect：比如“申”、“沪”都是指上海，我们将这种多义词也存下来，并保存为不同的词条。然后在disambi相同的词条间，建立等价关系就可以了。    
+* 摘要 abstract：摘要是指词条中标题下方对词条进行简要介绍的部分。    
+* 信息框 infobox：包含该词条的各种属性信息，如中文名称、外文名称、别名等。由于不同的词条包含不同的属性，因此我们采用json的形式对infobox进行统一存储。        
+* 标签 subject：大部分词条都包含词条标签，如周星驰的词条标签为“编剧、演员、导演、娱乐人物、人物”。   
+* 内部图片 interPic：词条内部的图片我们以链接的形式存储下来，这样在后期就可以直接在html页面中显示出该图片了。    
+* 内部链接 interLink：词条内部包含很多引用，指向其他的词条，我们将这种引用的文字和链接以 key-value的形式存储下来，存为JSON格式。一开始希望把这种词条间的内部引用也加到最终的关系上，得到(:title)-[:InterLink {words: "key所处的那句话"}]->(::title)但一方面这种链接过多，另一方面关系也不明确，所以就没有加。    
+* 外部链接 exterLink：有些词条尾部有参考资料，这些链接多指向其他网站，我们把它们存到外部链接里。具体存储方式和 interLink 一样。    
+* 全文 all_text：词条的全部文本，可以用来做后一步的分析，如建立远程监督学习语料呀、关系抽取实验呀、防止有什么信息漏掉重新爬呀。。。。
+
+## 爬虫介绍
+
+爬虫的基本思想和之前电影的那个是一样的，只不过为了加速爬取，我们增加了多爬虫爬取和断点续爬功能，防止爬到一半断点的尴尬情况(别问我为什么这么说。。。。)
+
+首先在items.py里设置想要爬取内容，名字都和上面介绍的对应着。
+
+```python
+class BaiduBaikeItem(scrapy.Item):
+    # define the fields for your item here like:
+    # name = scrapy.Field()
+    title = scrapy.Field()  
+    title_id = scrapy.Field()
+    abstract = scrapy.Field()
+    infobox = scrapy.Field()
+    subject = scrapy.Field()
+    disambi = scrapy.Field()
+    redirect = scrapy.Field()
+    curLink = scrapy.Field()
+    interPic = scrapy.Field()
+    interLink = scrapy.Field()
+    exterLink = scrapy.Field()
+    relateLemma = scrapy.Field()
+    all_text = scrapy.Field()
+```
+
+接下来要写pipelines.py，整体上的逻辑是，在爬虫分析完一个网页返回内容后，我们查询当前表中的title_id最大值，然后把当前的词条存为title_id+1。这里有几个需要注意的问题：
+
+* 存 all_text 时会由于编码问题报错，尝试很多办法也没有解决，好在这种情况不多400万里面只有9450个，因此遇到这种情况的话直接把all_text设置为none。    
+* 存储速度：如果在pipelines.py里做过多的查表操作，那么可能会影响最终的爬取速度，尤其是要查询的项没做索引的时候。    
+* 编码问题
+
+```
+class BaiduBaikePipeline(object):
+    def __init__(self):
+        self.conn = pymysql.connect(
+            host=settings.HOST_IP,
+            user=settings.USER,
+            passwd=settings.PASSWD,
+            db=settings.DB_NAME,
+            charset='utf8mb4',
+            use_unicode=True
+            )   
+        self.cursor = self.conn.cursor()
+
+    def process_item(self, item, spider):
+        title = str(item['title']).decode('utf-8')
+        title_id = str(item['title_id']).decode('utf-8')
+        abstract = str(item['abstract']).decode('utf-8')
+        infobox = str(item['infobox']).decode('utf-8')
+        subject = str(item['subject']).decode('utf-8')
+        disambi = str(item['disambi']).decode('utf-8')
+        redirect = str(item['redirect']).decode('utf-8')
+        curLink = str(item['curLink']).decode('utf-8')
+        interPic = str(item['interPic']).decode('utf-8')
+        interLink = str(item['interLink']).decode('utf-8')
+        exterLink = str(item['exterLink']).decode('utf-8')
+        relateLemma = str(item['relateLemma']).decode('utf-8')
+        all_text = str(item['all_text']).decode('utf-8').encode('utf-8')
+
+        self.cursor.execute("SELECT MAX(title_id) FROM lemmas")
+        result = self.cursor.fetchall()[0]
+        if None in result:
+            title_id = 1
+        else:
+            title_id = result[0] + 1
+        sql = """
+        INSERT INTO lemmas(title, title_id, abstract, infobox, subject, disambi, redirect, curLink, interPic, interLink, exterLink, relateLemma, all_text ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        try:
+            self.cursor.execute(sql, (title, title_id, abstract, infobox, subject, disambi, redirect, curLink, interPic, interLink, exterLink, relateLemma, all_text ))
+            self.conn.commit()
+        except Exception as e:
+            print("#"*20, "\nAn error when insert into mysql!!\n")
+            print("curLink: ", curLink, "\n")
+            print(e, "\n", "#"*20)
+            try:
+                all_text = str('None').decode('utf-8').encode('utf-8')
+                self.cursor.execute(sql, (title, title_id, abstract, infobox, subject, disambi, redirect, curLink, interPic, interLink, exterLink, relateLemma, all_text ))
+                self.conn.commit()
+            except Exception as f:
+                print("Error without all_text!!!")
+        return item
+
+    def close_spider(self, spider):
+        self.conn.close()
+```
+
+然后就是写爬虫，这里就是分析页面，然后用xpath或者soup去找到对应需要的部分并提取出来。如果遇到错误就存none。这里和之前没有变化，就不贴代码了。下面重点说一下多个爬虫同时运行的部分。
+
+### 并行爬虫
+
+首先在和spiders同级的目录下建立一个叫commands的文件夹，然后创建crawlall.py的文件，填入下述代码：
+
+```python
+from scrapy.commands import ScrapyCommand
+from scrapy.crawler import CrawlerRunner
+from scrapy.utils.project import get_project_settings
+from scrapy.crawler import Crawler
+from scrapy.utils.conf import arglist_to_dict
+ 
+class Command(ScrapyCommand):
+ 
+    requires_project = True
+ 
+    def syntax(self):
+        return '[options]'
+ 
+    def short_desc(self):
+        return 'Runs all of the spiders'
+
+    def add_options(self, parser):
+        ScrapyCommand.add_options(self, parser)
+        parser.add_option("-a", dest="spargs", action="append", default=[], metavar="NAME=VALUE",
+                          help="set spider argument (may be repeated)")
+        parser.add_option("-o", "--output", metavar="FILE",
+                          help="dump scraped items into FILE (use - for stdout)")
+        parser.add_option("-t", "--output-format", metavar="FORMAT",
+                          help="format to use for dumping items with -o")
+
+    def process_options(self, args, opts):
+        ScrapyCommand.process_options(self, args, opts)
+        try:
+            opts.spargs = arglist_to_dict(opts.spargs)
+        except ValueError:
+            raise UsageError("Invalid -a value, use -a NAME=VALUE", print_help=False)
+ 
+    def run(self, args, opts):
+        #settings = get_project_settings()
+
+        spider_loader = self.crawler_process.spider_loader
+        for spidername in args or spider_loader.list():
+            print "*********cralall spidername************" + spidername
+            self.crawler_process.crawl(spidername, **opts.spargs)
+
+        self.crawler_process.start()    
+```
+
+它们可以让spiders中的爬虫一起执行。而后创建__init__.py文件来支持import。
+
+下一步在commands的上级目录创建setup.py文件，填入下述代码：
+
+```python
+from setuptools import setup, find_packages
+
+setup(name='scrapy-mymodule',
+  entry_points={
+    'scrapy.commands': [
+      'crawlall=baidu_baike.commands:crawlall',
+    ],
+  },
+ )
+```
+
+现在我们直接运行命令 scrapy crawlall 就可以并行地运行爬虫啦。
+
+### 爬虫的断点续爬
+
+其实应该叫暂停、继续爬取？这个很容易，只需在正常的命令后面加上 -s JOBDIR=paths_to_somewhere。
+
+另一个很有用的选项是 --nolog，这样爬取过程中的信息就不会出来了，当然也可以在setting中设置log的 level。

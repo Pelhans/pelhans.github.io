@@ -129,7 +129,7 @@ $$ \tilde{\phi}(x_{n}) = \phi(x_{n}) - \frac{1}{N}\sum_{l=1}^{N}\phi(x_{l}) $$
 $$
 \begin{aligned}
 \tilde{K}_{nm} = & \tilde{\phi})(x_{n})^{T}\tilde{\phi}(x_{m}) \\
-        = & \phi(x_{n})^{T}\phi(x_{m}) - \frac{1}{N}\sum_{l=1}^{N}\phi(x_{n})^{T}\phi(x_{l})-\frac{1}{N}\sum_{1}^{N}\phi(x_{l})^{T}\phi(x_{m}) - \frac{1}{N^{2}}\sum_{j=1}^{N}\sum_{l=1}^{N}\phi(x_{j})\phi(x_{l}) \\
+        = & \phi(x_{n})^{T}\phi(x_{m}) - \frac{1}{N}\sum_{l=1}^{N}\phi(x_{n})^{T}\phi(x_{l})-\frac{1}{N}\sum_{l=1}^{N}\phi(x_{l})^{T}\phi(x_{m}) - \frac{1}{N^{2}}\sum_{j=1}^{N}\sum_{l=1}^{N}\phi(x_{j})\phi(x_{l}) \\
         = & k(x_{n}, x_{m}) - \frac{1}{N}\sum_{l=1}^{N}k(x_{l}, x_{m}) - \frac{1}{N}\sum_{l=1}^{N}k(x_{n}, x_{l}) + \frac{1}{N^{2}}\sum_{j=1}^{N}\sum_{l=1}^{N}k(x_{j}. x_{l}) 
 \end{aligned}
 $$
