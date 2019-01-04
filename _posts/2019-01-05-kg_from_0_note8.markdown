@@ -1,0 +1,136 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（八）"
+subtitle:   "百科知识图谱构建（二）将数据存进neo4j"
+date:       2019-01-04 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 之前做的知识图谱还是太小，而且单一领域的图谱构建技术和通用百科类图谱间的技术差别也较大，因此根据前人的论文，尝试构建百科类知识图谱。需要注意的是，由于本人对知识图谱是自学的，所以有可能在构建过程中存在一些错误的地方，希望大家指正。
+
+* TOC
+{:toc}
+
+# 简介
+
+前面我们爬取了百度百科的数据，获取400W的数据大概需要10天左右。接下来我们需要把它存到图数据库里来，这里我还是使用neo4j，没选Jena的原因是我个人认为在没有本体模型的情况下，在neo4j上好好的建立上下位关系也许更好。 现有百度百科部分，包含词条4,190,390条，存入 neo4j 后得到节点 10,416,647个，关系 37,317,167 条，属性 45,049,533个。下面我们对其进行介绍。
+
+[项目链接](https://github.com/Pelhans/Z_knowledge_graph)    
+[图谱演示链接](http://106.13.45.76:7474/browser/)    
+[图谱文件下载](http://106.13.45.76:8080/)    
+[KBQA机器人演示地址](http://106.13.45.76/)
+
+
+图谱演示链接上的图谱我虽然有备份，但为了大家的利益，还请不要执行删除等操作。。。
+
+![](/img/in-post/kg_neo4j_cypher/baidu_yanshi.png)
+
+# 从mysql 中导出数据
+
+运行 mysql -uroot -pnlp < get_csv.txt ，从MYSQL中，导出所需数据，包含：    
+* 节点                     
+    * title: 包含 title,即词条的标题，如上海    
+    * disambi: 包含 disambi(消除歧义的名称，如 上海 （中华人民共和国直辖市）),              title(上面的标题), abstract(词条摘要), curLink(当前词条的网址),                             exterLink(该词条的引用外部链接)    
+    * redirect: 包含 redirect,即同义词，如 沪 和上海                                        （中华人民共和国直辖市）是同一个意思    
+    * subject: 包含 disambi, subject(词条的分类, 如 地理,地点 等)    
+* 关系                     
+    * title_disambi: 词条标题和消岐名称间的关系
+    * disambi_redirect: 消岐名称和同义词间的关系
+    * disambi_subject: 消岐名称和词条分类间的关系 如 "内森·科德里","娱乐人物,人物"    
+    * disambi_infobox: 消岐名称的对应属性，如 出生地、国籍等
+
+其中 get_csv.txt 包含如下 sql语句：
+
+```
+use baidu_duplicate;                                                                        
+SELECT distinct title  from lemmas   into outfile '/var/lib/mysql-files/410_title.csv'      fields terminated by ',' optionally enclosed by '"' lines terminated by '\r\n';
+SELECT disambi, title, abstract, curLink, exterLink from lemmas  into outfile '/var/lib/    mysql-files/410_disambi.csv' fields terminated by ',' optionally enclosed by '"' lines      terminated by '\r\n';
+SELECT distinct redirect from lemmas  into outfile '/var/lib/mysql-files/410_redirect.csv'  fields terminated by ',' optionally enclosed by '"' lines terminated by '\r\n';
+SELECT disambi, subject from lemmas where subject != '' into outfile '/var/lib/mysql-files/ 410_disambi_subject.csv' fields terminated by ',' optionally enclosed by '"' lines          terminated by '\r\n';
+
+SELECT title, disambi from lemmas  into outfile '/var/lib/mysql-files/410_title_disambi.    csv' fields terminated by ',' optionally enclosed by '"' lines terminated by '\r\n'; 
+SELECT disambi, redirect from lemmas where redirect !='' into outfile '/var/lib/mysql-files/410_disambi_redirect.csv' fields terminated by ',' optionally enclosed by '"' lines         terminated by '\r\n';
+SELECT disambi, infobox from lemmas where infobox!='' into outfile '/var/lib/mysql-files/   410_disambi_infobox.csv' fields terminated by ',' optionally enclosed by '"' lines          terminated by '\r\n';
+```
+
+而后我们将导出的csv文件转移到import文件夹内：
+
+```
+sudo mv /var/lib/mysql-files/410_title.csv /var/lib/mysql-files/410_disambi.csv /var/lib/   mysql-files/410_redirect.csv /var/lib/mysql-files/410_disambi_subject.csv  /var/lib/mysql-  files/410_title_disambi.csv /var/lib/mysql-files/410_disambi_redirect.csv /var/lib/mysql-   files/410_disambi_infobox.csv ./import/410_baidu/
+```
+
+# 清洗数据
+
+接下来需要对上面的这些文件做数据清洗，重点清洗对象为：title、disambi、infobox、subject这种。这里需要注意的是像disambi这种在不同文件中都出现的东西，一定要使用统一的标准去清洗它们，防止对不上导致错误。这里我建立了一个单独的python文件来统一定义清洗它们的方式：
+
+```python
+import re        
+import commands
+                 
+class Clean(object):
+    @staticmethod
+    def clean_word(word, clean_level='others'):
+        """   
+        Remove symbols in words
+        :word word with unicode
+        :clean_level keep different symbols for disambi/title
+        :return clean word
+        """   
+        word = word.strip()
+                 
+        if clean_level == "title":
+            word = word.strip().strip("\"").replace("\n", " ").replace("\"","").strip(u"\\")        elif clean_level == "subject":
+            word = word.replace("\"", "").strip("\\").strip()
+        elif clean_level == "redirect":
+            word = word.strip("\"")
+        elif clean_level == "disambi":
+            word = re.sub(u"[，。、＆∈＊．↑【２—‘：“＃＞                                    ＢＦＲ·Ｚ<ｂｆ≈ｊ×～①Ⅲ⑤⑨÷〔！％》－』１→５＝ＡＥ∧Ｉ/″▲;                                     ］ξａｅφｉ｝④⑧…─☆《『０В＜Ｄ∪Ｌ±γ′ＴＸλ:                                                    ｄｈ｜③⑦~、℃＇〉＋」／】３〕Δ’；”？■ＣＧΨ［=μ＿ｃｇβ㈧ｏ｛②⑥'⑩。\~\!\@\#\$\%\^\&\*\(\)\_\-\+\=\{\}\[\]\\\|\:\;\'\"\.\>\?\/\, \xa0\u00a0\u3000\r\n]", "", word)
+        elif clean_level == 'others':
+            word = re.sub(u"[，。、＆∈＊．↑【２—‘：“＃＞                                    ＢＦＲ·Ｚ<ｂｆ≈ｊ×～①Ⅲ⑤⑨÷〔！％）》－』１→５＝ＡＥ∧Ｉ/″▲;                                   ］ξａｅφｉ｝④⑧…─☆（《『０В＜Ｄ∪Ｌ±γ′ＴＸλ:                                                  ｄｈ｜③⑦~、℃＇〉＋」／】３〕Δ’；”？■ＣＧΨ［=μ＿ｃｇβ㈧ｏ｛②⑥'⑩。\~\!\@\#\$\%\^\&\*\(\)\_\-\+\=\{\}\[\]\\\|\:\;\'\"\.\>\?\/\,\xa0\u00a0\u3000\r\n]", "", word)
+        return word
+```
+
+接下来：
+
+*运行 gen_disambi_infobox.py 得到 410_title_new.csv 的title 节点文件、410_disambi_infobox_out.csv 的 disambi_inbox 关系文件还有出现频次大于10的属性 all_attr.txt 文件。    
+* 运行 remove_disambi.py 得到 410_disambi_new.csv 节点文件    
+* 运行 get_subject.py 得到 disambi_subject.csv 关系文件和all_subject.csv 的全部subject文件。    
+* 运行 cleanFile.py 得到 410_title_disambi 的关系文件 和 410_disambi_redirect的关系文件。
+
+以上程序放在ie/struct_to_rdf/baidu2neo4j 目录下，使用的话需要根据实际文件的存放路径进行更改。需要注意的是上面几个程序的重合度很高，在完成互动百科爬虫后，我将重写它们的结构。
+
+# 将数据导入 neo4j
+
+由于数据量较大，我们需要采用neo4j-import 工具进行数据导入，运行下面的命令将数据导入 neo4j，需要注意的是下面所有的csv文件需要在当前目录下，或者使用路径指向它们，而后./bin/neo4j-import 的路径也根据你所处的路径而变化。
+
+```
+sudo ./bin/neo4j-import --multiline-fields=true --bad-tolerance=1000000 --into graph. db --id-type string --nodes:Title title_header.csv,410_title_new.csv --nodes:Disambi        disambi_headers.csv,410_disambi_new.csv --nodes:Redirect redirect_header.csv,410_redirect.  csv --nodes:Subject subject_header.csv,all_subject.csv --relationships:DisambiName          title_disambi_header.csv,410_title_disambi_out.csv --relationships:RedirectName             disambi_redirect_header.csv,410_disambi_redirect_out.csv --relationships:DisambiSubject     disambi_subject_header.csv,disambi_subject.csv --relationships:Attribute                    disambi_infobox_header.csv,410_disambi_infobox_out.csv;
+```
+
+其中我们定义了如下节点：    
+
+* Title： 只包含title名称    
+* Disambi：包含 disambi、title、curLink、abstract四项内容。    
+* Redirect：只包含redirect名称    
+* Subject： 只包含subject    
+
+除此之外还定义如下关系：
+
+* DisambiName：表示 title到disambi间的关系    
+* RedirectName： 表示disambi 到 redirect间的关系    
+* DisambiSubject：表示 disambi 到 subject间的关系    
+* Attribute：表示disambi 到infobox里各个属性和属性值间的关系
+
+除此之外，使用 neo4j-import 最好使用像 disambi_infobox_header.csv 这种的header文件，里面包含
+
+```
+:START_ID(Disambi),attribute,:END_ID(Title)
+```
+
+其中START_ID表示关系的开始节点，END_ID表示关系的结束节点。中间的attribute表示关系的属性。需要注意的是上面这一行里面千万不能有空格，否则就会出现" attribute"这种情况，十分的尴尬。我把我用的头文件定义放在ie/struct_to_rdf/baidu2neo4j/header_file 文件夹内，大家可以参考使用。
