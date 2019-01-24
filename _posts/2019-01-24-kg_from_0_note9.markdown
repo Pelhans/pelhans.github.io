@@ -1,0 +1,155 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（九）"
+subtitle:   "百科知识图谱构建（三）神经网络关系抽取的数据集构建与实践"
+date:       2019-01-04 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 在爬取互动百科的过程中，学习神经网络关系抽取。采用清华大学开源的OpenNRE框架，数据集是按照NYT论文中的描述生成的远程监督数据集。包含关系事实18226，无关系(NA)实体对336 693，总计实体对354 919，用到了462个关系(包含NA)。
+
+* TOC
+{:toc}
+
+# 简介
+
+在数据爬取过程中，想尝试复现一个经典的神经网络关系抽取模型。经过看论文筛选最终确定清华的[Neural Relation Extraction with Selective Attention over Instances](http://www.aclweb.org/anthology/P16-1200)。但在看了开源的代码后感觉自己现在造一遍轮子也不如人家的...因此就按照NYT的论文描述做了一个远程监督数据集，并在OpenNRE上跑了一遍。
+
+[项目链接](https://github.com/Pelhans/Z_knowledge_graph)    
+[数据集下载](106.13.45.76:8080/baidu_6w.tar.gz)    
+
+# 远程监督数据集的获取
+
+NYT 数据集依靠 Freebase知识库，采用非百科类文本 - New York Times Corpus 来生成远程监督数据集。包含53 个可能的关系(包含NA)，训练数据集包含句子 522 611， 实体对 281 270， 关系事实 18252，测试集包含句子 172 448， 实体对 96678， 关系事实1950. 原始论文链接为[Modeling Relations and Their Mentions without Labeled Text](https://www.jianguoyun.com/p/DUS7EyoQq_6CBxi_9ZoB).
+
+但我这由于是学习性质，就采用百科内的文本作为数据集，没有额外去爬取非百科类的数据来训练。
+
+下面我们介绍数据集的生成步骤。
+
+## 加载字典
+
+为了提高最终数据集的有效性，我们需要尽量保证实体对中的两个实体是实体。。。这是因为在产生NA关系的实体对时，若对两个实体的要求不严格，将会产生大量的 垃圾 关系对。因此我们采用 jieba 分词 和 stanfordCorenlp 的NER模块来保证实体的有效性。
+
+对于 jieba 分词，我们可以采用百度词条的全部 title 生成的外挂字典来提升最终分词结果的准确性(也可以使用其他通用领域的外挂字典，如腾讯那个)。不过我试验了一下，百度词条的外挂字典的提升效果有限，我才有可能是因为百度词条的标题有时候不能严格算一个单词的缘故，所以这个外挂字典不是很准确。而且还会拖慢生成速度。
+
+因为jieba 没有ner标记功能，因此采用 [stanfordCorenlp](https://stanfordnlp.github.io/CoreNLP/download.html)来做NER。它的使用也很简单，你只需要下载 CoreNLP并下载对应版本的语言模型即可，然后解压 CoreNLP，将中文模型文件放到解压后的目录下就行了。
+
+## 从数据库导出数据并清洗
+
+程序 gen_re_from_baidu.py 是生成语料的核心程序。它的输入包含：
+
+* 百度 410 万 词条的 标题 文件， 410_title.csv。它可以直接从数据库导出获得。    
+* 百度 410 万 词条的 消岐名称-标题 文件， 410_disambi_title.csv。从数据库直接导出获得。    
+* 百度 6 万 词条的 词条 标题 title, 消岐名称 disambi， 词条文本 all_text 文件。从数据库直接导出获得。
+* 百度 410 万词条的 消岐名称-属性-属性值文件，410_disambi_attr_title.csv。它是程序 [gen_disambi_infobox.py](https://github.com/Pelhans/Z_knowledge_graph/blob/master/ie/struct_to_rdf/baidu2neo4j/gen_disambi_infobox.py) 的输出(410_disambi_infobox_out.csv)。    
+
+以 6w_disambi_text.csv 文件为例，从数据库导出文件语句如下所示：
+
+```
+SELECT title, disambi, all_text from lemmas where title_id < 60000 into outfile '/var/lib/mysql-files/6w_disambi_text.csv' fields terminated by ',' optionally enclosed by '"' lines terminated by '\r\n';"'
+```
+
+在得到数据后，我们调用clean_sql_output() 函数对 6w_disambi_text.csv 进行初步的清洗，主要目的是去除文本中的特殊符号和换行符，代码如下：
+
+```
+def clean_sql_output(in_file, out_file):
+    with open(in_file) as inf, open(out_file, "w") as ouf:
+        total_lines = int(commands.getoutput("awk 'END{print NR}' %s"%(in_file)))
+        for line_num in tqdm(range(total_lines)):
+            line = inf.readline()
+            line = re.sub(u"[\.\!#&%@\^\*\(\)\+“”：』『《》$￥\<\>\\\:\{\}]", "", line)                 line = re.sub(u"\[.*?\]", "", line)
+            if not line.endswith("\r\n"): 
+                ouf.write(line.strip())
+            else:   
+                ouf.write(line.strip() + "\n")
+```
+
+## 生成数据
+
+清洗完数据后，就该用它来生成数据啦，这一部分工作由 build_entity_relation() 函数完成。这个函数首先生成三个字典和两个集合：
+
+* disambi_dict 包含每一个词条的消岐名称 和对应的属性-属性值。形式为"{"上海": "(所属地， 中国).."}"    
+* title_id 保存了所有的词条的标题作为key值，value 是按顺序得到的序号。    
+* disambi_id 包含所有 消岐名称作为 key 值，value 是按顺序得到的序号。    
+* tt_pair_set 保存了所有 标题-属性对，其中属性被约束为标题(即非标题的属性不被认为是实体，被丢弃)。    
+* all_title 包含所有标题的集合。
+
+而后函数分两部分得到关系事实和NA关系实体对。
+
+对于关系事实，我们对于对于每一个词条，读取disambi_dict 的属性和属性值，并组装出 title-attr_title 三元组，对于每个三元组，我们去每句话中进行查找。
+
+对于关系事实，其生成步骤如下所示：
+
+* 我们对于对于每一个词条，读取disambi_dict 的属性和属性值，并组装出 title-attr_title 三元组    
+* 调用 stanfordCorenlp 对三元组进行命名实体识别，排除非命名实体以及命名实体中的 'MONEY'、'PERCENT'、'DATE'、'NUMBER'、'ORDINAL'几类，这是因为它们包含的范围太广泛了，会对得到大量的数字，对数据集质量造成影响。    
+* 对于每个三元组，我们将在词条的每句话中进行寻找。
+* 为了保证准确性，在查找之前先调用 jieba对每句话进行分词    
+* 在分词结果中进行查找，若三元组中的两个实体同时出现在一句话中，且两个实体不相同，那么就认为这句话表达了该三元组的关系。
+
+重复上述过程就可以得到关系事实了。
+
+对于NA关系，为了保证数据集的质量，规定了如下要求：
+
+* 两个实体对必须不在现有知识库的关系中，这个没啥好说的。。。
+* 每个词条中获得的NA关系不得大于15，这个是观察NYT数据集的NA和关系事实的比例得到的，防止出现太多的NA。也可以使用max_NA_in_lemmas 进行更改。    
+* 每句话中最多被使用1次，防止一句话被多个NA关系利用。    
+* NA关系的实体必须通过 stanfordCorenlp 的NER 标记。    
+
+对于满足以上要求的实体对，我们就将其作为数据集的一部分了。生成数据集后，将前80%作为训练集，后20%作为测试集。
+
+## 数据集的格式
+
+为了使用OpenNRE，对于训练集和数据集的格式和 OpenNRE 的要求一致，格式为：
+
+```
+[
+    {
+        'sentence': 'Bill Gates is the founder of Microsoft .',
+        'head': {'word': 'Bill Gates', 'id': 'm.03_3d', 'type': 'None'},
+        'tail': {'word': 'Microsoft', 'id': 'm.07dfk', 'type': 'None'},
+        'relation': 'founder'
+    },
+    ...
+]
+```
+
+名称为train.json 和 test.json。对于 Relation-ID 的映射文件，里面保存着用到的关系，其中需要注意的是NA的 value必须为0。得到的文件名为rel2id.json，其格式为：
+
+```
+{
+    'NA': 0,
+    'relation_1': 1,
+    'relation_2': 2,
+    ...
+}
+```
+
+## 词向量的生成
+
+这里我用 word2vec来生成词向量，文本是用6w词条的，分词用jieba做。输出向量维度是50，包含1 552 081个词。为了在 OpenNRE 中使用，我们需要将其转化为如下格式：
+
+```
+[
+    {'word': 'the', 'vec': [0.418, 0.24968, ...]},
+    {'word': ',', 'vec': [0.013441, 0.23682, ...]},
+    ...
+]
+```
+
+关于词向量的生成由 word2vec.py 完成。这里需要注意的是，在生成词向量时，我将 Word2vec 包放到了 thirdpart文件夹下，并由下述命令完成：
+
+```
+os.system("./thirdpart/word2vec/word2vec  -train seg_6w_disambi_text.txt -output word_vec.txt -size 50 -window 5 -sample 1e-4 -negative 5 -hs 0 -binary 0 -cbow 0 -iter 3 -min-count 1 -hs 1")transfer_json("word_vec.txt", "word_vec.json")
+```
+
+# 运行 OpenNRE
+
+这部就比较简单了，前面我们已经得到运行该程序所需的文件，现在只需将上面得到的 train.json、test.json、rel2id.json、word2vec.json 四个文件打包放到data目录下，如baidu/。而后运行'python train_demo.py baidu cnn att' 即可训练数据。
+
+最终，当训练4个epoch时，在测试机上得到非NA的准确率 64.39%。其中非NA准确率 48.35%。
