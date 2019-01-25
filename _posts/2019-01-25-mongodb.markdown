@@ -1,0 +1,252 @@
+---
+layout:     post
+title:      "MongoDB 入门笔记"
+subtitle:   ""
+date:       2019-01-25 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - database
+---
+
+
+> 工作需要用到了 MongoDB，怕自己忘掉做一个速查笔记...内容总结子[菜鸟教程](http://www.runoob.com/mongodb/mongodb-intro.html)
+
+* TOC
+{:toc}
+
+# MongoDB 简介
+
+MongoDB 是由C++语言编写的，是一个基于分布式文件存储的开源数据库系统。在高负载的情况下，添加更多的节点，可以保证服务器性能。MongoDB 将数据存储为一个文档，数据结构由键值(key=>value)对组成。MongoDB 文档类似于 JSON 对象。字段值可以包含其他文档，数组及文档数组。
+
+#  MongoDB 的安装
+
+我用的是 linux，因此可以用以下命令进行安装：
+
+```
+curl -O https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.6.tgz
+tar -zxvf mongodb-linux-x86_64-3.0.6.tgz 
+mv  mongodb-linux-x86_64-3.0.6/ /usr/local/MongoDB #也可以不挪
+export PATH=/usr/local/MongoDB/bin:$PATH #不挪的话把 /usr/那个路径换到 MongoDB 的存储路径
+mkdir -p /data/db # 创建默认数据库文件夹
+```
+
+# MongoDB 的使用
+## 开启  MongoDB 服务
+
+```
+cd /usr/local/mongodb/bin
+./mongod #开启服务，可以通过 --dbpath 来修改数据库目录
+```
+
+## 进入 MongoDB Shell
+
+```
+./mongo
+```
+
+它是一个JavaScript shell。你可以在里面进行数据的增删改查。
+
+# MongoDB 基础概念
+
+在mongodb中基本的概念是文档、集合、数据库，下面我们挨个介绍。
+
+## 数据库
+
+一个mongodb中可以建立多个数据库。MongoDB的默认数据库为"db"，该数据库存储在data目录中。你可通过 `show dbs` 查看所有的数据库列表。
+
+## 文档
+
+文档是一组键值(key-value)对(即BSON)。BSON是一种类json的一种二进制形式的存储格式,简称Binary JSON。MongoDB 的文档不需要设置相同的字段，并且相同的字段不需要相同的数据类型，这与关系型数据库有很大的区别，也是 MongoDB 非常突出的特点。一个简单的文档，如：
+
+```
+{"site":"www.runoob.com", "name":"菜鸟教程"}
+```
+
+## 集合
+
+集合就是 MongoDB 文档组，类似于 RDBMS （关系数据库管理系统：Relational Database Management System)中的表格。集合存在于数据库中，集合没有固定的结构，这意味着你在对集合可以插入不同格式和类型的数据，但通常情况下我们插入集合的数据都会有一定的关联性。如:
+
+# MongoDB 的增删改查
+
+## 创建数据库
+
+通过 use 命令连接到指定数据库,如 `use runoob`。有意思的是如果数据库不存在，则创建数据库，否则切换到指定数据库。在 MongoDB 中，集合只有在内容插入后才会创建! 就是说，创建集合(数据表)后要再插入一个文档(记录)，集合才会真正创建。
+
+## 删除数据库
+
+运行 db.dropDatabase() 删除当前数据库
+
+##  MongoDB 创建集合
+
+MongoDB 中使用 createCollection() 方法来创建集合。语法格式为：
+
+```
+db.createCollection(name, options)
+```
+
+name 是要创建的集合名称， options 是可选项，包含
+
+* capped，布尔值，如果为 true，则创建固定集合。固定集合是指有着固定大小的集合，当达到最大值时，它会自动覆盖最早的文档。    
+* autoIndexId，布尔，如为 true，自动在 _id 字段创建索引。默认为 false。    
+* size，数值，为固定集合指定一个最大值（以字节计）。可以和 capped 搭配使用。    
+* max,数值，指定固定集合中包含文档的最大数量。
+
+在插入文档时，MongoDB 首先检查固定集合的 size 字段，然后检查 max 字段。如：
+
+```
+db.createCollection("mycol", { capped : true, autoIndexId : true, size : 
+                                  6142800, max : 10000 } )
+```
+
+## 删除集合 
+
+MongoDB 中使用 drop() 方法来删除集合。语法格式为：
+
+```
+db.collection.drop()
+```
+
+```
+use mydb
+db.createCollection("mycol")
+db.mycol.drop()
+```
+
+## 插入文档
+
+MongoDB 使用 insert() 或 save() 方法向集合中插入文档，语法如下：
+
+```
+db.COLLECTION_NAME.insert(document) # 老版用法
+db.collection.insertOne() # 向指定集合中插入一条文档数据
+db.collection.insertMany()# 向指定集合中插入多条文档数据
+```
+
+## 更新文档
+
+MongoDB 使用 update() 和 save() 方法来更新集合中的文档。 
+
+### update
+
+update() 方法用于更新已存在的文档。其中 upsert(果不存在update的记录，是否插入objNew)、multi(默认是false,只更新找到的第一条记录)、writeConcern(抛出异常的级别)是可选参数。
+
+```
+db.collection.update(
+   <query>,
+   <update>,
+   {
+     upsert: <boolean>,
+     multi: <boolean>,
+     writeConcern: <document>
+   }
+)
+```
+
+### save
+
+save() 方法通过传入的文档来替换已有文档。语法格式如下：
+
+```
+db.collection.save(
+   <document>,
+   {
+     writeConcern: <document>
+   }
+)
+```
+
+## 删除文档
+
+MongoDB deleteOne() 和 deleteMany() 函数是用来移除集合中的数据。语法格式为：
+
+```
+db.inventory.deleteOne({})
+```
+
+## 查询文档
+
+MongoDB 查询文档使用 find() 方法。find() 方法以非结构化的方式来显示所有文档。语法格式为：
+
+```
+db.collection.find(query, projection)
+```
+
+### 条件操作符
+
+查询嘛，一定会用到大于小于这种，在MongoDB中条件操作符有：
+
+```
+(>) 大于 - $gt
+(<) 小于 - $lt
+(>=) 大于等于 - $gte
+(<= ) 小于等于 - $lte
+检索匹配类型的数据 $type
+```
+
+比如你想查找 col 集合中 like 大于 100 的数据，那么你可以使用 
+
+```
+db.col.find({likes : {$gt : 100}})
+```
+
+完成查询。
+
+## limit、skip、sort、 方法
+
+这个和mysql 的功能很像。 
+
+* limit 就是控制从结果中读取的记录条数    
+* skip就是在结果中跳过多少个。    
+*  sort() 方法对数据进行排序，使用 1 和 -1 来指定排序的方式，其中 1 为升序排列，而 -1 是用于降序排列。    
+
+
+```
+db.COLLECTION_NAME.find().limit(NUMBER)
+db.COLLECTION_NAME.find().limit(NUMBER).skip(NUMBER)
+db.COLLECTION_NAME.find().sort({KEY:1})
+```
+
+## MongoDB 聚合
+
+MongoDB中聚合(aggregate)主要用于处理数据(诸如统计平均值,求和等)，并返回计算后的数据结果。MongoDB中聚合的方法使用aggregate()。语法格式为：
+
+```
+db.COLLECTION_NAME.aggregate(AGGREGATE_OPERATION)
+```
+
+其中这个 AGGREGATE_OPERATION 包含 $sum、$avg、$min、$max、$push、$addToSet、$first、$last等。
+
+### 管道的概念
+
+MongoDB的聚合管道将MongoDB文档在一个管道处理完毕后将结果传递给下一个管道处理。管道操作是可以重复的。在 MongoDB 中，常用的操作如下：
+
+*      $project：修改输入文档的结构。可以用来重命名、增加或删除域，也可以用于创建计算结果以及嵌套文档。    
+* $match：用于过滤数据，只输出符合条件的文档。$match使用MongoDB的标准查询操作。    
+* $limit：用来限制MongoDB聚合管道返回的文档数。    
+* $skip：在聚合管道中跳过指定数量的文档，并返回余下的文档。    
+* $unwind：将文档中的某一个数组类型字段拆分成多条，每条包含数组中的一个值。    
+* $group：将集合中的文档分组，可用于统计结果。    
+* $sort：将输入文档排序后输出。    
+* $geoNear：输出接近某一地理位置的有序文档。    
+
+举个例子：
+
+```
+db.articles.aggregate( [
+                        { $match : { score : { $gt : 70, $lte : 90 } } },
+                        { $group: { _id: null, count: { $sum: 1 } } }
+                       ] );
+```
+
+## 索引
+
+MongoDB使用 createIndex() 方法来创建索引。语法格式为：
+
+```
+db.collection.createIndex(keys, options)
+```
+
+删除索引用 db.col.dropIndexes()。
