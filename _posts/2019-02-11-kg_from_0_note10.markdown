@@ -1,0 +1,286 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（十）"
+subtitle:   "百科知识图谱构建（四）数据库到RDF"
+date:       2019-02-11 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 结构化数据到RDF由两种主要方式，一个是通过direct mapping，另一个通过R2RML语言这种，基于R2RML语言的方式更为灵活，定制性强。对于R2RML有一些好用的工具，此处我们使用d2rq工具，它基于R2RML-KIT。这里和前面电影的有些重复，但侧重点不同。
+
+* TOC
+{:toc}
+
+# 简介
+
+Direct mapping 本质上是通过编写启发式规则将数据库中的表转换为RDF三元组, 但该方式灵活性不强。这里我们用 D2RQ 工具，它的主要功能是提供以虚拟的、只读的RDF图形式进入到关系型数据库中。也就是说比如你通过SPARQL端口查询，输入是SPARQL查询语言，D2RQ通过mapping文件将其转换为SQL语句在关系数据库上查询，因此实际上访问的是关系型数据库。
+
+D2RQ 由自己的mapping语言，R2RML-kit。它和W3C推荐的R2RML类似。你可以通过D2RQ提供的工具来根据数据库自动生成mapping文件。你可以根据自己的需求去修改定制自己的mapping文件。
+
+# D2RQ 的使用
+## 生成 mapping 文件
+
+使用 D2RQ 自带的 generate-mapping 工具， 根据数据库自动生成mapping文件。
+
+```
+./generate-mapping -u root -p nlp -o kg_demo_mapping_baidu_baike.ttl jdbc:mysql:///hudong_fenlei
+```
+
+其中 -u root 是数据库的用户名，-p nlp 是数据库的密码。 -o 指定生成 mapping 文件的名字。jdbc:mysql: /// 后面跟着的数据库的名字。
+
+通过上述命令，我们将得到如下的 mapping 文件：
+
+```
+@prefix map: <#> .
+@prefix db: <> .
+@prefix vocab: <vocab/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix d2rq: <http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#> .
+@prefix jdbc: <http://d2rq.org/terms/jdbc/> .
+
+map:database a d2rq:Database;
+	d2rq:jdbcDriver "com.mysql.jdbc.Driver";
+	d2rq:jdbcDSN "jdbc:mysql:///hudong_fenlei";
+	d2rq:username "root";
+	d2rq:password "nlp";
+	jdbc:autoReconnect "true";
+	jdbc:zeroDateTimeBehavior "convertToNull";
+	.
+
+# Table lemmas
+map:lemmas a d2rq:ClassMap;
+	d2rq:dataStorage map:database;
+	d2rq:uriPattern "lemmas/@@lemmas.title_id@@";
+	d2rq:class vocab:lemmas;
+	d2rq:classDefinitionLabel "lemmas";
+	.
+map:lemmas__label a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property rdfs:label;
+	d2rq:pattern "lemmas #@@lemmas.title_id@@";
+	.
+map:lemmas_title a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_title;
+	d2rq:propertyDefinitionLabel "lemmas title";
+	d2rq:column "lemmas.title";
+	.
+map:lemmas_title_id a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_title_id;
+	d2rq:propertyDefinitionLabel "lemmas title_id";
+	d2rq:column "lemmas.title_id";
+	d2rq:datatype xsd:integer;
+	.
+map:lemmas_abstract a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_abstract;
+	d2rq:propertyDefinitionLabel "lemmas abstract";
+	d2rq:column "lemmas.abstract";
+	.
+map:lemmas_infobox a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_infobox;
+	d2rq:propertyDefinitionLabel "lemmas infobox";
+	d2rq:column "lemmas.infobox";
+	.
+map:lemmas_subject a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_subject;
+	d2rq:propertyDefinitionLabel "lemmas subject";
+	d2rq:column "lemmas.subject";
+	.
+map:lemmas_disambi a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_disambi;
+	d2rq:propertyDefinitionLabel "lemmas disambi";
+	d2rq:column "lemmas.disambi";
+	.
+map:lemmas_redirect a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_redirect;
+	d2rq:propertyDefinitionLabel "lemmas redirect";
+	d2rq:column "lemmas.redirect";
+	.
+map:lemmas_curLink a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_curLink;
+	d2rq:propertyDefinitionLabel "lemmas curLink";
+	d2rq:column "lemmas.curLink";
+	.
+map:lemmas_interPic a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_interPic;
+	d2rq:propertyDefinitionLabel "lemmas interPic";
+	d2rq:column "lemmas.interPic";
+	.
+map:lemmas_interLink a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_interLink;
+	d2rq:propertyDefinitionLabel "lemmas interLink";
+	d2rq:column "lemmas.interLink";
+	.
+map:lemmas_exterLink a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_exterLink;
+	d2rq:propertyDefinitionLabel "lemmas exterLink";
+	d2rq:column "lemmas.exterLink";
+	.
+map:lemmas_relateLemma a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_relateLemma;
+	d2rq:propertyDefinitionLabel "lemmas relateLemma";
+	d2rq:column "lemmas.relateLemma";
+	.
+map:lemmas_all_text a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property vocab:lemmas_all_text;
+	d2rq:propertyDefinitionLabel "lemmas all_text";
+	d2rq:column "lemmas.all_text";
+	.
+
+```
+
+但是这个 mapping 文件我们还不能使用，需要做一些修改：
+
+* vocab 这个我们不用，因此删除开头和正文中带有 vocab 的部分    
+    * sed -i '/\@prefix vocab.* \./d' kg_demo_mapping_hudong_fenlei.ttl    
+    * sed -i 's/vocab/ /g' kg_demo_mapping_hudong_fenlei.ttl    
+* 因为我们有互动和百度两个图谱，因此需要指定不同的前缀，对于互动百科    
+    * sed -i '8a \@prefix : <http://www.kghudong.com#> .' kg_demo_mapping_hudong_fenlei.ttl    
+* 因为是中文图谱，因此要指定文字编码：    
+    * sed -i 's/d2rq\:jdbcDSN "jdbc\:mysql.*;/d2rq\:jdbcDSN "jdbc\:mysql\:\/\/\/hudong_fenlei\?useUnicode=true\&characterEncoding=utf8";/g' kg_demo_mapping_hudong_fenlei.ttl    
+
+修改后，得到如下 mapping 文件：
+
+
+```
+@prefix map: <#> .
+@prefix db: <> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix d2rq: <http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#> .
+@prefix jdbc: <http://d2rq.org/terms/jdbc/> .
+@prefix : <http://www.kghudong.com#> .
+
+map:database a d2rq:Database;
+	d2rq:jdbcDriver "com.mysql.jdbc.Driver";
+	d2rq:jdbcDSN "jdbc:mysql:///hudong_fenlei?useUnicode=true&characterEncoding=utf8";
+	d2rq:username "root";
+	d2rq:password "nlp";
+	jdbc:autoReconnect "true";
+	jdbc:zeroDateTimeBehavior "convertToNull";
+	.
+
+# Table lemmas
+map:lemmas a d2rq:ClassMap;
+	d2rq:dataStorage map:database;
+	d2rq:uriPattern "lemmas/@@lemmas.title_id@@";
+	d2rq:class  :lemmas;
+	d2rq:classDefinitionLabel "lemmas";
+	.
+map:lemmas__label a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property rdfs:label;
+	d2rq:pattern "lemmas #@@lemmas.title_id@@";
+	.
+map:lemmas_title a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_title;
+	d2rq:propertyDefinitionLabel "lemmas title";
+	d2rq:column "lemmas.title";
+	.
+map:lemmas_title_id a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_title_id;
+	d2rq:propertyDefinitionLabel "lemmas title_id";
+	d2rq:column "lemmas.title_id";
+	d2rq:datatype xsd:integer;
+	.
+map:lemmas_abstract a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_abstract;
+	d2rq:propertyDefinitionLabel "lemmas abstract";
+	d2rq:column "lemmas.abstract";
+	.
+map:lemmas_infobox a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_infobox;
+	d2rq:propertyDefinitionLabel "lemmas infobox";
+	d2rq:column "lemmas.infobox";
+	.
+map:lemmas_subject a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_subject;
+	d2rq:propertyDefinitionLabel "lemmas subject";
+	d2rq:column "lemmas.subject";
+	.
+map:lemmas_disambi a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_disambi;
+	d2rq:propertyDefinitionLabel "lemmas disambi";
+	d2rq:column "lemmas.disambi";
+	.
+map:lemmas_redirect a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_redirect;
+	d2rq:propertyDefinitionLabel "lemmas redirect";
+	d2rq:column "lemmas.redirect";
+	.
+map:lemmas_curLink a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_curLink;
+	d2rq:propertyDefinitionLabel "lemmas curLink";
+	d2rq:column "lemmas.curLink";
+	.
+map:lemmas_interPic a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_interPic;
+	d2rq:propertyDefinitionLabel "lemmas interPic";
+	d2rq:column "lemmas.interPic";
+	.
+map:lemmas_interLink a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_interLink;
+	d2rq:propertyDefinitionLabel "lemmas interLink";
+	d2rq:column "lemmas.interLink";
+	.
+map:lemmas_exterLink a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_exterLink;
+	d2rq:propertyDefinitionLabel "lemmas exterLink";
+	d2rq:column "lemmas.exterLink";
+	.
+map:lemmas_relateLemma a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_relateLemma;
+	d2rq:propertyDefinitionLabel "lemmas relateLemma";
+	d2rq:column "lemmas.relateLemma";
+	.
+map:lemmas_all_text a d2rq:PropertyBridge;
+	d2rq:belongsToClassMap map:lemmas;
+	d2rq:property  :lemmas_all_text;
+	d2rq:propertyDefinitionLabel "lemmas all_text";
+	d2rq:column "lemmas.all_text";
+	.
+
+```
+
+## 三元组的生成
+
+在生成 mapping 文件后，通过 
+
+```
+./dump-rdf -o hudong_baike.nt kg_demo_mapping_hudong_fenlei.ttl
+```
+
+命令将数据转换为Ntriples。这一步比较慢，生成的文件也比较大，像互动百科有 430W 词条，得到的nt文件大概59个G，因此要做好预留空间。
