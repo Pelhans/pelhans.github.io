@@ -19,11 +19,33 @@ tags:
 
 # 简介
 
-Direct mapping 本质上是通过编写启发式规则将数据库中的表转换为RDF三元组, 但该方式灵活性不强。这里我们用 D2RQ 工具，它的主要功能是提供以虚拟的、只读的RDF图形式进入到关系型数据库中。也就是说比如你通过SPARQL端口查询，输入是SPARQL查询语言，D2RQ通过mapping文件将其转换为SQL语句在关系数据库上查询，因此实际上访问的是关系型数据库。
+Direct mapping 本质上是通过编写启发式规则将数据库中的表转换为RDF三元组, 但该方式灵活性不强。这里我们用 D2RQ 工具，它的主要功能是提供以虚拟的、只读的RDF图形式进入到关系型数据库中。也就是说比如你通过SPARQL端口查询，输入是SPARQL查询语言，D2RQ通过mapping文件将其转换为SQL语句在关系数据库上查询，因此实际上访问的是关系型数据库。同时你也可以使用它从数据库创建 RDF 格式的文件。
 
 D2RQ 由自己的mapping语言，R2RML-kit。它和W3C推荐的R2RML类似。你可以通过D2RQ提供的工具来根据数据库自动生成mapping文件。你可以根据自己的需求去修改定制自己的mapping文件。
 
+D2RQ 的框架如下图所示：
+
+![](/img/in-post/kg_from_0/d2rq_architecture.png)
+
+# D2RQ 的安装
+
+依赖：
+
+* java1.5及以上的JDK    
+* 可用的数据库，Oracle, SQL Server, PostgreSQL, MySQL or HSQLDB，都可以。我们这里用 MYSQL.    
+* 可选）J2EE servlet容器，D2R即可以作为一个独立的Web服务器运行，也可以在其他现有的servlet容器内运行。
+
+之后就是安装 D2RQ，首先下载D2RQ 安装包，放到合适的位置：
+
+```
+wget https://github.com/downloads/d2rq/d2rq/d2rq-0.8.1.tar.gz;
+tar -xvzf d2rq-0.8.1.tar.gz;
+```
+
+接下来根据所使用的数据库安装相应的 JDBC 驱动。把JAR文件放在D2R Server的/lib目录下。Sun公司提供了一系列JDBC的下载，注意驱动的名字（e.g. org.postgresql.Driver for PostgreSQL or oracle.jdbc.driver.OracleDriver for Oracle），以及JDBC的URL(e.g. jdbc:mysql://servername/database for MySQL)，这些在驱动的文件中可以找到。D2R Server中已经包括了MySQL和PostgreSQL。
+
 # D2RQ 的使用
+
 ## 生成 mapping 文件
 
 使用 D2RQ 自带的 generate-mapping 工具， 根据数据库自动生成mapping文件。
@@ -274,6 +296,24 @@ map:lemmas_all_text a d2rq:PropertyBridge;
 	.
 
 ```
+
+## 网页端访问
+前面我们说 D2RQ提供虚拟的RDF访问么，现在我们来使用它。
+
+首先进入到 d2rq文件夹内，运行 
+
+```
+./d2r-server kg_demo_mapping_hudong_fenlei.ttl
+```
+
+命令开启服务器，然后通过网页端进行访问 http://localhost:2020/，顺利的话，你应该看到如下界面
+
+
+![](/img/in-post/kg_from_0/d2rq_web_view.png)
+
+点进 lemmas，随意打开一个，就可以看到该词条的信息：
+
+![](/img/in-post/kg_from_0/d2rq_web_view_lemmas.png)
 
 ## 三元组的生成
 
