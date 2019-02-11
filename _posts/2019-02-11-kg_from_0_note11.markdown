@@ -1,0 +1,130 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（十一）"
+subtitle:   "百科知识图谱构建（五）Jena的使用及简单SPARQL查询"
+date:       2019-02-11 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> Apache Jena 是一个免费开源的支持构建语义网络和数据链接应用的Java 框架，由惠普实验室开发，支持内存和永久存储。
+
+* TOC
+{:toc}
+
+# 简介
+
+Apache Jena是专门用于语义网本体操作的开源Java框架，其提供RDF和SPARQL API，来查询、修改本体和进行本体推理，并且提供了TDB和Fuseki来存储和管理三元组。
+
+![](/img/in-post/kg_from_0/jena_view.png)
+
+Fuseki是Jena提供的SPARQL服务器，也就是SPARQL endpoint。其提供了四种运行模式：单机运行、作为系统的一个服务运行、作为web应用运行或者作为一个嵌入式服务器运行。
+
+# Jena 及 Fuseki 的安装
+
+Jena 3.0.0后的版本需要 Java8，之后下载Jena 包和 Fuseki包：
+
+```
+wget http://mirrors.hust.edu.cn/apache/jena/binaries/apache-jena-3.10.0.tar.gz && tar -xvzf apache-jena-3.10.0.tar.gz;
+wget http://mirrors.hust.edu.cn/apache/jena/binaries/apache-jena-fuseki-3.10.0.tar.gz && tar -xvzf apache-jena-fuseki-3.10.0.tar.gz;
+```
+
+即可完成安装。
+
+# Jena 及 Fuseki 的使用
+
+## NTriples to TDB
+
+TDB 是Jena用于存储RDF的组件，是属于存储层面的技术。在单机情况下，它能够提供非常高的RDF存储性能。在下载完apache-jena后，进入 Jena 文件夹的 bin/，运行：
+
+```
+./tdbloader --loc="../tdb/" "path/to/NTriples"
+```
+
+将 NTriples 加载到TDB中。其中 --loc 指定 tdb的存储位置。第二个参数是我们通过d2rq等工具生成的nt文件。
+
+## Fuseki 服务的开启
+
+进入 Fuseki 的文件夹，运行 fuseki-server 程序，会得到 run 文件夹。在 run 文件夹下的 configuration 内创建 名为 fuseki_conf.ttl 的文本文件，写入如下内容：
+
+```
+@prefix :      <http://base/#> .
+@prefix tdb:   <http://jena.hpl.hp.com/2008/tdb#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix ja:    <http://jena.hpl.hp.com/2005/11/Assembler#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix fuseki: <http://jena.apache.org/fuseki#> .
+
+
+:service1        a                fuseki:Service ;
+fuseki:dataset                    <#dataset> ;
+fuseki:name                       "kg_demo_hudong" ;
+fuseki:serviceQuery               "query" , "sparql" ;
+fuseki:serviceReadGraphStore      "get" ;
+fuseki:serviceReadWriteGraphStore "data" ;
+fuseki:serviceUpdate              "update" ;
+fuseki:serviceUpload              "upload" .
+
+
+<#dataset> rdf:type ja:RDFDataset ;
+    ja:defaultGraph <#model_inf> ;
+    .
+
+<#model_inf> a ja:InfModel ;
+    ja:baseModel <#tdbGraph> ;
+    .
+#
+#    #本体文件的路径
+#    #ja:content [ja:externalContent </home/nlp/project/thirdpart/apache-jena-fuseki-3.7.0/run/databases/kg_movie_tultle.ttl> ] ;
+#    
+#    #启用OWL推理机
+#    #ja:reasoner [ja:reasonerURL <http://jena.hpl.hp.com/2003/OWLFBRuleReasoner>]
+#    .
+
+<#tdbGraph> rdf:type tdb:GraphTDB ;
+    tdb:dataset <#tdbDataset> ;
+    .
+# 指定 TDB 文件的位置
+<#tdbDataset> rdf:type tdb:DatasetTDB ;
+    tdb:location "../apache-jena-3.7.0/tdb" ;
+    .
+```
+
+这里我们没有开启推理机，如想开启的话，需要提供本体文件。
+
+再次运行 fuseki-server 开启服务。出现如下界面则表示开启成功：
+
+![](/img/in-post/kg_from_0/jena_fuseki_start.png)
+
+可以看到默认端口为 3030，因此在浏览器打开 http://localhost:3030 即可看到如下界面：
+
+![](/img/in-post/kg_from_0/jena_fuseki_webview.png)
+
+# 简单 SPARQL 查询
+
+进入页面后，点击query 按钮，进入查询页面。在下面样式的框中输入查询语句。
+
+![](/img/in-post/kg_from_0/jena_fuseki_sparql_box.png)
+
+与Turtle类似，前面的三个 PREFIX 关键词指明各种URL的缩写，如 rdfs 表示 <http://www.w3.org/2000/01/rdf-schema#>， 什么都不加表示 <http://www.kghudong.com#>。其中 <http://www.kghudong.com#> 是要和你生成 nt文件时的那个 ttl 文件中的定义要对上，否则可能查询不到东西。
+
+下面就是查询语句了，SELECT 关键词表明了哪些变量是感兴趣的。需要被匹配的图模式出现在WHERE关键词之后的括号中。返回的查询结果是一组被称作绑定(binding)的映射，表示了哪些元素对应到一个给定的变量，返回结果表格的每一行是一个结果或一个绑定。
+
+在查询语句中，那些以 ? 开头的被称作变量。在上面的查询语句中，我们引入了三个变量 ?subject、?predicate、?object。将这三个变量携程三元组的形式就得到了一个图模式(Graph Pattern)：
+
+```
+?subject ?predicate ?object
+```
+
+三元组存储库(这里就是Fuseki) 接收这个图模式，并尝试去找到能够匹配这个模式的那些三元组的集合。
+
+点击查询框右上方的三角形即可运行这个查询语句，这里我们得到如下的查询结果：
+
+![](/img/in-post/kg_from_0/jena_fuseki_sparql_result.png)
+
+SPARQL的全部寄出就是这个简单的概念：尝试去找到能够匹配一个给定的图模式的那些三元组的集合。SPARQL提供了更多的功能，用来指定更加复杂的模式并以不同的方式提供结果。但无论模式多么复杂，运用的过程都是一样的。
