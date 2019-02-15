@@ -1,0 +1,65 @@
+---
+layout:     post
+title:      "从零开始构建知识图谱（十三）"
+subtitle:   "百科知识图谱构建（七）基于 Silk 的批量知识融合"
+date:       2019-02-15 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - knowledge graph
+---
+
+
+> 目前为止我们已经从百度百科获取了三元组 62,857,364个，互动百科 65,738,654个。使用 Silk 工具将他们在实体层次进行融合并给出 <owl:sameAs> 关系时发现，在使用全部数据进行融合时，会导致内存爆掉。因此这里介绍通过使用命令行进行批量融合。
+
+[项目链接](https://github.com/Pelhans/Z_knowledge_graph/tree/master/knowledge_fusion/silk)
+
+* TOC
+{:toc}
+
+# 简介
+
+前面使用 Silk 工具进行知识融合。但实际操作中发现，当数据量较大时，会出现内存爆掉的情况。同时由于 Silk 的 SPARQL 查询语句比较复杂，当数据量大时，获取同样的数据要慢上很多倍。因此我这里将数据分成一个一个的小数据，而后对这些小数据进行分别链接。这样虽然整体耗时变长了，但具有了可操作性。不过光百度百科就有六千多万数据，可以分成13份。互动也是同样规模的数据。这一组合就是169个任务。所以必须采用自动化的方法构建任务并执行，这里介绍一下我的方法和代码。
+
+# 准备工作
+
+* 安装好 Jena 和 Fuseki，并在参数里改变对应的安装路径    
+* 安装好 Silk，并启动服务    
+* 如远程操作，需修改IP 到服务器的地址    
+* 准备好要融合的 N-triples 文件，并修改对应存储路径
+
+# 加载数据到 tdb
+
+这一步的流程为：
+
+* 分割出要加载的数据，并存储成单独的 nt 文件，由 seg_nt()函数完成。该函数采用 sed 命令快速获取指定行数间的数据。        
+* 删除 Fuseki 中已经存在的同名数据库，防止被已存在数据的污染。由 delete_tdb() 函数完成。    
+* 在 Fuseki 中创建数据库，来存储 tdb 文件信息。由 add_tdb() 函数完成。    
+* 将 N-triples 文件加载到 Fuseki 中，存储到对应 tdb 数据库中。由 load_nt()函数完成。    
+* 将 刚刚得到的 tdb 文件转移到 Fuseki 对应的文件夹内。    
+* 重启 Fuseki 服务器，加载刚刚得到的数据库。
+
+经过上面的步骤，我们就将 N-triples 文件加载到 Fuseki 服务器中了。下面将对其进行调用来链接数据。
+
+![](/img/in-post/kg_from_0/batch_silk_jena0.png)
+
+![](/img/in-post/kg_from_0/batch_silk_jena1.png)
+
+# 知识融合
+
+这一步的流程为：
+
+* 创建项目，由 control_project() 函数完成，该函数向 Silk 发送 POST请求进行项目创建。也可以发送 DELETE 请求来删除任务。    
+* 添加 PREFIXEX,由 add_prefix() 函数完成，该函数向 Silk 发送 PUT 请求添加 PREFIXES。    
+* 创建 endpoint 数据，由 build_endPoint() 完成，该函数发送 PUT 请求，在Datasets中创建SPARQL endpoint 数据。    
+* 创建输出文件，由 build_output() 函数 和 build_rdf() 完成。其中build_output() 函数在将在Resource 中创建 .nt 文件。build_rdf() 函数利用该文件在 Datasets 中创建 数据。     
+* 创建任务，由 build_task() 函数完成。该函数通过 POST 请求，利用上面得到的源文件、目标文件、输出文件来创建融合任务。    
+* 为任务添加规则，由 add_rule() 函数完成，该函数 通过PUT请求将我们定义好的 规则添加到任务中去。      
+* 执行链接任务， 由control_linking() 函数完成，当action等于 start 时，执行链接任务，当 action 为 cancel 时，取消链接任务。
+
+通过以上步骤的循环，就可以实现自动批量处理融合任务了。
+
+![](/img/in-post/kg_from_0/batch_silk_0.png)
+
