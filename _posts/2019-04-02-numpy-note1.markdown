@@ -78,10 +78,109 @@ numpy 中比较重要的 ndarray 对象属性有：
 
 常用创建数组的方式：
 
+* 从已有数组创建： numpy.asarray(a, dtype = None, order = None)    
 * 未初始化数组：numpy.empty(shape, dtype = float, order = 'C')    
 * 全0数组：numpy.zeros(shape, dtype = float, order = 'C')    
 * 全1数组：numpy.ones(shape, dtype = None, order = 'C')    
-* numpy.arange(start, stop, step, dtype)    
-* np.linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None)    
-* np.logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None)    
-* numpy.eye(N, M=None, k=0, dtype=<class 'float'>, order='C')
+* 数值范围数组：numpy.arange(start, stop, step, dtype)    
+* 等差序列数组：np.linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None)    
+* 等比序列数组:np.logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None)    
+* 对角数组：numpy.eye(N, M=None, k=0, dtype=<class 'float'>, order='C')
+
+其中：    
+* shape: 数组形状    
+* dtype: 数据类型    
+* order: 有"C"和"F"两个选项,分别代表，行优先和列优先，在计算机内存中的存储元素的顺序。    
+* start: 起始值，默认为0    
+* stop: 终止值（不包含）    
+* step: 步长，默认为1    
+* dtype: 返回ndarray的数据类型，如果没有提供，则会使用输入数据的类型。    
+* num: 要生成的等步长的样本数量，默认为50
+
+## 实例
+### numpy.asarray
+
+```
+# 后面默认引入 numpy
+import numpy as np
+
+x = [1, 2, 3]
+a = np.asarray(x)
+print a
+
+x =  [(1,2,3),(4,5)] 
+a = np.asarray(x, dtype =  float)  
+print a
+```
+
+### numpy.empty
+numpy.empty(shape, dtype = float, order = 'C')
+
+```
+# empty 创建的数组未初始化，里面的值是随机的
+np.empty([3,2], dtype = int) 
+
+array([[              0,        42832192],
+       [140268302237152,         9392928],
+       [140268278696400, 140268278694992]])
+```
+
+### numpy.zeros
+numpy.zeros(shape, dtype = float, order = 'C') 
+
+```
+# 这里比较好玩的是 shape 的 (5), (5,), [5] 得到的是一样的
+x = np.zeros((5,2), dtype = np.int) 
+print(x)
+```
+
+### numpy.ones
+
+```
+x = np.ones([2,2], dtype = int)
+print(x)
+```
+
+### numpy.arange
+
+```
+x = np.arange(5, dtype =  float)
+print x
+```
+
+### np.linspace
+
+```
+a = np.linspace(10, 20,  5, endpoint =  False)
+```
+
+### np.logspace
+
+```
+a = np.logspace(1.0,  2.0, num = 10)
+```
+
+### numpy.eye
+
+numpy.eye(N, M=None, k=0, dtype=<class 'float'>, order='C')
+
+```
+# 正常的方阵对角矩阵
+x = np.eye(2, dtype=int)
+
+array([[1, 0],
+      [0, 1]])
+
+# 生成非方阵
+x = np.eye(2, 3, dtype=int)
+
+array([[1, 0, 0],
+       [0, 1, 0]])
+
+# 非主对角线的对角矩阵，通过 k 值进行调整，默认为0
+np.eye(3, dtype=int, k=1)
+
+array([[0, 1, 0],
+       [0, 0, 1],
+       [0, 0, 0]])
+```
