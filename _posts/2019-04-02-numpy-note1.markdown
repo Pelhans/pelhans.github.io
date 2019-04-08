@@ -11,7 +11,7 @@ tags:
     - Python
 ---
 
-> 面试过程中发现把知识整理到自己的体系中很重要，本笔记整理 Numpy 部分。
+> 本笔记来自于[菜鸟教程](http://www.runoob.com/numpy/numpy-tutorial.html)，整理自己用到的部分，并更新一些例子。
 
 * TOC
 {:toc}
@@ -183,4 +183,554 @@ np.eye(3, dtype=int, k=1)
 array([[0, 1, 0],
        [0, 0, 1],
        [0, 0, 0]])
+```
+
+# Numpy 索引
+## 基本的切片与索引
+
+ndarray对象的内容可以通过索引或切片来访问和修改，与 Python 中 list 的切片操作一样。ndarray 数组可以基于 0 - n 的下标进行索引，切片对象可以通过内置的 slice 函数，并设置 start, stop 及 step 参数进行，从原数组中切割出一个新数组。
+
+```
+import numpy as np
+
+# 切片
+a = np.arange(10)
+s = slice(2, 7, 2)
+print a[s]
+print a[2:7:2]
+
+# 索引
+print a[5]
+```
+
+## 高级索引
+
+NumPy 比一般的 Python 序列提供更多的索引方式。除了之前看到的用整数和切片的索引外，数组可以由整数数组索引、布尔索引及花式索引。
+
+### 整数数组索引
+
+```
+import numpy as np 
+
+x = np.array([[1,  2],  [3,  4],  [5,  6]])
+# 取出索引(0,0), (1,1), (2,0) 三个位置的元素
+y = x[[0,1,2],  [0,1,0]]  
+print y
+out: array([1, 4, 5])
+
+# 升级版。。。
+x = np.array([[  0,  1,  2 ],[  3,  4,  5 ],[  6,  7,  8 ],[  9,  10,  11 ]])  
+rows = np.array([[0,0],[3,3]]) 
+cols = np.array([[0,2],[0,2]]) 
+print x[rows, cols]
+out: [[ 0  2 ]
+      [ 9 11 ]]
+```
+
+### 布尔索引
+
+我们可以通过一个布尔数组来索引目标数组。而布尔数组可以通过布尔运算来获取符合指定条件的元素的数组。
+
+```
+
+import numpy as np 
+ 
+x = np.array([[  0,  1,  2 ],[  3,  4,  5 ],[  6,  7,  8 ],[  9,  10,  11 ]])  
+# 获取值大于5的元素
+print (x[x >  5])
+out: [ 6  7  8  9 10 11 ]
+
+```
+
+### 花式索引
+**花式索引指的是利用整数数组进行索引**。花式索引根据索引数组的值作为目标数组的某个轴的下标来取值。对于使用一维整型数组作为索引，如果目标是一维数组，那么索引的结果就是对应位置的元素；如果目标是二维数组，那么就是对应下标的行。**花式索引跟切片不一样，它总是将数据复制到新数组中。**
+
+```
+import numpy as np 
+
+x=np.arange(32).reshape((8,4))
+
+# 顺序数组
+print (x[[4,2,1,7]])
+
+# 倒序索引
+print (x[[-4,-2,-1,-7]])
+
+# 多个索引数组
+print (x[np.ix_([1,5,7,2],[0,3,1,2])])
+```
+
+# 数组操作
+## 常规操作
+Numpy 中包含了一些函数用于处理数组，大概可分为以下几类：
+
+* 修改数组形状    
+    * reshape  numpy.reshape(arr, newshape, order='C')     
+    * flat    
+    * flatten    
+    * ravel    
+* 翻转数组    
+    * transpose    
+    * ndarray.T    
+    * rollaxis    
+    * swapaxes    
+* 修改数组维度    
+    * broadcast    
+    * broadcast_to    
+    * expand_dims    
+    * squeeze    
+* 连接数组    
+    * concatenate    
+    * stack    
+    * hstack    
+    * vstack    
+* 分割数组    
+    * split    
+    * hsplit    
+    * vsplit    
+* 数组元素的添加与删除
+    * resize    
+    * append    
+    * insert    
+    * delete    
+    * unique
+
+## 修改数组形状
+
+### reshape
+numpy.reshape 函数可以在不改变数据的条件下修改形状, numpy.reshape(arr, newshape, order='C')
+
+```
+import numpy as np
+
+x = np.arange(8)
+print x.shape, x
+y = x.reshape(2,4)
+print y.shape, y
+```
+
+### numpy.ndarray.flat
+
+numpy.ndarray.flat 是一个数组元素迭代器，**将数组转换为1-D的迭代器**. 实例如下：
+
+```
+import numpy as np
+
+a = np.arange(9).reshape(3,3)
+for row in a:
+    print row
+
+out: [0 1 2]
+     [3 4 5]
+     [6 7 8]
+
+# 如果用 flat
+for ele in a.flat:
+    print ele
+
+out :
+    0
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    8
+```
+
+### numpy.ndarray.flatten
+
+numpy.ndarray.flatten 将数组的副本转换为一维，并返回.返回一份数组拷贝，对拷贝所做的修改不会影响原始数组，格式如下：
+
+ndarray.flatten(order='C') 
+
+其中 order：'C' -- 按行，'F' -- 按列，'A' -- 原顺序，'K' -- 元素在内存中的出现顺序。这个也适用于上面的其他 order选项。
+
+```
+import numpy as np
+
+a = np.arange(8).reshape(2,4)
+print a.flatten()
+# 可以看出，flat 返回的是一个一维迭代器，而flatten返回的是一个一维数组，并且是新的副本
+out: [0 1 2 3 4 5 6 7]
+```
+
+### numpy.ravel
+
+numpy.ravel() 展平的数组元素，顺序通常是"C风格"，返回的是数组视图（view，有点类似 C/C++引用reference的意味），修改会影响原始数组。看起来它和 flatten很像。
+
+首先声明两者所要实现的功能是一致的（将多维数组降位一维）。这点从两个单词的意也可以看出来，ravel(散开，解开)，flatten（变平）。两者的区别在于返回拷贝（copy）还是返回视图（view），numpy.flatten()返回一份拷贝，对拷贝所做的修改不会影响（reflects）原始矩阵，而numpy.ravel()返回的是视图（view，也颇有几分C/C++引用reference的意味），会影响（reflects）原始矩阵。
+
+格式为 ： numpy.ravel(a, order='C')
+
+```
+import numpy as np
+
+a = np.arange(8).reshape(2,4)
+b = a.flatten()
+c = a.ravel()
+print b
+out: array([0, 1, 2, 3, 4, 5, 6, 7])
+print c
+out: array([0, 1, 2, 3, 4, 5, 6, 7])
+
+c[0] = 1
+print a
+# 看到对c的修改，在a上也生效了，但是b没变
+out: array([[1, 1, 2, 3], [4, 5, 6, 7]])
+print b
+out: array([0, 1, 2, 3, 4, 5, 6, 7])
+print c
+out: array([1, 1, 2, 3, 4, 5, 6, 7])
+```
+
+## 翻转数组
+###　numpy.transpose 与  ndarray.T
+
+numpy.transpose 函数用于对换数组的维度，如形状 (2,3,4) transpose 后就变成 (4,3,2)。ndarray.T 和它的功能一致。transpose的格式为：numpy.transpose(arr, axes)
+
+```
+import numpy as np
+
+a = np.arange(120).reshape(2,3,4, 5)
+b = np.transpose(a)
+print b.shape
+out:  (5, 4, 3, 2)
+c = a.T
+print c.shape
+```
+
+### numpy.swapaxes
+
+numpy.swapaxes 函数用于交换数组的两个轴，格式为：numpy.swapaxes(arr, axis1, axis2)
+
+```
+import numpy as np
+
+a = np.arange(24).reshape(2,3,4)
+b = np.swapaxes(a, 1, 2)
+print b.shape
+out: (2, 4, 3)
+```
+
+### numpy.rollaxis
+
+numpy.rollaxis 函数向后滚动特定的轴到一个特定位置，格式为：numpy.rollaxis(arr, axis, start)
+
+```
+mport numpy as np
+
+a = np.arange(120).reshape(2,3,4, 5)
+# 直观上理解就是在形状元组中的第二个维度4插入到指定位置(默认为0)。
+b = np.rollaxis(a, 2)
+print b.shape
+out: (4, 2, 3, 5)
+# 通过第三个参数指定插入的位置
+b = np.rollaxis(a, 3, 1)
+print b.shape
+out: (2, 5, 3, 4)
+```
+
+## 修改数组的维度
+### numpy.broadcast
+numpy.broadcast 用于模仿广播的对象，它返回一个对象，该对象封装了将一个数组广播到另一个数组的结果。该函数使用两个数组作为输入参数，如下实例：
+
+```
+import numpy as np
+
+x = np.array([[1], [2], [3]])
+y = np.array([4, 5, 6])
+# 对y 广播 x
+b = np.broadcast(x,y)
+print b
+```
+
+### numpy.broadcast_to
+numpy.broadcast_to 函数将数组广播到新形状。它在原始数组上返回只读视图。 它通常不连续。 如果新形状不符合 NumPy 的广播规则，该函数可能会抛出ValueError。格式为：numpy.broadcast_to(array, shape, subok)
+
+```
+import numpy as np
+
+a = np.arange(4).reshape(1,4)
+print (np.broadcast_to(a,(4,4)))
+```
+
+### numpy.expand_dims
+numpy.expand_dims 函数通过在指定位置插入新的轴来扩展数组形状，函数格式:  numpy.expand_dims(arr, axis)
+
+```
+import numpy as np
+
+x = np.array(([1,2],[3,4]))
+y = np.expand_dims(x, axis = 1)
+
+print y.shape
+out: (2, 1, 2)
+```
+
+### numpy.squeeze
+numpy.squeeze 函数从给定数组的形状中删除一维的条目，函数格式：numpy.squeeze(arr, axis)，默认删除全部。
+
+```
+import numpy as np
+
+x = np.arange(9).reshape(1,1,3,3)
+y = np.squeeze(x)
+print y.shape
+out: (3, 3)
+y = np.squeeze(x, axis=0)
+y.shape
+out: (1, 3, 3)
+```
+
+## 连接数组
+### numpy.concatenate
+numpy.concatenate 函数用于沿指定轴连接相同形状的两个或多个数组，格式如下： numpy.concatenate((a1, a2, ...), axis)
+
+```
+import numpy as np
+
+a = np.array([[1,2],[3,4]])
+b = np.array([[5,6],[7,8]])
+print (np.concatenate((a,b)， axis=0))
+out: [[1 2]
+      [3 4]
+      [5 6]
+      [7 8]]
+print (np.concatenate((a,b),axis = 1))
+out: [[1 2 5 6]
+      [3 4 7 8]]
+```
+
+### numpy.stack
+numpy.stack 函数用于沿新轴连接数组序列，格式如下: numpy.stack(arrays, axis)
+
+它与 numpy.concatenate 的区别主要是 stack 会增加一个维度，给我的感觉它就像把两个数组堆叠在一起，而 concatenate 是连接构成一个新的数组。
+
+```
+import numpy as np
+
+a = np.array([[1,2],[3,4]])
+b = np.array([[5,6],[7,8]])
+
+print (np.stack((a,b),0))
+out: [[[1 2]
+        [3 4]]
+      [[5 6]
+        [7 8]]]
+
+print (np.stack((a,b),1))
+out: [[[1 2]
+        [5 6]]
+      [[3 4]
+        [7 8]]]
+```
+
+### numpy.hstack
+numpy.hstack 是 numpy.stack 函数的变体，它通过水平堆叠来生成数组。
+
+```
+import numpy as np
+
+a = np.array([[1,2],[3,4]])
+b = np.array([[5,6],[7,8]])
+
+# 可以看到，这个的结果和 np.concatenate((a,b),axis = 1) 是一样的
+print np.hstack((a,b))
+out: [[1 2 5 6]
+      [3 4 7 8]]
+```
+
+### numpy.vstack
+numpy.vstack 是 numpy.stack 函数的变体，它通过垂直堆叠来生成数组。 
+
+```
+import numpy as np
+
+a = np.array([[1,2],[3,4]])
+b = np.array([[5,6],[7,8]])
+
+# 和 np.concatenate((a,b),axis = 0) 一致
+print np.vstack((a,b))
+out: [[1 2]
+      [3 4]
+      [5 6]
+      [7 8]]
+```
+
+## 分个数组
+### numpy.split
+numpy.split 函数沿特定的轴将数组分割为子数组，格式如下：numpy.split(ary, indices_or_sections, axis)
+
+```
+import numpy as np
+
+a = np.arange(9)
+print np.split(a,3)
+out: [array([0, 1, 2]), array([3, 4, 5]), array([6, 7, 8])]
+
+# 通过数组指定切割位置
+print np.split(a, [4, 7])
+out: [array([0, 1, 2, 3]), array([4, 5, 6]), array([7, 8])]
+```
+
+### numpy.hsplit
+numpy.hsplit 函数用于水平分割数组，通过指定要返回的相同形状的数组数量来拆分原数组。
+
+```
+import numpy as np
+
+a = np.arange(9)
+np.hsplit(a, 2)
+Out[121]: [array([0, 1, 2, 3]), array([4, 5, 6, 7])]
+
+np.hsplit(a, 4)
+out: [array([0, 1]), array([2, 3]), array([4, 5]), array([6, 7])]
+```
+
+### numpy.vsplit 
+numpy.vsplit 沿着垂直轴分割，其分割方式与hsplit用法相同。 
+
+```
+import numpy as np
+
+a = np.arange(16).reshape(4,4)
+print np.vsplit(a,2)
+out: [array([[0, 1, 2, 3],
+            [4, 5, 6, 7]]), 
+      array([[ 8,  9, 10, 11 ],
+            [12, 13, 14, 15]])]
+```
+
+## 数组元素的添加与删除
+### numpy.resize
+numpy.resize 函数返回指定大小的新数组。 如果新数组大小大于原始大小，则包含原始数组中的元素的副本。 格式为：numpy.resize(arr, shape)
+
+```
+import numpy as np
+
+a = np.array([[1,2,3],[4,5,6]])
+print np.resize(a, (3,2))
+out: array([[1, 2],
+            [3, 4],
+            [5, 6]])
+
+# 最后一行的 [1, 2, 3] 就是元素副本填充得到的
+print np.resize(a,(3,3))
+out: [[1 2 3]
+      [4 5 6]
+      [1 2 3]]
+```
+
+### numpy.append
+numpy.append 函数在数组的末尾添加值。 追加操作会分配整个数组，并把原来的数组复制到新数组中。 此外，输入数组的维度必须匹配否则将生成ValueError。**append 函数返回的始终是一个一维数组**。格式为：numpy.append(arr, values, axis=None)
+
+```
+import numpy as np
+
+a = np.array([[1,2,3],[4,5,6]])
+print np.append(a, [7,8,9])
+out: array([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+# 沿轴 0 添加元素
+np.append(a, [[7,8,9]],axis = 0)
+out: array([[1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]])
+
+# 轴 1
+np.append(a, [[5,5,5],[7,8,9]],axis = 1)
+out: array([[1, 2, 3, 5, 5, 5],
+            [4, 5, 6, 7, 8, 9]])
+```
+
+### numpy.insert
+numpy.insert 函数在给定索引之前，沿给定轴在输入数组中插入值。 如果值的类型转换为要插入，则它与输入数组不同。 插入没有原地的，函数会返回一个新数组。 此外，如果未提供轴，则输入数组会被展开。格式为：numpy.insert(arr, obj, values, axis)
+
+```
+import numpy as np
+
+a = np.array([[1,2],[3,4],[5,6]])
+np.insert(a,3,[11,12])
+out: array([ 1,  2,  3, 11, 12,  4,  5,  6 ])
+```
+
+### numpy.delete
+numpy.delete 函数返回从输入数组中删除指定子数组的新数组。 与 insert() 函数的情况一样，如果未提供轴参数，则输入数组将展开。格式为：Numpy.delete(arr, obj, axis)
+
+```
+import numpy as np
+
+a = np.arange(12).reshape(3,4)
+np.delete(a,5)
+out: [ 0  1  2  3  4  6  7  8  9 10 11 ]
+```
+
+### numpy.unique
+numpy.unique 函数用于去除数组中的重复元素。格式为：numpy.unique(arr, return_index, return_inverse, return_counts)
+
+```
+import numpy as np
+
+a = np.array([5,2,6,2,7,5,6,8,2,9])
+np.unique(a)
+out: [2 5 6 7 8 9]
+```
+
+# NumPy 线性代数
+NumPy 提供了线性代数函数库 linalg，该库包含了线性代数所需的所有功能。除此之外，Numpy 空间下也有一些常见操作。
+
+* numpy.dot() 两个数组的点积，即元素对应相乘。    
+* vdot  两个向量的点积    
+* inner 两个数组的内积    
+* matmul 两个数组的矩阵积    
+* determinant    数组的行列式    
+* solve 求解线性矩阵方程    
+* inv 计算矩阵的乘法逆矩阵
+
+## numpy.dot()
+numpy.dot() 对于两个一维的数组，计算的是这两个数组对应下标元素的乘积和(数学上称之为内积)；对于二维数组，计算的是两个数组的矩阵乘积。
+
+```
+import numpy as np
+
+a = np.array([1,2])
+b = np.array([3,4])
+
+np.dot(a, b)
+out: 11
+
+a = np.array([[1,2],[3,4]])
+b = np.array([[11,12],[13,14]])
+np.dot(a,b)
+out: [[37 40]
+      [85 92]]
+```
+
+## numpy.vdot()
+numpy.vdot() 函数是两个向量的点积。 如果第一个参数是复数，那么它的共轭复数会用于计算。 如果参数是多维数组，它会被展开。
+
+```
+import numpy as np 
+
+a = np.array([[1,2],[3,4]]) 
+b = np.array([[11,12],[13,14]]) 
+np.vdot(a,b)
+out: 130
+```
+
+## numpy.matmul
+
+numpy.matmul 函数返回两个数组的矩阵乘积。 虽然它返回二维数组的正常乘积，但如果任一参数的维数大于2，则将其视为存在于最后两个索引的矩阵的栈，并进行相应广播。另一方面，如果任一参数是一维数组，则通过在其维度上附加 1 来将其提升为矩阵，并在乘法之后被去除。对于二维数组，它就是矩阵乘法：
+
+```
+import numpy as np 
+
+a = [[1,0],[0,1]] 
+b = [[4,1],[2,2]] 
+np.matmul(a,b)
+out: [[4  1] 
+      [2  2]]
 ```
