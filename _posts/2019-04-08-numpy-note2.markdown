@@ -112,3 +112,31 @@ Out[47]:
         [1, 1, 1, 1, 1],
         [1, 1, 1, 1, 1]])
 ```
+
+# 9. How to stack two arrays horizontally?
+Q. Stack the arrays a and b horizontally.
+
+```
+In [48]: a = np.arange(10).reshape(2,-1)
+In [49]: b = np.repeat(1, 10).reshape(2,-1)
+In [52]: np.hstack((a,b))
+Out[52]: 
+    array([[0, 1, 2, 3, 4, 1, 1, 1, 1, 1],
+            [5, 6, 7, 8, 9, 1, 1, 1, 1, 1]])
+# 方法 2
+In [54]: np.concatenate([a,b], axis=1)
+Out[54]: 
+    array([[0, 1, 2, 3, 4, 1, 1, 1, 1, 1],
+            [5, 6, 7, 8, 9, 1, 1, 1, 1, 1]])
+```
+
+# 10. How to generate custom sequences in numpy without hardcoding?
+Q. Create the following pattern without hardcoding. Use only numpy functions and the below input array a.
+
+```
+In [67]: a = np.array([1,2,3])
+In [68]: b = np.repeat(a, 3)
+In [74]: c = np.tile(a, 3)
+In [76]: np.concatenate((b,c))
+Out[76]: array([1, 1, 1, 2, 2, 2, 3, 3, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3])
+```

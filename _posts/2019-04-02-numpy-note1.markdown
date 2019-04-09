@@ -85,7 +85,10 @@ numpy 中比较重要的 ndarray 对象属性有：
 * 数值范围数组：numpy.arange(start, stop, step, dtype)    
 * 等差序列数组：np.linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None)    
 * 等比序列数组:np.logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None)    
-* 对角数组：numpy.eye(N, M=None, k=0, dtype=<class 'float'>, order='C')
+* 对角数组：numpy.eye(N, M=None, k=0, dtype=<class 'float'>, order='C')    
+* 初始化为指定值的数组：numpy.full(shape, fill_value, dtype=None, order='C')    
+* 横纵向复制数组：numpy.tile(A, reps)    
+* 重复数组中的元素：numpy.repeat(a, repeats, axis=None)
 
 其中：    
 * shape: 数组形状    
@@ -185,6 +188,54 @@ array([[0, 1, 0],
        [0, 0, 0]])
 ```
 
+### numpy.full
+np.full()函数可以生成初始化为指定值的数组
+
+```
+# 生成3 × 3 的值全为 True 的数组
+In [77]: np.full((3,3), True, dtype=bool)
+Out[77]: 
+    array([[ True,  True,  True ],
+            [ True,  True,  True ],
+            [ True,  True,  True ]])
+```
+
+### numpy.tile
+Numpy的 tile() 函数，就是将原矩阵横向、纵向地复制。tile 是瓷砖的意思，顾名思义，这个函数就是把数组像瓷砖一样铺展开来。
+
+```
+>>> a = np.array([0, 1, 2])
+>>> np.tile(a, 2)
+array([0, 1, 2, 0, 1, 2])
+>>> np.tile(a, (2, 2))
+array([[0, 1, 2, 0, 1, 2],
+        [0, 1, 2, 0, 1, 2]])
+```
+
+### numpy.repeat
+
+```
+>>> np.repeat(3, 4)
+array([3, 3, 3, 3])
+>>> x = np.array([[1,2],[3,4]])
+>>> np.repeat(x, 2)
+array([1, 1, 2, 2, 3, 3, 4, 4])
+>>> np.repeat(x, 3, axis=1)
+array([[1, 1, 1, 2, 2, 2],
+        [3, 3, 3, 4, 4, 4]])
+>>> np.repeat(x, [1, 2], axis=0)
+array([[1, 2],
+        [3, 4],
+        [3, 4]])
+
+# 结合 tile 和repeat
+a = np.array([1,2,3])
+# np.c_是按行连接两个矩阵，就是把两矩阵左右相加，要求行数相等，类似于pandas中的merge()。
+# np.r_ 按列连接两个矩阵，就是把两矩阵上下相加，要求列数相等，类似于pandas中的concat()
+np.r_[np.repeat(a, 3), np.tile(a, 3)]
+out: array([1, 1, 1, 2, 2, 2, 3, 3, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3])
+```
+
 # Numpy 索引
 ## 基本的切片与索引
 
@@ -240,6 +291,24 @@ x = np.array([[  0,  1,  2 ],[  3,  4,  5 ],[  6,  7,  8 ],[  9,  10,  11 ]])
 print (x[x >  5])
 out: [ 6  7  8  9 10 11 ]
 
+arr = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+# 获取索引为奇数的元素
+arr[arr % 2 == 1]
+out:  array([1, 3, 5, 7, 9])
+
+# 将奇数位的元素替换为 -1
+arr[arr % 2 == 1] = -1
+arr
+out: array([ 0, -1,  2, -1,  4, -1,  6, -1,  8, -1 ])
+
+# 将奇数位替换为-1，但不改变 arr
+In [26]: arr = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+In [27]: b = arr.copy()
+In [28]: b[arr%2!=0] = -1
+In [29]: b
+Out[29]: array([ 0, -1,  2, -1,  4, -1,  6, -1,  8, -1  ])
+In [31]: arr
+Out[31]: array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 ```
 
 ### 花式索引
@@ -677,6 +746,15 @@ import numpy as np
 a = np.array([5,2,6,2,7,5,6,8,2,9])
 np.unique(a)
 out: [2 5 6 7 8 9]
+
+# 获取两数组的公共元素
+In [78]: a = np.array([1,2,3,2,3,4,3,4,5,6])
+In [79]: b = np.array([7,2,10,2,7,4,9,4,9,8])
+In [81]: np.unique(a[a==b])
+Out[81]: array([2, 4])
+# 或者直接调用库函数
+In [82]: np.intersect1d(a,b)
+Out[82]: array([2, 4])
 ```
 
 # NumPy 线性代数
