@@ -259,5 +259,27 @@ LSTM 与  GRU 有两种非线性函数：sigmoid 和 tanh，其中：
 * tanh 用于激活函数：    
     * tanh 相比于 sigmoid 收敛速度更快，且输出以0为中心。    
     * 相比于 ReLU，由于循环神经网络的特殊性，前向传播信息容易爆炸增长
+### LSTM 为什么能缓解梯度消失？
+按照惯例，上公式... 我们计算 $\frac{C_{t}}{\partial C_{t-1}} $：
 
+$$ 
+\begin{aligned}
+\frac{C_{t}}{\partial C_{t-1}} & = \frac{\partial C_{t} }{\partial f_{t} }*\frac{\partial f_{t} }{\partial h_{t-1} }*\frac{\partial h_{t-1} }{\partial C_{t-1} } \\
+& + \frac{\partial C_{t} }{\partial i_{t} }*\frac{\partial i_{t} }{\partial h_{t-1} }\frac{\partial h_{t-1} }{\partial C_{t-1} } \\ 
+&+ \frac{\partial C_{t} }{\partial \tilde{C}_{t} }*\frac{\partial \tilde{C}_{t} }{\partial h_{t-1} }*\frac{\partial h_{t-1} }{\partial C_{t-1} }\\
+& + \frac{\partial C_{t} }{\partial C_{t-1} } 
+\end{aligned}
+$$
 
+代入有：
+
+$$
+\begin{aligned}
+\frac{C_{t}}{\partial C_{t-1}} & = C_{t-1}\sigma^{'}(\dot)W_{f}*o_{t-1}tanh^{'}(C_{t-1}) \\
+& + \tilde{C}_{t}\sigma^{'}(\dot)W_[i]*o_{t-1}tanh^{'}(C_{t-1}) \\
+& + i_{t}tanh^{'}(\dot)W_{C}*o_{t-1}tanh^{'}(C_{t-1}) \\
+& + f_{t}
+\end{aligned}
+$$
+
+可以看到在 cell 状态这条路径上，$\frac{C_{t}}{\partial C_{t-1}}$ 在任何时间步上都可以取大于1的值或者[0,1]范围内的值，如果我们开始收敛到0，我们总是可以将$f_{t}$的值设置的更高，使得导数更接近1，从而缓解梯度消失。
