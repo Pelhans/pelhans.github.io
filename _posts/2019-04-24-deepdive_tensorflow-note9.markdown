@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Tensorflow 笔记（九）"
+title:      "深度学习笔记（九）"
 subtitle:   "循环神经网络基础"
 date:       2019-04-24 00:15:18
 author:     "Pelhans"

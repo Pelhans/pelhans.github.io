@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Tensorflow 笔记（四）"
+title:      "深度学习笔记（四）"
 subtitle:   "神经网络中的权值初始化"
 date:       2019-04-12 00:15:18
 author:     "Pelhans"

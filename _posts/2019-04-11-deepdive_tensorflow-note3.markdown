@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Tensorflow 笔记（三）"
+title:      "深度学习笔记（三）"
 subtitle:   "牛顿法与BFGS"
 date:       2019-04-11 00:15:18
 author:     "Pelhans"

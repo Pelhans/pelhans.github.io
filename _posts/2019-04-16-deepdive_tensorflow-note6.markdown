@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Tensorflow 笔记（六）"
+title:      "深度学习笔记（六）"
 subtitle:   "正则化项"
 date:       2019-04-16 00:15:18
 author:     "Pelhans"

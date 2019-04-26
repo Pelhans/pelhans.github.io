@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Tensorflow 笔记（八）"
+title:      "深度学习笔记（八）"
 subtitle:   "卷积神经网络基础"
 date:       2019-04-19 00:15:18
 author:     "Pelhans"

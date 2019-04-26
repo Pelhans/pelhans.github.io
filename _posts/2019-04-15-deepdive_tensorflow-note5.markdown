@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Tensorflow 笔记（五）"
+title:      "深度学习笔记（五）"
 subtitle:   "常见损失函数"
 date:       2019-04-15 00:15:18
 author:     "Pelhans"

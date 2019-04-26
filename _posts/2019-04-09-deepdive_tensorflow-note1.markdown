@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Tensorflow 笔记（一）"
+title:      "深度学习笔记（一）"
 subtitle:   "常见优化器"
 date:       2019-04-09 00:15:18
 author:     "Pelhans"

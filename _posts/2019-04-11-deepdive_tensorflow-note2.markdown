@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Tensorflow 笔记（二）"
+title:      "深度学习笔记（二）"
 subtitle:   "拉格朗日乘数法与KKT条件"
 date:       2019-04-11 00:15:18
 author:     "Pelhans"

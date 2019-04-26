@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Tensorflow 笔记（七）"
+title:      "深度学习笔记（七）"
 subtitle:   "激活函数"
 date:       2019-04-17 00:15:18
 author:     "Pelhans"
