@@ -138,7 +138,73 @@ $$ \overrightarrow{\mathbf{w}}^{(new)}_{I} = \overrightarrow{\mathbf{w}}^{(old)}
 
 在分层softmax 中，算法并不直接求解输出向量 $$ {\overrightarrow{\mathbf{w}}_{1}^{'}, \dots, \overrightarrow{\mathbf{w}}_{V}^{'}} $$，而是求解哈夫曼树的路径编码表达。
 
+![](/img/in-post/tensorflow/word2vec_softmax.png)
 
+树中每个叶子节点代表词典中的一个词，于是每个词语都可以被 01 唯一编码，于是我们可以计算条件概率 
+$p(w|context(x))$。我们约定以下符号：
+
+* 路径中包含节点的个数为$N(w)$    
+* 路径中的第j个节点为 $n(w,j)$    
+* 路径中非叶子节点的参数向量 $\theta_{1}^{w}$    
+* 路径中第j个节点对应的编码 $d(w,j)$
+
+因此可以给出 w 的条件概率：
+
+$$ p(w | context{w}) = \prod_{j=1}^{N(w)}p(d(w,j) | x_{w}, \theta_{j-1}^{w}) $$
+
+也就是一条路径上从根节点到叶节点的编码概率。其中每一次分裂都是一个二分类问题，因此采用 sigmoid 函数来分类：
+
+$$ p(d(w,j) | x_{w}, \theta_{j-1}^{w}) = 
+\left\{
+    \begin{aligned}
+\sigma(x_{w}^{T} \theta_{j-1}^{w}),& d(w,j) = 0 \\
+1-\sigma(x_{w}^{T}\theta_{j-1}^{w}),& d(w,j) = 1 
+\end{aligned}
+\right.
+$$}
+
+这样上式就可以简写为：
+
+$$ p(d(w,j) | x_{w}, \theta_{j-1}^{w} ) = [\sigma(x_{w}^{T}\theta_{j-1}^{w} )]^{1-d(w,j)} * [1-\sigma(x_{w}^{T}\theta_{j-1}^{w}) ]^{d(w,j)} $$
+
+因此负对数似然损失为：
+
+$$ L = -\sum_{w\in C}\sum_{j=1}^{N(w)}\log \left\{ [\sigma(x_{w}^{T}\theta_{j-1}^{w} )]^{1-d(w,j)} * [1-\sigma(x_{w}^{T}\theta_{j-1}^{w}) ]^{d(w,j)} \right\} $$
+
+因为前面两个求和，因此直接对求和后的分析，再加起来就好了，假定$l(w,j)表示L中的词w对应的第j个结点的损失，则：
+
+$$ l(w,j) = -\left\{ (1-d(w,j))log[\sigma(x_{w}^{T}\theta_{j-1}^{w})] +d(w,j)log[1-\sigma(x_{w}^{T}\theta_{j-1}^{w}) ]  \right\} $$
+
+接下来计算 $\theta_{j-1}^{w}$ 的导数和 $ x_{w}$ 的导数。
+
+$$ 
+\begin{aligned}
+\frac{\partial l(w,j)}{\partial \theta_{j-1}^{w}} & = -\left[ (1-d(w,j))\sigma(x_{w}^{T}\theta_{j-1}^{w})(1-\sigma(x_{w}^{T}\theta_{j-1}^{w}))*\frac{1}{\sigma(x_{w}^{T}\theta_{j-1}^{w})}*x_{w} -d(w,j)\frac{1}{1-\sigma(x_{w}^{T}\theta_{j-1}^{w})}*\sigma(x_{w}^{T}\theta_{j-1}^{w})(1-\sigma(x_{w}^{T}\theta_{j-1}^{w}))*x_{w} \right] \\
+& = - \left[ (1-d(w,j))(1-\sigma(x_{w}^{T}\theta_{j-1}^{w}))x_{w} - d(w,j)\sigma(x_{w}^{T}\theta_{j-1}^{w})x_{w} \right] \\
+& = -\left[1-\sigma(x_{w}^{T}\theta_{j-1}^{w})-d(w,j) + d(w,j)\sigma(x_{w}^{T}\theta_{j-1}^{w})- d(w,j)\sigma(x_{w}^{T}\theta_{j-1}^{w}) \right]*x_{w}\\
+& = -[1-\sigma(x_{w}^{T}\theta_{j-1}^{w})-d(w,j)]x_{w}
+\end{aligned}
+$$
+
+因此 $\theta_{j-1}^{w}$ 的更新公式为：
+
+$$ \theta_{j-1}^{w(new)} = \theta_{j-1}^{w(old)} - \eta[1-\sigma(x_{w}^{T}\theta_{j-1}^{w})-d(w,j)]x_{w} $$
+
+类似地，我们可以得到 $x_{w}$ 的梯度：
+
+$$ \frac{\partial l(w,j)}{\partial x_{w}} = [1-d(w,j)-\sigma(x_{w}^{T}\theta_{j-1}^{w})]\theta_{j-1}^{w} $$
+
+## 负采样
+负采样是加快训练速度的一种方法，如对于训练样本(fox,the)，the 是正样本，剩下词表中其他的全是负样本。如果对所有负样本都输出概率那计算量将非常庞大。为此我们可以从所有负样本中随机选取一批负样本，仅仅利用这些负样本进行更新，这就叫负采样。根据谷歌的建议，一般挑选 5-20个负样本，挑选的公式为：
+
+$$ p(word) = \frac{f(word)^{\frac{3}{4}}}{\sum_{i=1}^{V}(f(word)\frac{3}{4})} $$
+
+其中 $f(word)$表示词出现的概率，计算得到的 p(word)越大则越有可能被选中。公式里面的 $\frac{3}{4}$完全是基于经验的。
+
+最后借用[（三）通俗易懂理解——Skip-gram的负采样](https://zhuanlan.zhihu.com/p/39684349)里的一个实现相关技巧。
+
+>负采样的C语言实现非常的有趣。unigram table有一个包含了一亿个元素的数组，这个数组是由词汇表中每个单词的索引号填充的，并且这个数组中有重复，也就是说有些单词会出现多次。那么每个单词的索引在这个数组中出现的次数该如何决定呢，有公式$P(w_i)*table\_size$，也就是说计算出的负采样概率*1亿=单词在表中出现的次数。    
+有了这张表以后，每次去我们进行负采样时，只需要在0-1亿范围内生成一个随机数，然后选择表中索引号为这个随机数的那个单词作为我们的negative word即可。一个单词的负采样概率越大，那么它在这个表中出现的次数就越多，它被选中的概率就越大。
 
 
 # 参考
