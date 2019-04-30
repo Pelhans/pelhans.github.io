@@ -1,0 +1,86 @@
+<hr />
+
+<p>layout:     post
+title:      "深度学习笔记（十一）"
+subtitle:   "Word2Vec"
+date:       2019-04-29 00:15:18
+author:     "Pelhans"
+header-img: "img/tensorflow.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:</p>
+
+<h2>    - Deep Learning</h2>
+
+<blockquote>
+  <p>眼睛看过只是别人的，整理出来并反复学习才是自己的。</p>
+</blockquote>
+
+<ul>
+<li>TOC
+{:toc}</li>
+</ul>
+
+<h1>概述</h1>
+
+<p>Word2Vec 是谷歌的分布式词向量工具。使用它可以很方便的得到词向量。Word2Vec 分别使用两个模型来学习词向量，一个是 CBOW(Continuous bag-of-word)，另一个是 Skip-gram模型。</p>
+
+<p>CBOW 模型是指根据上下文来预测当前单词。而Skip-gram 是根据给定的词去预测上下文。所以这两个模型的本质是让模型去学习词和上下文的 co-occurrence。有意思的是，我们需要的词向量只是两个模型的“副产物”。</p>
+
+<h1>CBOW</h1>
+
+<h2>正向传播</h2>
+
+<p>CBOW 模型是根据上下文去估算当前词语，其模型结构如下图所示：</p>
+
+<p><img src="/img/in-post/tensorflow/word2vec_cbow2.png" alt="" title="" /></p>
+
+<p>输入为 C 个单词，它们是给定单词的上下文，记为 $$\mathbf{X} = [\overrightarrow{x}<em>{1}, \overrightarrow{x}</em>{2},\dots, \overrightarrow{x}<em>{C}] $$。每个输入 $\overrightarrow{x}</em>{i}$ 都采用 ont-hot 表示法，维度等于词典大小 V。输入 $\mathbf{X}$ 的维度为 $C \times V$。</p>
+
+<p>对于每个输入单词，都会乘以同一个权值矩阵 $\mathbf{W}$。$\mathbf{W} \in \mathbb{R}^{V\times N}$，N 为隐藏单元大小。可以看到在输入时权值是共享的。</p>
+
+<p>隐向量记为 $\overrightarrow{\mathbf{h} }$，它记为所有输入词向量映射结果的均值：</p>
+
+<p>$$ \overrightarrow{\mathbf{h} } = \frac{1}{C}\mathbf{W}^{T}(\overrightarrow{x}<em>{1} + \overrightarrow{x}</em>{2} + \dots + \overrightarrow{x}<em>{C}) = \frac{1}{C}(\overrightarrow{\mathbf{w}}</em>{I<em>{1}} + \overrightarrow{\mathbf{w}}</em>{I<em>{2}} + \dots + \overrightarrow{\mathbf{w}}</em>{I_{C}}  ) $$</p>
+
+<p>其中 $$ \overrightarrow{\mathbf{w}}<em>{I</em>{i}} $$ 表示 权值矩阵 $ \mathbf{W} $ 中第 $I<em>{1}$ 行对应的向量。$I</em>{i}$ 表示第 i 个输入单词在词汇表V 中的编号。上式基于 输入的每个单词是 onte-hot 表示的，因此可以直接从 W 中提取出 1 对应的行。最终得到的 $$\overrightarrow{\mathbf{h}} \in \mathbb{R}^{N} $$。</p>
+
+<p>得到隐藏层表示后，在乘以输出层权值矩阵 $\mathbf{W}^{'}$，其中 $\mathbf{W}^{'} \in \mathbb{R}^{N\times V}$。得到一个 1xV 维的向量 $$\overrightarrow{\mathbf{u}} = W^{'T}\overrightarrow{\mathbf{h}} $$  。其中</p>
+
+<p>$$ u<em>{j} = \overrightarrow{\mathbf{w}^{'}}</em>{j}* \overrightarrow{\mathbf{h}} $$</p>
+
+<p>表示词表 V 中，第j个单词的得分。向量$$\overrightarrow{\mathbf{u}}$$ 经过 softmax 层就可以得到词表的概率分布。对于词汇表中第 j 个单词来讲，它对应的输出概率为：</p>
+
+<p>$$ y<em>{j} = p(word</em>{j} | \overrightarrow{\mathbf{x}}) = \frac{exp(u<em>{j})}{\sum</em>{j^{'}=1}^{V}exp(u_{j^{'}})} ,~~~~j = 1, 2, \dots, V $$</p>
+
+<p>假设我们的目标输出是词 $word<em>{O}$，它在词典中的位置为 $j^{*}$，那么我们我们的优化目标是最大化目标词的输出概率
+$p({word</em>{O} | word<em>{I</em>{1}},  word<em>{I</em>{2}},\dots,  word<em>{I</em>{C}}})$。因为涉及到 e指数，因此我们采用最小化它的负对数作为优化目标：</p>
+
+<p>$$
+\begin{aligned}
+L &amp; = -log p({word<em>{O} | word</em>{I<em>{1}},  word</em>{I<em>{2}},\dots,  word</em>{I<em>{C}}}) \
+&amp; = -log \frac{exp(u</em>{j^{<em>}})}{\sum_{i=1}^{V}exp(u_{i})} \
+&amp; = -u_{j^{</em>}} + log\sum<em>{i=1}^{V}exp(u</em>{i})  \
+&amp; = -\overrightarrow{\mathbf{w}}^{'}<em>{j^{*}}*\overrightarrow{\mathbf{h}} + log\sum</em>{i=1}^{V}exp(\overrightarrow{\mathbf{w}}^{'}_{i}*\overrightarrow{\mathbf{h}})
+\end{aligned}
+$$</p>
+
+<h2>反向传播</h2>
+
+<p>我们要更新 $\mathbf{W}$ 以及 $\mathbf{W}^{'}$。</p>
+
+<p>根据 softmax 的导数公式，可以很容易的求出$\frac{\partial E}{\partial u_{j}}$：</p>
+
+<p>$$ \frac{\partial L}{\partial u<em>{j}} = y</em>{j} - \delta_{jj^{*}} $$</p>
+
+<p>其中$$\delta_{jj^{<em>}}$$ 表示当 $$j^{</em>}=j$$ 时为1，其余时为0。因为 </p>
+
+<p>$$u<em>{j} = -\overrightarrow{\mathbf{w}}^{'}</em>{j}*\overrightarrow{\mathbf{h}}$$</p>
+
+<p>所以 </p>
+
+<p>$$\frac{\partial u<em>{j}}{\partial \overrightarrow{\mathbf{w}}^{'}</em>{j}} = \overrightarrow{\mathbf{h}} $$</p>
+
+<p>因此</p>
+
+<p>$$ \frac{\partial L}{\partial \overrightarrow{\mathbf{w}}^{'}<em>{j}} = \frac{\partial L}{\partial u</em>{j}}* \frac{\partial u<em>{j}}{\partial \overrightarrow{\mathbf{w}}^{'}</em>{j}} = (y<em>{j} - \delta</em>{jj^{*}})\overrightarrow{\mathbf{h}} $$</p>
