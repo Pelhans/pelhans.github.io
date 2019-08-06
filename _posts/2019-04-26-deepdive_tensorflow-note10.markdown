@@ -143,7 +143,9 @@ $$ Attention(Q, K, V) = \sum_{i}^{S}align(Q, K) * V $$
 
 $$ Attention(Q, K, V) = softmax(\frac{QK^{T}}{\sqrt{d_{k}}})V $$
 
-作者把这种叫Attention 叫做"Scaled Dot-Product Attention"，对应结构如下图所示，其中 Q 和 K 的维度是 $d_{k}$，V 的维度是 $d_{v}$。这个公式相比于正常的 Dot Attention 多了一个缩放因子 $\frac{1}{\sqrt{d_{k}}}$。除此之外作者还提到了 Additive Attention，这个没细看，等以后用到再说。。。
+作者把这种叫Attention 叫做"Scaled Dot-Product Attention"，对应结构如下图所示，其中 Q 和 K 的维度是 $d_{k}$，V 的维度是 $d_{v}$。这个公式相比于正常的 Dot Attention 多了一个缩放因子 $\frac{1}{\sqrt{d_{k}}}$(这个缩放因子据说可以防止结果过大,但 无论多大,经过softmax不都变成归一化概率了么? 想不懂为什么)。除此之外作者还提到了 Additive Attention，这个没细看，等以后用到再说。。。
+
+在这个 scaled dot-product attention 中,还有一个 mask部分, 在训练时它将被关闭,在测试或者实际使用中,它将被打开去遮蔽当前预测词后面的序列. 
 
 ![](/img/in-post/tensorflow/multi_head_attention.png)
 
@@ -154,7 +156,7 @@ $$ MultiHead(Q, K, V) = Concat(head1, \dots, head_{h})W^{O} \\
 
 其中 $W_{i}^{Q} \in \mathbb{R}^{d_{model} \times d_{k}}$，$W_{i}^{K} \in \mathbb{R}^{d_{model} \times d_{k}}$, $W_{i}^{V} \in \mathbb{R}^{d_{model} \times d_{v}}$, $W_{i}^{O} \in \mathbb{R}^{d_{model} \times hd_{v}}$。
 
-其中需要注意的是，multi-head Attention 可以并行计算，论文里 h=8, $d_{k} = d_{v} = d_{model}/h = 64.
+其中需要注意的是，一方面不同的head的矩阵时不同的,另一方面 multi-head Attention 可以并行计算，论文里 h=8, $d_{k} = d_{v} = d_{model}/h = 64.
 
 ### Position-wise Feed-Forward Networks
 论文里说，它是一个前馈全连接网络，它被等同的应用到每一个位置上(pplied to each position separately and identically. )，它由两个线性变换和 ReLU 激活函数组成：
@@ -162,6 +164,16 @@ $$ MultiHead(Q, K, V) = Concat(head1, \dots, head_{h})W^{O} \\
 $$ FFN(x) = max(0, xW_{1} + b_{1})W_{2} + b_{2} $$
 
 这个线性变换被应用到各个位置上，并且它们的参数是相同的。不过不同层之间的参数就不同了。这相当于一个核大小为1 的卷积。
+
+### Transformer 内的数据流动
+
+到这里 Transformer 核心模块得结构已经介绍差不多了,下面推导一下在一个block 内的数据流动. 
+
+首先是输入部分,假设输入有 n 个词, 每个词的维度维 $d_{model}$(与论文保持一致), 每个词都有一个位置向量,它的维度也是 $d_{model}$.而后总的input 由词向量和 位置向量加和得到,因此 input 得维度是 $[n, d_{model}]$.
+
+接下来数据被复制两份,一个用来做残差连接, 维度不变. 另一份进入 multi-head self-attention. 对于  Multi-head , $W_{i}^{Q}, W_{i}^{K}$ 的维度都是 $[d_{model}, d_{k}]$, 因此 $ Q W_{i}^{Q}$ 和  $ K W_{i}^{K}$ 的维度是$[n, d_{k}]$, 根据 attention 得计算公式,经过 self-attention 后得到的向量输出还是 $[n, d_{k}]$. multi-head 会把 h 个head 结果进行连接, 因为$d_{k}*h=d_{model}$,因此multi-head 得输出维度为 $[n, d_{model}]$. 至于 scaled 和 mask 不影响维度变化, 这里不考虑.
+
+multi-head 出来后的向量回先和 残差传过来的做加和 和 LN, 维度不变, $[n, d_{k}]$. 之后会进入残差和 position-wise feed forward 网络. 这个网络的输出和输入维度一致, 内部的维度为2048. 因此 一个 block 得输出维度为 $[n, d_{k}]$, 和输入一样.
 
 ## Decoder
 Decoder 部分相比于 Encoder ，结构上多了一个 Masked Multi-Head Attention 子层，它对decoder 端的序列做 attention. 相比于正常的  Scaled Dot-Product Attention，它在 Scale 后加了一个Mask 操作。这是因为在解码时并不是一下子出来的，它还是像传统 decoder 那样，一个时间步一个时间步的生成，因此在生成当前时间步的时候，我们看不到后面的东西，因此用 MASK 给后面的 遮住。

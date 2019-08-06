@@ -20,6 +20,8 @@ tags:
 
 那么为什么会有这么多初始化策略呢？深度学习算法的训练通常是迭代的，因此要求使用者给一些开始迭代的初始点，而有些深度模型会受到初始点的影响，使得算法遭遇数值困难，并完全失败。此外初始点可以决定学习收敛的多快，以及是否收敛到一个代价高或低的点，更何况代价相近的点也可能有极大的泛化差别。不同的网络结构和激活函数需要适配不同的初始化方法。目前常用的初始化方法包含随机均匀初始化、正态分布初始化、Xavier初始化、He初始化、预训练等。
 
+一个好的初始化方法要求各层激活值不会出现饱和现象,同时各层得激活值不为0.
+
 # 随机初始化
 
 随机初始化包含均匀随机初始化和正态随机初始化，在 tensorflow 中对应的代码为：
@@ -30,11 +32,17 @@ tags:
 
 下面以均匀分布为例说明随机初始化的缺点。
 
-首先权重矩阵初始化公式为：
+均匀损及初始化即在一定范围内随机进行初始化,首先权重矩阵初始化公式为：
 
 $$ W_{ij} \~ U[-\frac{1}{sqrt{n}}, \frac{1}{\sqrt{n}}] $$
 
 易知该分布的均值为0，方差通过公式$\frac{(b-a)^{2}}{12}$ 得到方差为 $Var(W_{ij}) = \frac{1}{3n}$。
+
+那个初始化公式怎么来的呢? 首先我们假设再[a,b] 内均匀分布,因此概率密度函数为$$ f(x) = \frac{1}{b-a}$$,当 $$x\in [a,b]$$, 否则为 0. 因为要对称, 所以 a = -b, 带入方差公式,消除 b 可得方差为:
+
+$$ \sum_{i=1}^{n}\frac{a^{2}}{3} $$
+
+要使得方差为常数, 如 $\frac{1}{3}$时, $$ a = -\frac{1}{\sqrt{n}} $$.也就得到了上面的分布.
 
 现在把输入记为x，并假设它服从正态分布。并假设W与x独立，则线性隐藏层的输出的方差为：
 
@@ -60,7 +68,16 @@ $$ Var(z^{i}) = Var(x)\prod_{i'=1}^{i-1}n_{i'}Var(W)^{i'} $$
 
 ![](/img/in-post/tensorflow/xavier_2.png)
 
-根据公式
+因为：
+
+$$\begin{aligned}
+\frac{\partial cost}{\partial z^{i}} & = \frac{\partial cost}{\partial s^{i+1}}\dot\frac{\partial s^{i+1}}{\partial z^{i+1}}\dot\frac{\partial z^{i+1}}{\partial s^{i}}
+& = \frac{\partial cost}{\partial s^{i+1}}\dot w^{i+1}\dot \frac{\partial z^{i+1}}{\partial s^{i}}
+\end{aligned}$$
+
+$$ \frac{\partial z^{i+1}}{\partial s^{i}} = f^{'}(s^{i}) \simeq 1 $$
+
+将上面的结果进一步用到多层中,即可得到下式:
 
 $$ Var(\frac{\partial Cost}{\partial z^{i}}) = Var(\frac{\partial Cost}{\partial z^{d}})[nVar(W)]^{d-i} $$
 
@@ -71,6 +88,13 @@ $$ Var(\frac{\partial Cost}{\partial z^{i}}) = Var(\frac{\partial Cost}{\partial
 ![](/img/in-post/tensorflow/xavier_3.png)
 
 这是因为：
+
+$$\begin{aligned}
+\frac{\partial cost}{\partial w^{i}} &= \frac{\partial cost}{\partial s^{i}}\dot \frac{\partial s^{i}}{\partial w^{i}}
+& = \frac{\partial cost}{\partial s^{i}}\dot z^{i}
+\end{aligned}$$
+
+将上面的结果进一步用到多层中,即可得到下式:
 
 $$ Var[\frac{\partial Cost}{\partial w{i}}] = [nVar(W)]^{d}Var[w]Var[\frac{\partial Cost}{\partial s^{d}}] $$
 
