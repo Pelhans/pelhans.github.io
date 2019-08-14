@@ -42,8 +42,8 @@ tags:
 假设输入的句子为: "The kitchen is the last renovated part of the house .", 在送入 BERT 之前,它将受到以下处理:
 
 * 开头添加CLS 符号: "[CLS] The kitchen is the last renovated part of the house ."    
-* 第一个实体得前后添加 $ 符号: "[[CLS]CLS] The $ kitchen $ is the last renovated part of the house ."    
-* 第二个实体前后添加 # 符号: "[CLS] The $ kitchen $ is the last renovated part of the # house # ."
+* 第一个实体得前后添加 \$ 符号: "[CLS] The \$ kitchen \$ is the last renovated part of the house ."    
+* 第二个实体前后添加 # 符号: "[CLS] The \$ kitchen \$ is the last renovated part of the # house # ."
 
 两个实体前后添加特殊符号的目的是标识两个实体, 让模型能够知道这两个词的特殊性,相当于变相指出两个实体得位置. 此时输入的维度为[batch size n, max_length m, hidden size d]
 
@@ -53,7 +53,7 @@ tags:
 
 $$H^{'}_{0} = W_{0}(tanh(H_{0})) + b_{0} $$
 
-除了利用句向量之外, 论文还结合了两个实体得向量. 实体向量通过计算BERT 输出的实体各个字向量的平均得到, 假设BERT 输出的 实体1得开始和终止向量为 $H_{i}$, $H_{j}$. 实体2得为 $H_{k}$, H_{m}$. 那么实体1 和 2得向量表示就是:
+除了利用句向量之外, 论文还结合了两个实体得向量. 实体向量通过计算BERT 输出的实体各个字向量的平均得到, 假设BERT 输出的 实体1得开始和终止向量为 $H_{i}$, $H_{j}$. 实体2得为 $H_{k}$, $H_{m}$. 那么实体1 和 2得向量表示就是:
 
 $$ e1 = \frac{1}{j-i+1}\sum_{t=i}^{j}H_{t} $$
 
@@ -65,9 +65,9 @@ $$ H^{'}_{1} = W_{1}e_{1} + b_{1} $$
 
 $$ H^{'}_{2} = W_{2}e_{2} + b_{2} $$
 
-因此它俩得维度也都是 [n, d]. 最后把 $H^{'}_{0}$, $H^{'}_{1}$, $H^{'}_{2}$ 连接起来得到一个综合向量[n, 3d] 输入到线性层并做softmax 分类.
+因此它俩得维度也都是 [n, d]. 最后把 $$H^{'}_{0}, H^{'}_{1}, H^{'}_{2}$$ 连接起来得到一个综合向量[n, 3d] 输入到线性层并做softmax 分类.
 
-$$ h^{''} = W_{3}[concat($H^{'}_{0}$, $H^{'}_{1}$, $H^{'}_{2})] + b_{3} $$
+$$ h^{''} = W_{3}[concat(H^{'}_{0}, H^{'}_{1}, H^{'}_{2})] + b_{3} $$
 
 $$ p = softmax(h^{''}) $$
 
