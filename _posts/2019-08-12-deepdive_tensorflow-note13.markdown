@@ -35,24 +35,22 @@ $$ h = f(g*\frac{x-\mu}{\sigma} + b) $$
 
 # 为什么要做 Normalization
 
-按照谷歌论文里的说法, 将其归为 ICS(Internal Covariate Shift),引用(魏秀参得回答)[https://www.zhihu.com/question/38102762/answer/85238569]
+按照谷歌论文里的说法, 将其归为 ICS(Internal Covariate Shift, 指的是由于深度网络由很多隐层构成，在训练过程中由于底层网络参数不断变化，导致上层隐层神经元激活值的分布逐渐发生很大的变化和偏移，而这非常不利于有效稳定地训练神经网络。),引用(魏秀参得回答)[https://www.zhihu.com/question/38102762/answer/85238569]
 
 > 大家都知道在统计机器学习中的一个经典假设是“源空间（source domain）和目标空间（target domain）的数据分布（distribution）是一致的”。如果不一致，那么就出现了新的机器学习问题，如，transfer learning/domain adaptation等。而covariate shift就是分布不一致假设之下的一个分支问题，它是指源空间和目标空间的条件概率是一致的，但是其边缘概率不同，即对所有的 $x\in X$, 
 $P_{s}(Y|X=x) = P_{t}(Y|X=x)$, 但是 $P_{s}(X) \neq P_{t}(X)$.大家细想便会发现，的确，对于神经网络的各层输出，由于它们经过了层内操作作用，其分布显然与各层对应的输入信号分布不同，而且差异会随着网络深度增大而增大，可是它们所能“指示”的样本标记（label）仍然是不变的，这便符合了covariate shift的定义。由于是对层间信号的分析，也即是“internal”的来由。
 
-除此之外, Normalization 还可以防止反向传播中得梯度问题(消失或者爆炸), 同时使得不同scale得权重整体更新步调一致. 具体来说,再参数初始化那里,我们经过推导得到反向传播时, 状态得梯度在反向传播过程中逐层累积:
+除此之外, Normalization 还可以防止反向传播中得梯度问题(消失或者爆炸), 这是通过 Re-scaling 不变性实现的. 所谓 Re-scaling 不变性 ,即权重向量/数据/权重矩阵 $\alpha$ 倍后, 输出保持不变的性质. 这意味着参数值过大过着过小对神经元得输出没什么影响, 可以从一定程度上减轻梯度爆炸或消失得问题. Re-scaling 分为三种情况:
 
-$$ \frac{\partial l}{\partial h_{k}} = \frac{\partial l}{\partial h_{l}}\prod_{i=k+1}^{l}w_{i} $$
+* 权重向量 Re-scaling: 边对应的权重向量W, 如果它乘以一个 缩放因子 $\alpha$ 后, 经过 Normalization 保持激活值不变, 则具有这个性质.    
+* 数据 Re-scaling: 数据乘以 $\alpha$     
+* 权重矩阵 Re-scaling: 两层之间的所有权中参数乘以相同的缩放因子 $\alpha$.    
 
-可以很明显看到 w 得累乘项, 而 加了BN 以后,就有:
+下表总结了不同 Normalization 方法的 Re-scaling 不变性.
 
-$$ h_{l} =  BN(\alpha w_{l}h_{l-1}) $$
+![](/img/in-post/tensorflow/re-scaling.jpg)
 
-反向求导时,有:
-
-$$ \frac{\partial h_{l}}{\partial h_{l-1}} = \frac{\partial BN \alpha w_{l}h_{l-1}}{\partial h_{l-1}} $$
-
-可以看到除了里面多了缩放因子 $\alpha$, 使得反向传播累乘得数不再单纯的与w得scale 相关. 在一定程度上缓解了梯度消失或者爆炸的问题,权重更新的步调更加一致, 也更加稳健.
+最后, 由于 神经网络损失函数非凸得性质, 研究表明,BN 真正的用处在于通过 Normalization 操作, 使得网络参数参数重整(reparametrize), 可以让损失函数曲面变得平滑一些, 更利于 SGD 等算法进行优化.
 
 # 常见的 Normalization 方法
 
