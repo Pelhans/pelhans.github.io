@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      "隐马尔可夫模型 HMM"
-subtitle:   ""
+title:      "NLP 手册"
+subtitle:   "隐马尔可夫模型 HMM"
 date:       2019-09-02 00:15:18
 author:     "Pelhans"
 header-img: "img/kg_bg.jpg"

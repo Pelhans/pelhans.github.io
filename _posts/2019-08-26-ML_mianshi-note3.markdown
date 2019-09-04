@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "为面试准备的机器学习"
+title:      "NLP 手册"
 subtitle:   "条件随机场 CRF"
 date:       2019-08-26 00:15:18
 author:     "Pelhans"

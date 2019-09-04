@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "为面试准备的机器学习"
+title:      "NLP 手册"
 subtitle:   "EM 算法"
 date:       2019-09-02 00:15:18
 author:     "Pelhans"

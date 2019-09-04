@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "为面试准备的机器学习"
+title:      "NLP 手册"
 subtitle:   "逻辑回归"
 date:       2019-07-23 00:15:18
 author:     "Pelhans"
