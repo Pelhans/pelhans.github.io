@@ -1,0 +1,587 @@
+---
+layout:     post
+title:      "NLP 手册"
+subtitle:   "支持向量机 SVM"
+date:       2019-09-09 00:15:18
+author:     "Pelhans"
+header-img: "img/kg_bg.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - PRML
+---
+* TOC
+{:toc}
+# 支持向量机
+
+## 基本概念
+
+支持向量机(support vector machines: SVM) 是一种二分类模型.它是定义在特征空间上的, 最大间隔线性分类器.  SVM 还支持核技巧, 从而使它成为实质上的非线性分类器.
+
+* 当输入数据为线性可分时, 通过**硬间隔最大化**, 学习一个线性分类器, 得到**线性可分支持向量机**.     
+* 当训练数据近似线性可分时, 通过**软间隔最大化**, 学习一个线性分类器, 得到**线性支持向量机**.    
+* 当训练数据线性不可分时, 通过使用**核技巧及软间隔最大化**, 学习非线性分类器, 得到**非线性支持向量机**. 
+
+支持向量机的学习是在特征空间进行的. 当输入数据线性可分或近似线性可分时,我们假设输入空间和特征空间一一对应, 并将输入空间中的输入映射为特征空间中的特征向量. 而当**输入数据线性不可分时, 算法通过非线性映射将输入向量映射为特征向量. 特征向量之间的内积就是核函数,   使用核函数可以学习非线性支持向量机. 非线性支持向量机等价于隐式的在维的特征空间中学习线性支持向量机, 这种方法成为核技巧**.
+
+## 线性可分支持向量机
+
+给定一个特征空间上的训练数据集$$ D = \{(\overrightarrow{x}_{1}, y_{1}), (\overrightarrow{x}_{2}, y_{2}), \dots, (\overrightarrow{x}_{N}, y_{N}) \}$$, 其中 $$\overrightarrow{x}_{i} \in R^{n}$$, $$y\in \{-1, +1\}$$.
+
+**假设训练数据集是线性可分的, 学习的目标是在特征空间中寻找一个分离超平面, 能将实例分到不同的类**. 该分割超平面使得几何间隔最大化, 因此是唯一的. 分离超平面对应的方程为 $$\overrightarrow{w}*\overrightarrow{x} + b = 0 $$, 对应的决策函数为 $$ f(\overrightarrow{x}) = sign(\overrightarrow{w}*\overrightarrow{x} + b)$$. 当取正号时, 预测正类, 反之负类. 
+
+数据集中的点距离超平面的远近可以表示分类预测的可靠程度, 越远表示越可靠. 我们可以用
+$$ |\overrightarrow{w}*\overrightarrow{x_{i}} + b$$ 相对的表示 点 $$\overrightarrow{x}_{i}$$ 距离超平面的远近. 加上符号表示的分类正确程度, 我们可以用 $$ y(\overrightarrow{w}*\overrightarrow{x} + b)$$ 表示分类的正确性以及确信度. 这就是函数间隔的概念, 它的符号表示分类的正确定, 范数决定了确信度.
+
+对于数据集中的单个样本点$$\overrightarrow{x}_{i}$$ 而言, 函数间隔可以写为 $$ \hat{\gamma}_{i} = y_{i}(\overrightarrow{w}*\overrightarrow{x}_{i} + b) $$, 对于整个数据集来说, 函数间隔定义为所有数据集中函数间隔最小的值 $$ \hat{\gamma} = \min_{D}\hat{\gamma}_{i}$$.
+
+我们发现函数间隔是受 w 与 b 的大小影响的, 如果 w, b 被放大 100 倍, 那么 函数间隔也是原来的 100 倍, 为此我们要对其添加约束, 使得函数间隔是确定的, 此时的函数间隔成为几何间隔. 我们可以让 w 成为单位向量:
+
+$$ \gamma_{i} = \frac{\hat{\gamma}_{i}}{||\overrightarrow{w}||} = y_{i}(\frac{\overrightarrow{w}}{||\overrightarrow{w}||}*\overrightarrow{x}_{i} + \frac{b}{||\overrightarrow{w}||}) $$
+
+所谓硬间隔最大化就是指几何间隔最大化. 它的含义是不仅将正负实例分开, 同时对于那些距离平面最近的点, 也有足够大的确信度将它们分开. **几何间隔最大化的超平面可以表示为约束的最优化问题**:
+
+$$ \max_{\overrightarrow{w}, b}\gamma $$
+
+$$ s.t. ~~~y_{i}(\frac{\overrightarrow{w}}{||\overrightarrow{w}||}*\overrightarrow{x}_{i} + \frac{b}{||\overrightarrow{w}||} ) \geq \gamma, ~~~~ i = 1, 2, \dots, N $$
+
+用 $\hat{\gamma}$ 表示就是
+
+$$\max_{\overrightarrow{w}, b}\frac{\hat{\gamma}}{||\overrightarrow{w}||} $$
+
+$$ s.t.~~~y_{i}(\frac{\overrightarrow{w}}{||\overrightarrow{w}||}*\overrightarrow{x}_{i} + \frac{b}{||\overrightarrow{w}||} ) \geq \hat{\gamma} $$
+
+我们看到, 在约束最优化问题中, $\hat{\gamma}$ 的大小对不等式约束和优化目标函数都没有影响, 因此令 $\hat{\gamma} = 1$:
+
+$$ \max_{\overrightarrow{w}, b}\frac{1}{||\overrightarrow{w}||} $$
+
+$$ s.t. ~~~ y_{i}(\frac{\overrightarrow{w}}{||\overrightarrow{w}||}*\overrightarrow{x}_{i} + \frac{b}{||\overrightarrow{w}||} ) \geq 1, i=1,2, \dots, N $$
+
+注意到
+$$\max\frac{1}{||\overrightarrow{w}||}$$ 和 $$\min\frac{1}{w}||\overrightarrow{w}||^{2}$$ 是等价的, 因此最优化问题改写为:
+
+$$ \min_{\overrightarrow{W}, b}\frac{1}{w}||\overrightarrow{w}||^{W} $$
+
+$$ s.t. ~~~ y_{i}(\frac{\overrightarrow{w}}{||\overrightarrow{w}||}*\overrightarrow{x}_{i} + \frac{b}{||\overrightarrow{w}||} ) - 1 \geq 0 , ~~~ i=1, 2, \dots, N$$
+
+我们看到此时目标函数是一个二次函数, 约束条件是仿射函数, 因此该最优化问题成为凸二次规划问题. 我们只要找到它的解, 就得到线性可分支持向量机.
+
+**使得约束条件等号成立的点成为支持向量**, 对于正实例的点, 支持向量位于超平面H1 $$ \overrightarrow{w}\overrightarrow{x}_{i} + b = 1 $$ 上, 负实例点, 在超平面H2 $$\overrightarrow{w}\overrightarrow{x}_{i} + b = -1 $$ 上. 超平面H1 和H2 成为间隔边界, 对于线性可分数据集, 没有任何实例落在二者之间. 可以看到,** 在决定分离超平面时, 只有支持向量在起作用, 其他实例点并不起作用**. 这也是支持向量机的由来. 支持向量的个数一般很少, 所有 支持向量机由很少的, 重要的训练样本确定.
+
+## 对偶算法
+
+将线性可分支持向量机的最优化问题作为原始最优化问题, 应用拉格朗日对偶性, ,通过求解对偶问题, 得到原始问题的最优解. 那么为什么要引入对偶算法呢?
+
+引用一下[为什么SVM要用拉格朗日对偶算法来解问题？ - 李欣宜的回答 - 知乎](https://www.zhihu.com/question/300015357/answer/519104070).
+
+我们先看一下正常用拉格朗日乘数法会得到啥.首先原命题为
+
+$$ \min \frac{1}{2}||w||^{2} $$
+
+$$ s.t. ~~~ y_{i}(\overrightarrow{w}\overrightarrow{x}_{i} + b) - 1 \geq 0, i=1,2,\dots, N $$
+
+根据约束条件构造函数
+
+$$ L(w,b,\alpha) = \frac{1}{2}||w||^{2} - \sum_{i=1}^{N}\alpha_{i}\left[y_{i}(\overrightarrow{w}\overrightarrow{x}_{i} + b) - 1\right] $$
+
+其中 $$\alpha_{i}$$ 大于0. 这个函数意味着我们通过调整 $\alpha$ 的大小,使得 L函数最大, 当不满足约束条件时, 我们一定可以通过调整  $\alpha$ 使其无穷大, 因此如果想让原来的目标函数最小, 并且不违反约束, 需要
+
+$$ \min_{w,b}(\max_{\alpha_{i}>0} L(w,b,\alpha)) $$
+
+我们看到, 最小化约束条件下的原函数等价于最小化最大情况的拉格朗日函数. 意思是找到最好的 w,b 使得对于任意非负的 $\alpha$ 都能使得 $L(w,b,\alpha) $ 取最小值. 此时我们不能对 $\alpha$ 直接求偏导, 因为此时求偏导来找极值的意义是假设 w,b 固定的情况下, 令括号中表达式取到最大的 $\alpha$, 所以直接做是不行的, 需要转化为对偶问题. 
+
+所谓对偶问题就是把上面的 求极小极大换一个顺序, 先求 w,b, 再求解 $\alpha$. 即
+
+$$ \max_{\alpha_{i}>0}\min_{w,b}L(w,b,\alpha) $$
+
+当然也不是说原问题就彻底不能求解了, 有很多其他的方法都可以求解, 只不过转化为对偶问题, 而后利用 SMO 算法求解是比较高效的一种方法.
+
+总结下来, 转化为对偶问题的好处包含:
+
+* 上面说的原问题同拉格朗日乘子法求解困难, 转化为对偶问题会容易求解.    
+* 消去了 w, b. 得到内积形式, 引入了核函数, 进而推广到非线性分类.这个算是最重要的了    
+* 在对偶问题中, 除了支持向量, 大部分的 $\alpha$ 都是0, 对于输入计算$wx$非常高效.
+
+### 对偶问题的求解
+
+根据上面的理由, 我们确定目前要求解的最优化问题变为:
+
+$$ \max_{\alpha_{i}}\min_{w,b}L(w,b,\alpha) $$
+
+首先我们要求 $$ \min_{w,b}L(w,b,\alpha) $$, 拉格朗日函数分别对 $$\overrightarrow{w}, b$$ 求偏导, 并令导数为0, 有
+
+$$ \nabla_{\overrightarrow{w}}L(\overrightarrow{w}, b, \overrightarrow{\alpha}) = \overrightarrow{w} - \sum_{i=1}^{N}\alpha_{i}y_{i}\overrightarrow{x}_{i} = 0 $$
+
+$$ \nabla_{b}L(\overrightarrow{w}, b, \overrightarrow{\alpha}) = \sum_{i=1}^{N}\alpha_{i}y_{i} = 0 $$
+
+由此可以得到 
+
+$$ \overrightarrow{w} = \sum_{i=1}^{N}\alpha_{i}y_{i}\overrightarrow{x}_{i}, ~~~  \sum_{i=1}^{N}\alpha_{i}y_{i} = 0 $$
+
+带入拉格朗日函数
+
+$$
+\begin{aligned}
+L(\overrightarrow{w}, b, \overrightarrow{\alpha})&= \frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) - \sum__{i=1}^{N}y_{i}\left[(\sum_{j=1}^{N}\alpha_{j=1}^{N}t_{j}\overrightarrow{x}_{j})*\overrightarrow{x}_{i} + b \right] + \alpha_{i=1}^{N}\alpha_{i} \\
+&= \frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) - \sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) + \sum_{i=1}^{N}\alpha_{i}y_{i}b + \sum_{i=1}^{N}\alpha_{i}
+\end{aligned}
+$$
+
+上式中, 由于 $$ \sum_{i=1}^{N}\alpha_{i}y_{i} = 0 $$, 而 b 和 i 无关, 因此该项为 0. 其余项合并得到
+
+$$ L(\overrightarrow{w}, b, \overrightarrow{\alpha}) = -\frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) +  \sum_{i=1}^{N}\alpha_{i} $$
+
+对偶问题极大值为
+
+$$ \max_{\overrightarrow{\alpha}}\left(-\frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) + \sum_{i=1}^{N}\alpha_{i} \right) $$
+
+$$ s.t. ~~~ \sum_{i=1}^{N}\alpha_{i}y_{i} = 0 $$
+
+$$ \alpha_{i} \geq 0, ~~~i=1,2,\dots, N $$
+
+设对偶问题最优化的解为 $$ \overrightarrow{\alpha}^{*}$$. 那到这里就会想, 你把极大值极小值顺序换了, 那这个解还和原问题的解一样么? 答案是不一定, 对偶问题提供了原问题的一个下界. 那什么情况下这两个解一致呢? 要满足两个条件, 一个是 slater 条件, 另一个 是 KKT 条件
+
+* slater 条件为: 存在 x, 使得不不等式约束 $$ g(x) \leq 0$$ 严格成立. 它是原问题可以等价于对偶问题的一个充分条件, 确保了鞍点的存在.    
+* KKT 条件: slater 条件确保了鞍点的存在, 但鞍点不一定是最优解. KKT 条件便是确定案件便是原函数最优解的充分条件. 当原问题时凸优化问题是, KKKT 条件就是最优解的充要条件.
+
+KKT 条件可以表述为下面三个条件:
+
+$$ g_{i}(x) \leq 0, ~~~ i=1,2,\dots, p ~~~~and h_{j}(x) = 0,~~~ j=1,2,\dots, q $$
+
+$$ \nabla f(x) + \sum_{i=1}^{p}\alpha_{i}\nabla g_{i}(x) + \sum_{j=1}^{q}\beta_{j}\nabla h_{j}(x) = 0 $$
+
+$$ \beta_{j} \neq 0,~~~ and \alpha_{i} \geq 0 ~~~ and \alpha_{i}g_{i}(x) = 0~~~, i=1,2, \dots, p $$
+
+* 第一个条件说最优点x 必须满足所有等式及不等式条件. 也就是最优点必须是一个可行解, 这个没啥好说的.    
+* 第二个约束条件说, 最优点x , $\nabla f $必须是 $\nabla g$ 和 $\nabla h $ 的线性组合.     
+* 第三个条件是对拉格朗日乘子的一些限制, 因此度地狱不等式的乘子条件有方向性, 因此不等式的乘子必须大于等于0 , 等式的就没有限制, 只要不等于0 就好.
+
+根据 KKT 条件, 我们对应的可以写出下列方程
+
+$$ \nabla_{\overrightarrow{w}} L(\overrightarrow{w}, b, \overrightarrow{\alpha}) = \overrightarrow{w} - \sum_{i}^{N}\alpha_{i}y_{i}\overrightarrow{x}_{i} = 0 $$
+
+$$ \nabla_{b}L(\overrightarrow{w}, b, \overrightarrow{\alpha}) = \sum_{i=1}^{N}\alpha_{i}^{N}\alpha_{i}y_{i} = 0  $$
+
+$$ \alpha_{i}[y_{i}(\overrightarrow{w}\overrightarrow{x} + b) - 1] = 0, ~~~~i = 1,2,\dots, N $$
+
+$$ y_{i}(\overrightarrow{w}\overrightarrow{x} + b) - 1 \geq 0 , ~~~i = 1,2,\dots, N $$
+
+$$ \alpha_{i} \geq 0, ~~~ i=1,2,\dots, N $$
+
+根据第一个式子, 有
+
+$$ \overrightarrow{w} = \sum_{i=1}^{N}\alpha_{i}y_{i}\overrightarrow{x}_{i} $$
+
+由于 $\overrightarrow{\alpha} $ 不是 零向量(若它是零向量, 根据第一个式子, $\overrightarrow{w}$ 也是零向量, 矛盾), 则必然存在谋某个 j 使得 $\alpha_{j} \geq 0 $. 根据第三个式子, 我们知道, 此时必有 $$ y_{i}(\overrightarrow{w}*\overrightarrow{x} + b) - 1 = 0 $$. 同时考虑到 $y_{i}^{2} = 1$, 两侧同时乘以 $y_{i}$ 可得
+
+$$ b = y_{i} - \sum_{i=1}^{N}\alpha_{i}y_{i}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) $$
+
+于是分离超平面可以写作 
+
+$$ \sum_{i=1}^{N}\alpha_{i}y_{i}(\overrightarrow{x}\overrightarrow{x}_{i}) + b = 0 $$
+
+分类决策函数就是 $$ f(\overrightarrow{x}) = sign(\sum_{i=1}^{N}\alpha_{i}y_{i}(\overrightarrow{x}\overrightarrow{x}_{i}) + b)$$, 可以看到**分类决策函数只依赖于输入$\overrightarrow{x}$ 和训练样本的内积**.
+
+### SMO 算法
+
+现在式子中的未知参数是 $\alpha$, 对于它的求解, 我们可以用序列最小最优化(sequential minimal optimization, SMO)算法来高效的求解. SMO算法的思路是:
+
+* 若所有变量都满足条件, 则最优化问题的解就得到了.    
+* 否则选择两个变量, 同时固定其他所有变量, 针对这两个变量构建一个二次规划问题.    
+    * 这个二次规划问题关于这两个变量的解应该更接近原始二次规划问题的解, 因为这会使得原始二次规划问题的目标函数值更小.    
+    * 更重要的是这个二次规划问题可以通过解析的方法求解.    
+    * 此时子问题有两个变量, 至少存在一个变量不满足约束条件(这两个变量是通过某些条件找出来的, 它俩要是满足那就代表所有变量都满足条件了). 假设其中一个是违反最严重的那个, 另一个约束由约束等式自动确定.
+    * SMO 算法不断地将原始问题分解为子问题进行求解, 从而达到求解原问题的目的
+
+可以看出,整个 SMO 算法包含两个重要的部分: 选择变量的启发式方法, 求解两个变量二次规划的解析方法
+
+#### 选择变量的启发式方法
+
+前面说过, SMO 算法选择的两个变量至少要一个违反约束条件. 都不违反就代表已经求解了. 那这两个变量怎么找呢? 一般通过两层循环的方法寻找
+
+##### 外层循环
+
+用外层循环寻找违反约束条件最严重的点对应的变量作为第一个变量, 具体来说就是检验训练样本点 $$\overrightarrow{x}_{i}, y_{i}$$ 是否满足 KKT 条件:
+
+$$ \alpha_{i} = 0 \rightarrow y_{i}g(\overrightarrow{x}_{i}) = y_{i}(\sum_{j=1}^{N}\alpha_{j}y_{j}K(\overrightarrow{i}, \overrightarrow{x}_{j})) \geq 1  $$
+
+$$ 0 \lt \alpha_{i} \lt C, \rightarrow y_{i}g)x_{i} = 1 $$
+
+$$ \alpha_{i} = C, \rightarrow y_{i}g(x_{i}) \leq 1 $$
+
+其中 $K(\overrightarrow{i}, \overrightarrow{x}_{j})$ 表示核函数. 检验时先遍历所有间隔边界上的支持向量点, 如果都满足条件, 再遍历整个训练集, 检验是否满足条件.
+
+##### 内层循环
+
+假设已经在外层循环中找到第一个变量 $\alpha_{1}$, 第二个变量的选择标准时希望能够使得 $\alpha_{2}$  有足够大的变化. 我们知道$\alpha_{2}$ 依赖于
+|E_{1} - E_{2}|, 一种简单的做法时选择的 $\alpha_{2}$ 可以使 
+|E_{1} - E_{2}| 最大. 其中$E_{*}$ 表示 预测值和真实值的差.
+
+特殊情况下, 若找到的 $\alpha_{2}$ 不能使目标函数有足够的下降, 那么可以用启发式规则继续选择 $\alpha_{2}$ :
+
+* 遍历所有再间隔边界上的点, 依次将其作为  $\alpha_{2}$ 试用, 直到目标函数有足够的下降    
+* 不行的话遍历整个训练数据集    
+* 再不行抛弃 $\alpha_{1}$, 重新找 $\alpha_{1}$ 和 $\alpha_{2} $.
+
+#### 子问题的求解
+
+目标函数为
+
+$$ \frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}K(\overrightarrow{x}_{i},\overrightarrow{x}_{j}) - \sum_{i=1}^{N}\alpha_{i} $$
+
+假设选择的两个变量为 $\alpha_{1}, \alpha_{2}$, 其他变量为 $i=1,2,\dots, N$. 因此 SMO 的最优化问题的子问题可以把目标问题展开变成
+
+$$ \min_{\alpha_{1}, \alpha_{2}} L(\alpha_{1}, \alpha_{2}) = \frac{1}{2}K_{11}\alpha_{1}^{2} + \frac{1}{2}K_{22}\alpha_{2}^{2} + y_{1}y_{2}K_{12}\alpha_{1}\alpha_{2} - (\alpha_{1} + \alpha_{2}) + y_{1}\alpha_{1}\sum_{i=3}^{N}y_{i}\alpha_{i}K_{i1} + y_{2}\alpha_{2}\sum_{i=3}^{N}y_{i}\alpha_{i}K_{i2} $$
+
+$$ s.t.~~~ \alpha_{1}y_{1} + \alpha_{2}y_{2} = -\sum_{i=3}^{N}y_{i}\alpha_{i} = \gamma $$
+
+$$ 0 \leq \alpha_{i} \leq C, ~~~ i=1, 2 $$
+
+##### 取值范围约束
+
+根据 $\alpha_{1}, \alpha_{2}$ 的约束条件 $$ \alpha_{1}y_{1} + \alpha_{2}y_{2} = \gamma $$, 假设 $\alpha_{1}^{old}, \alpha_{2}^{old} $ 表示初始可行解,  $ \alpha_{1}^{new}, \alpha_{2}^{new}$ 表示解析解. 则有关系
+
+$$ \alpha_{1}^{old} + y_{1}y_{2}\alpha_{2}^{old} = \alpha_{1}^{new} + y_{1}y_{2}\alpha_{2}^{new} $$
+
+设 $\alpha_{2}^{new}$ 的取值范围为 $[L,H]$
+
+* 当 $y_{1}  \neq y_{2} $ 时    
+    * 若 $\alpha_{2}^{new} \geq \alpha_{1}^{new}, 则 $\gamma \leq \alpha_{2}^{new} \leq C $    
+    * 若 $\alpha_{1}^{new} \gt \alpha_{2}^{new} $, 则 $0 \leq \alpha_{2}^{new} \leq C-\gamma $    
+    * 根据 
+    $$\gamma = |\alpha_{1}^{old} - \alpha_{2}^{old}| $$, 则 $$ L = \max(0, \alpha_{2}^{old}, \alpha_{1}^{Old}), H = \min(C, C+ \alpha_{2}^{old} - \alpha_{1}^{old}) $$    
+* 当 $y_{1}  = y_{2}$ 时     
+    * 若 $\gamma \gt C$, 则 $$ \gamma - C \leq \alpha_{2}^{new} \leq C$$    
+    * 若 $\gamma \lt C$ ,则 $ 0 \leq \alpha_{2}^{new} \leq \gamma$    
+    * 根据 $\gamma = \alpha_{1}^{old} + \alpha_{2}^{old}$, 有 $L = \max(0, \alpha_{2}^{Old} + \alpha_{1}^{old} - C)$, $H = \min(C, \alpha_{2}^{old} + \alpha_{1}^{Old}) $
+
+确定的$\alpha$ 范围将会对一会求得的解析解范围进行约束. 现在开始求解析解. 
+
+根据刚开始我们写的 $L(\alpha_{1}, \alpha_{2})$
+
+$$ \min_{\alpha_{1}, \alpha_{2}} L(\alpha_{1}, \alpha_{2}) = \frac{1}{2}K_{11}\alpha_{1}^{2} + \frac{1}{2}K_{22}\alpha_{2}^{2} + y_{1}y_{2}K_{12}\alpha_{1}\alpha_{2} - (\alpha_{1} + \alpha_{2}) + y_{1}\alpha_{1}\sum_{i=3}^{N}y_{i}\alpha_{i}K_{i1} + y_{2}\alpha_{2}\sum_{i=3}^{N}y_{i}\alpha_{i}K_{i2} $$
+
+我们将 $\alpha_{1}$ 根据 
+
+$$\alpha_{1}^{old} + y_{1}y_{2}\alpha_{2}^{old} = \alpha_{1}^{new} + y_{1}y_{2}\alpha_{2}^{new} = \gamma$$
+
+用 $$\alpha_{2}^{new} $$ 来表示, 得到 $\alpha_{1} = \gamma - y_{1}y_{2}\alpha_{2} $. 带入上式得到关于 $\alpha_{2}$ 的方程:
+
+$$ 
+\begin{aligned}
+L(\alpha_{2}) &= \gamma - y_{1}y_{2}\alpha_{2} + \alpha_{2} - \frac{1}{@}(\gamma - y_{1}y_{2}\alpha_{2})^{2}K_{11} - \frac{1}{2}\alpha_{2}^{2}K_{22} \\
+& - y_{1}y_{2}(\gamma - y_{1}y_{2}\alpha_{2})\alpha_{2}K_{12} - (\gamma - y_{1}y_{2}\alpha_{2})y_{1}\sum_{i=3}^{N}\alpha_{i}y_{i}K_{i1} + \alpha_{2}y_{2}\sum_{i=3}^{N}y_{i}\alpha_{i}K_{i2}
+\end{aligned}
+$$
+
+令上式关于 $\alpha_{2}$ 的导数等于0, 合并移项得到 $\alpha_{2}$ 的解:
+
+$$ \alpha_{2}^{new} = \frac{y_{1}y_{2}(K_{11} - K_{12})\gamma + (\sum_{i=3}^{N}\alpha_{i}y_{i}K_{i1} - \sum_{i=3}^{N}y_{i}\alpha_{i}K_{i2})y_{2} - y_{1}y_{2} - s + 1}{2K_{12} - K_{11} - K_{22}} $$
+
+上式包含 $\gamma$ 和求和项, 我们可以对其进行进一步的替换, 定义
+
+$$E_{i} = g(\overrightarrow{x}_{i}) - y_{i} = (\sum_{j=1}^{N}\alpha_{j}y_{j}K(x_{j}, x_{i}) + b) - y^{i} $$ 
+
+它表示预测值和真实值的差值. 根据约束条件, 我们有 
+
+$$ \sum_{i=3}^{N}\alpha_{i}y_{i}K_{i1} = g^{old}(x_{1}) - b^{old} - \alpha_{1}^{old}y_{1}K_{1, 1} - \alpha_{2}^{old}y_{2}K_{21} $$
+
+$$ \sum_{i=3}^{N}\alpha_{i}y_{i}K_{i2} = g^{old}(x_{2}) - b^{old} - \alpha_{1}^{old}y_{1}K_{1, 2} - \alpha_{2}^{old}y_{2}K_{22} $$
+
+带入并替换, 可得到最终结果(就是公式长点, 没什么难度...实在写不动了...)
+
+$$ \alpha_{2}^{new} = \alpha^{old}_{2} - \frac{y_{2}(E_{1} - E_{2})}{2K_{12} - K_{11} - K_{22}} $$
+
+考虑约束条件, 对 $\alpha_{2}$ 超出上下限的值进行截断得到最终表示. 根据 $\alpha_{1}$ 和  $\alpha_{2}$ 的关系 
+
+$$ \alpha_{1}^{old} + y_{1}y_{2}\alpha_{2}^{old} = \alpha_{1}^{new} + y_{1}y_{2}\alpha_{2}^{new} = \gamma $$
+
+得到
+
+$$ \alpha_{1}^{new} = \alpha^{old}_{1} + y_{1}y_{2}(\alpha_{2}^{old} - \alpha_{2}^{new}) $$
+
+## 线性支持向量机
+
+对于线性近似可分的训练数据, 上述的线性支持向量机就不适用了, 要想办法把它扩展到线性不可分情况, 毕竟现实世界中线性不可分的情况更多. 假设训练数据集是线性不可分的, 这意味着某些样本点$$\overrightarrow{x}_{i}, y_{i}$$ 不满足函数间隔大于等于1 的约束条件.
+
+我们可以对每个样本点添加一个松弛变量$\xi_{i} \geq 0 $, 使得函数间隔加上松弛变量大于等于1. 现在约束条件变为 $$ y_{i}(\overrightarrow{w}*\overrightarrow{x}) \geq 1 - \xi_{i} $$. 对于每一个松弛变量的引入, 需要支付对应的代价 $\xi_{i}$, 因此新的目标函数为
+
+$$ \min \frac{1}{2}||w||^{2} + C\sum_{i=1}^{N}\xi_{i} $$
+
+其中 $C \geq 0 $ 称作惩罚参数. 此时的优化相对于前面的硬间隔最大化可以叫做软间隔最大化. 于是线性近似可分的数据被重新表示成了凸二次规划问题. 
+
+$$ \min_{\overrightarrow{w}, b}\frac{1}{2}||\overrightarrow{w}||^{2} + C\sum_{i=1}^{N}\xi_{i} $$
+
+$$ s.t. ~~~ y_{i}(\overrightarrow{w}\overrightarrow{x}+ b) \geq 1 - \xi_{i},~~~~i = 1,2,\dots, N $$
+
+$$ \xi_{i} \geq 0, ~~~~i = 1,2,\dots, N $$
+
+可以证明, 解得的 w 是唯一的, 但b不是, 它的解存在于一个区间.  我们按照前面的套路求解该问题. 首先写出拉格朗日函数
+
+$$ L(\overrightarrow{w}, b, \overrightarrow{\xi}, \overrightarrow{\alpha}, \overrightarrow{\mu}) = \frac{1}{2}||\overrightarrow{w}||^{2} + C\sum_{i=1}^{N}\xi_{i} - \sum_{i=1}^{N}\alpha_{i}\left[y_{i}(\overrightarrow{w}\overrightarrow{x}_{i}+b)- 1 + \xi_{i} \right] - \sum_{i=1}^{N}\mu_{i}\xi_{i} $$
+
+$$ \alpha_{i} \geq 0, ~~~\mu_{i} \geq 0 $$
+
+对偶问题是求拉格朗日函数的极大极小. 因此先求上式对 $\overrightarrow{w}, b, \overrightarrow{\xi}$ 的极小, 这个求偏导并令导数为0得到
+
+$$ \nabla_{\overrightarrow{w}} L(\overrightarrow{w}, b, \overrightarrow{\xi}, \overrightarrow{\alpha}, \overrightarrow{\mu}) = \overrightarrow{w} - \sum_{i=1}^{N}\alpha_{i}y_{i}\overrightarrow{x}_{i} = \overrightarrow{0} $$
+
+$$ \nabla_{b} L(\overrightarrow{w}, b, \overrightarrow{\xi}, \overrightarrow{\alpha}, \overrightarrow{\mu}) = -\sum_{i=1}{N}\alpha_{i}y_{i} = 0 $$
+
+$$ \nabla_{\xi_{i}} L(\overrightarrow{w}, b, \overrightarrow{\xi}, \overrightarrow{\alpha}, \overrightarrow{\mu}) = C - \alpha_{i} - \mu_{i} = 0 $$
+
+得到
+
+$$ \overrightarrow{w} =  \sum_{i=1}^{N}\alpha_{i}y_{i}\overrightarrow{x}_{i} $$
+
+$$ \sum_{i=1}{N}\alpha_{i}y_{i} = 0 $$
+
+$$ C - \alpha_{i} - \mu_{i} = 0 $$
+
+将上面等式带入拉格朗日函数, 得到
+
+$$ \max_{\overrightarrow{\alpha}, \overrightarrow{\mu}}\min_{\overrightarrow{w}, b, \overrightarrow{\xi}} L(\overrightarrow{w}, b, \overrightarrow{\xi}, \overrightarrow{\alpha}, \overrightarrow{\mu}) = \\max_{\overrightarrow{\alpha}, \overrightarrow{\mu}}\left[-\frac{1}{2} \sum_{i=1}^{N}\alpha_{j}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}, \overrightarrow{x}_{j}) + \sum_{i=1}^{N}\alpha_{i} \right] $$
+
+取负号变为极小化问题, 因此对偶问题综合表示为
+
+$$ \min_{\overrightarrow{\alpha}}\frac{1}{2} \sum_{i=1}^{N}\alpha_{j}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i},\overrightarrow{x}_{j}) - \sum_{i=1}^{N}\alpha_{i} $$
+
+$$ s.t. ~~~~ \sum_{i=1}^{N}\alpha_{i}y_{i} = 0 $$
+
+$$ 0 \leq \alpha_{i} \leq C,~~~~i= 1,2,\dots, N $$
+
+利用 KKT 条件, 对应写出下列方程
+
+$$ \nabla_{\overrightarrow{w}} L(\overrightarrow{w}, b, \overrightarrow{\xi}, \overrightarrow{\alpha}, \overrightarrow{\mu}) = \overrightarrow{w} - \sum_{i=1}^{N}\alpha_{i}y_{i}\overrightarrow{x}_{i} = \overrightarrow{0} $$
+
+$$ \nabla_{b} L(\overrightarrow{w}, b, \overrightarrow{\xi}, \overrightarrow{\alpha}, \overrightarrow{\mu}) = - \sum_{i=1}{N}\alpha_{i}y_{i} = 0 $$
+
+$$ \nabla_{\xi_{i}} L(\overrightarrow{w}, b, \overrightarrow{\xi}, \overrightarrow{\alpha}, \overrightarrow{\mu}) = C - \alpha_{i} - \mu_{i} = 0 $$
+
+$$ \alpha_{i}\left[y_{i}(\overrightarrow{w}\overrightarrow{x} + b)- 1 + \xi_{i} \right] = 0 $$
+
+$$ \mu_{i}\xi_{i} = 0 $$
+
+$$ y_{i}(\overrightarrow{w}\overrightarrow{x} + b) - 1 + \xi_{i} \geq 0 $$
+
+$$ \xi_{i} \geq 0 $$
+
+$$ C \geq \alpha_{i} \geq 0 $$
+
+$$ \mu_{i} \geq 0 $$
+
+$$ i = 1,2,\dots, N $$
+
+根据方程1, 得到 $$ \overrightarrow{w} = \sum_{i=1}^{N}\alpha_{i}y_{i}\overrightarrow{x}_{i} = \overrightarrow{0} $$. 
+
+现在求b. 若 $\alpha$ 所有分量都为 0, 得出 w 为0, 没意义. 若 $\overrightarrow{\alpha}$ 所有分量都等于C, 根据 $\sum\alpha_{i}y_{i} = 0$, 得出 $\sum y_{i} = 0 $, 这属于强加的约束. 因此回存在某个分量 $\alpha_{j} \in (0, C)$, 则有 $$\mu_{j} = C - \alpha_{j} \gt 0 $$. 此时根据 $\mu_{j}\xi_{j} = 0$ ,得出 $\xi_{j} = 0 $.  根据方程四,  $$ \alpha_{j}[y_{i}(\overrightarrow{w}\overrightarrow{x} + b)- 1 + \xi_{i}] = 0$$,  得到 $$ b = y_{j} - \sum_{i=1}^{N}\overrightarrow{\alpha}y_{i}(\overrightarrow{x}_{i}\overrightarrow{x}_{j}) $$. 
+
+因此分离超平面为 $$\sum_{i=1}^{N}\overrightarrow{\alpha}y_{i}(\overrightarrow{x}_{i}\overrightarrow{x}) + b = 0 $$. 分类决策函数为 $$ f(\overrightarrow{x}) = sign\left[\sum_{i=1}^{N}\overrightarrow{\alpha}y_{i}(\overrightarrow{x}_{i}\overrightarrow{x}) + b \right] $$.
+
+我们根据方程可求得最优解 $\overrightarrow{\alpha}$ , 之后可以根据方程1 计算得到 $\overrightarrow{w}$. 再通过方程四得到 b. 这个问题就得到了解决.
+
+好了, 前面我们简单的说松弛变量用 $\xi_{i} \geq 0 $表示, 那它的具体形式是什么样的呢? 最开始试图用 0, 1 损失去计算. 但 0, 1 损失函数并不连续, 求最值时求导并不好求. 所以引入合页损失(hinge loss):
+
+$$ l_{hinge}(z) = max(0, 1-z) $$
+
+它长下面这个样子
+
+![](/img/in-post/ml_mianshi/hinge_loss.png)
+
+应用到 SVM 里就是说, 之前我们要求 $$y_{i}(\overrightarrow{w}\overrightarrow{x}_{i} + b) \geq 1$$, 但是现在由于线性不可分, 因此该式子一定存在不满足的情况. 那错误了多少呢? 因为你之前大于等于1, 现在小于1了, 那我就看你和1比差了多少, 即 $$ 1-  y_{i}(\overrightarrow{w}\overrightarrow{x}_{i} + b)$$ 来衡量错了多少. 再加上个惩罚因此, 就得到新的目标
+
+$$ \min_{\overrightarrow{w}, b}\frac{1}{2} + C\sum_{i=1}^{N}\max\left(0, 1-y_{i}(\overrightarrow{w}\overrightarrow{x}_{i} + b) \right) $$
+
+上面这个目标函数还可以从其他角度看, 如果从机器学习的损失函数角度看,
+$$||w||^{2}||$$ 就不再是函数间隔项了, 它还可以被看作是L2正则项, 此时合页损失函数变成了主体优化目标, 即误分类最小化. 理论上SVM 可以通过梯度下降算法来训练, 不过此时存在三个问题:
+
+* 合页损失函数部分不可导, 这可以通过 sub-gradient descent 解决    
+* 收敛速度非常慢   
+* 无法得出支持向量和非支持向量的区别.
+
+## 非线性支持向量机
+
+非线性支持向量机针对原数据特征空间线性不可分的情况. 设**原空间为 $$\overrightarrow{x}$$ 向量经过某种变换 映射到新空间$$\overrightarrow{z}$$ 中, 使得在原空间线性不可分的特征, 在新空间 变得线性可分了. 在新空间里用线性分类学习方法从训练数据中学习分类模型的策略叫核技巧**.
+
+令核函数用 K 表示, 它将原空间中任意两个向量 $$\overrightarrow{x}, \overrightarrow{z}$$ 映射为特征空间之中对应的向量之间的内积. 即  $$ K(\overrightarrow{x}, \overrightarrow{z}) = \phi(\overrightarrow{x}*\overrightarrow{z}) $$. 在实际使用中, 往往是直接指定核函数 K的形式, 模型回隐式地学习特征空间和映射函数.
+
+前面我们看到,  在对偶问形式中, 无论目标函数还是决策函数, 都只设计输入实例之间的内积. 因此在对偶问题中的目标函数中的内积 $$\overrightarrow{x}_{i}*\overrightarrow{x}_{j}$$ 可以用核函数 $$K(\overrightarrow{x}_{i}, \overrightarrow{x}_{j}) = \phi(\overrightarrow{x}_{i}) * \phi(\overrightarrow{x}_{j})$$ 来代替.此时对偶问题的目标函数成为:
+
+$$ L(\overrightarrow{\alpha}) = \frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}K(\overrightarrow{x}_{i}, \overrightarrow{x}_{j}) - \sum_{i=1}^{N}\alpha_{i} $$
+
+关于核函数的选取, 在实际应用中往往依赖于领域知识, 最后通过实验验证来验证核函数的有效性. 不过前提是核函数要合法. 一个合法的核函数的充分必要条件是 Gram 矩阵(元素由 $K(x_{n}, x_{m})$ 给出)在所有的集合 $\{x_{n}\}$ 的选择下都是半正定的.
+
+我们看到要验证一个核函数的合法性, 需要遍历整个数据集. 因此在实际中往往应用已有的核函数, 并基于它们, 根据以下规则构造新的合法的核函数.
+
+核函数构造规则: 给定合法的核 $k_{1}(x, x^{'})$ 和 $k_{2}(x, x^{'})$, 下面的新核也是合法的
+
+$$ k(x, x^{'}) = ck_{1}(x, x^{'}) $$
+
+$$ k(x, x^{'}) = f(x)k_{1}(x, x^{'})f(x^{'}) $$
+
+$$ k(x, x^{'}) = q(k_{1}(x, x^{'})) $$
+
+$$ k(x, x^{'}) = exp(k_{1}(x, x^{'})) $$
+
+$$ k(x, x^{'}) = k_{1}(x, x^{'}) + k_{2}(x, x^{'}) $$
+
+$$ k(x, x^{'}) = k_{1}(x, x^{'})k_{2}(x, x^{'}) $$
+
+$$ k(x, x^{'}) = k_{3}(\phi(x), \phi(x^{'})) $$
+
+$$ k(x, x^{'}) = x^{T}Ax^{'} $$
+
+$$ k(x, x^{'}) = k_{a}(x_{a}, x^{'}_{a}) + k_{b}(x_{b}, x^{'}_{b}) $$
+
+$$ k(x, x^{'}) = k_{a}(x_{a}, x^{'}_{a})k_{b}(x_{b}, x^{'}_{b})) $$
+
+其中 $c\gt 0$ 是一个常数, $f()$ 是一个系数非负的多项式, $\phi(x)$ 是一个从 x 到 $R^{M}$ 的函数. $$k(*,*)$$ 是 $R^{M}$ 中的一个合法的核. A 是一个对称半正定矩阵, $x_{a}$ 和 $x_{b}$ 是变量, 且 $x=(x_{a}, x_{b})$. $k_{a}$ 和 $k_{b}$ 是各自空间的合法的核函数.
+
+实际中有几个常用的核函数. 第一个是多项式核函数 $$ K(\overrightarrow{x}, \overrightarrow{z}) = (\overrightarrow{x}\overrightarrow{z} + 1)^{p} $$. 对应的支持向量机是一个 p 次多项式分类器.
+
+另一个更常用的是高斯核函数,它也被称为径向基函数(radial basis funcion, RBF)
+
+$$ K(\overrightarrow{x}, \overrightarrow{z}) = exp(-\frac{||\overrightarrow{x} - \overrightarrow{z}||^{2}}{2\sigma^{2}}) $$
+
+对应于高斯核的特征向量有无穷维数.下面给出证明.
+
+假设在原特征空间中, $x = \{x_{1}, x_{2}\}, ~~~ y= \{y_{1}, y_{2}\}$.
+
+$$
+\begin{aligned}
+k(x, y) &= exp(-||x-y||^{2}) \\
+&= exp(-(x_{1} - y_{1})^{2} - (x_{2} - y_{2})^{2}) \\
+&= exp(-x_{1}^{2} + 2x_{1}y_{1} - y_{1}^{2} - x_{2}^{2} + 2x_{2}y_{2} - y_{2}^{2}) \\
+&= exp(-||x||^{2})exp(-||y||^{2})exp(2x^{T}y) \\
+\end{aligned}
+$$
+
+我们把最后一项用泰勒展开, 因为 $e^{x}$ 的展开式为
+
+$$ e^{x} = 1 + \frac{x}{1!} + \frac{x^{2}}{2!} + \dots + \frac{x^{n}}{n!} = \sum_{n=0}^{\infty}\frac{x^{n}}{n!} $$
+
+所以上式最后一项的展开为
+
+$$ e^{2x^{T}y} = \sum_{n=0}^{\infty}\frac{(2x^{T}y)^{n}}{n!} $$
+
+可以看到它是无穷维的, 得证.
+
+采用核技巧替换后, 新的约束最优化问题变为
+
+$$ \min_{\overrightarrow{\alpha}}\frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}K(\overrightarrow{x}_{i}, \overrightarrow{x}_{j}) - \sum_{i=1}^{N}\alpha_{i} $$
+
+$$ s.t.~~~~\alpha_{i=1}^{N}\alpha_{i}y_{i} = 0 $$
+
+$$ C \geq \alpha_{i} \geq 0, ~~~ i=1,2,\dots, N $$
+
+同样用 SMO算法或者其他算法进行求解即可.
+
+## 回归问题的 SVM
+
+在传统的回归模型中, 损失函数当且仅当预测值和真实值完全一致时 才不会计算损失, 但支持向量回归(support vector regression: SVR) 不同, 它能容忍二者之间有 $\epsilon$ 的偏差. 这相当于以预测值 $$f(\overrightarrow{x}_{i})$$ 为中心, 构建了一个宽度为 $w\epsilon$的间隔带. 若样本落入此间隔带内则被认为是正确的. 因此 SVR 问题可表示为
+
+$$ \min_{\overrightarrow{w}, \overrightarrow{x}}\frac{1}{2}||w||^{w} + C\sum_{i=1}^{N}L_{\epsilon}(\overrightarrow{w}\overrightarrow{x} + b - y_{i}) $$
+
+其中 C 还是惩罚系数, $L_{\epsilon}$ 为损失函数, 定义为
+
+$$ L_{\epsilon} = 
+\left\{
+\begin{aligned}
+0 & ~~~~, if |z| \leq \epsilon \\
+|z| - \epsilon &, ~~~ else
+\end{aligned}
+\right.
+$$
+
+与之前一样, 我们要引入松弛变量. 对于每个数据点 $$\overrightarrow{x}_{i}$$, 我们现在需要两个松弛变量 $\xi_{i} \geq 0$ 和 $$\hat{\xi}_{i} \geq 0$$.其中 $\xi_{i} \gt 0 $ 对应于 $$y_{i} \gt f(\overrightarrow{x}) + \epsilon $$ 的数据点,  $$ \hat{\xi}_{i} \gt 0$$ 对应于 $$ y_{i} \lt f(\overrightarrow{x}) + \epsilon $$ 的数据点. 现在整体优化问题就变成
+
+$$ \min_{\overrightarrow{w}, b, \xi_{i}, \hat{\xi}_{i}}\frac{1}{2}||w||^{2} + C\sum_{i=1}^{N}(\xi_{i} + \hat{\xi}_{i}) $$
+
+$$ s.t. ~~~ f(\overrightarrow{x}_{i}) - y_{i} \leq \epsilon + \xi_{i} $$
+
+$$ y_{i} - f(\overrightarrow{x}_{i}) \leq \epsilon + \hat{\xi}_{i} $$
+
+$$ \xi_{i} \geq 0, ~~~ \hat{\xi}_{i} \geq 0, ~~~i=1,2,\dots, N $$
+
+现在按照前面的思路, 我们根据约束条件写出拉格朗日函数, 并将其转化为对偶问题. 同样也可以在对偶问题中使用核技巧进行替换.
+
+## SVM 用于单分类问题
+
+所谓单分类问题即只有一个类别, 对于新输入的数据, 你要判断它是否属于该类别. 类比的例子是 KNN 分类, 如果只有一个类别时, 对于新输入的实例, 通过计算你会给出它是否属于该类别.
+
+对于这种问题, 我们有SVDD(support vector domain descroption)算法. 它的优化目标时求一个中心为 $$\overrightarrow{o}$$, 半径为 R 的最小球面, 使得数据集中的样本都在该球面中. 我们也可以引入松弛变量, 允许一定程度的放松. 则优化目标为
+
+$$ L(R, \overrightarrow{o}, \overrightarrow{\xi}) = R^{2} + C\sum_{i=1}^{N}\xi_{i} $$
+
+$$ s.t. ~~~~||\overrightarrow{x}_{i} - \overrightarrow{o}||^{2} \leq R^{2} + \xi_{i} $$
+
+$$\xi_{i} \geq 0,~~~~ i=1,2,\dots, N $$
+
+其中 C 还是惩罚系数, $\xi_{i}$ 是松弛变量.剩余的和其他一样.}
+
+## 多分类 SVM
+
+实际使用中的类别往往大于2 ,此时变为多分类问题, 为了能够在多分类问题中应用 SVM, 人们提出了很多种方法, 其中最常用的是 一对剩余(one=versus-the-rest), 除此之外还有 一对一(one-versus-one)法等.
+
+* 一对剩余: 构建 K 个独立的 SVM, 其中第k个模型 $y_{k}(x)$ 在训练时, 使用来自类别 $C_{k}$ 的数据作为正例, 使用剩余的 K-1 个类别作为负例. 当产生不相容的结果时, 即一个输入同时被分配到多个类别中时, 我们采用概率最高的. 该方法的主要缺点一方面是正负例的数据集分布不平衡, 破坏了原始问题的对称性, 另一方面是无法保证不同的分类器产的数值标度相同.    
+* 一对一: 在所有可能的类别之间训练 $\frac{K(K-1)}{2}$ 个不同的二分类 SVM么然后将数据点分到具有最高投票数的类别中区.缺点是也存在得到多个分类标签的情况. 同时由于 K 的组合比较多, 训练比较耗时. 不过后面这个缺点可以通过 DAGSVM 解决.
+
+## 如何选择核函数
+
+* 当特征维数 d 超过样本数 m 时 (文本分类问题通常是这种情况), 使用线性核;     
+* 当特征维数 d 比较小. 样本数 m 中等时, 使用RBF核;     
+* 当特征维数 d 比较小. 样本数 m 特别大时, 支持向量机性能通常不如深度神经网络
+
+## 为什么 SVM 对缺失数据敏感
+
+当确实某些特征数据时, 向量数据不完整. SVM 没有处理缺失值的策略. 而 SVM 希望样本再特征空间中或者映射后的空间性线性可分, 所以特征空间的好坏对 SVM 性能很重要. 确实特征数据将会影响训练结果的好坏.
+
+## SVM 的优缺点
+
+优点
+
+* 有严格的数学理论支持, 可解释性强    
+* 由于SVM是一个凸优化问题，所以求得的解一定是全局最优而不是局部最优。    
+* 可以处理线性或非线性问题    
+* 拥有高维样本空间的数据也能用SVM，这是因为数据集的复杂度只取决于支持向量而不是数据集的维度，这在某种意义上避免了“维数灾难”。    
+
+缺点
+
+* 训练时间长, 当采用 SMO 算法时, 由于每次都需要挑选一对参数, 因此时间复杂度时 $O(N^{2})$, 其中 N 是 $$\overrightarrow{\alpha}$$ 的长度, 也是训练样本的数量.    
+* 当采用核技巧时, 若需要存储核矩阵, 空间复杂度也是 $O(N^{2})$.    
+* 模型预测时, 预测时间与支持向量的个数成正比. 当支持向量的数量较大时, 预测计算复杂度较高.    
+* 由于以上原因, SVM 不适用于大型数据集(上百万乃至上亿样本)
+
+## SVM 与 LR 的区别
+
+二者间的联系
+
+* LR和SVM都可以处理分类问题，且一般都用于处理线性二分类问题（在改进的情况下可以处理多分类问题）     
+* 两个方法都可以增加不同的正则化项，如l1、l2等等。所以在很多实验中，两种算法的结果是很接近的。     
+* LR和SVM都可以用来做非线性分类，只要加核函数就好。    
+* LR和SVM都是线性模型，当然这里我们不要考虑核函数    
+* 都属于判别模型
+
+区别
+
+* LR是参数模型，SVM是非参数模型。     
+* 从目标函数来看，区别在于逻辑回归采用的是logistical loss，SVM采用的是hinge loss，这两个损失函数的目的都是增加对分类影响较大的数据点的权重，减少与分类关系较小的数据点的权重。     
+* SVM 在损失函数的平台区域产生了稀疏解    
+* SVM不直接依赖数据分布，而LR则依赖，因为SVM只与支持向量那几个点有关系，而LR和所有点都有关系。    
+* SVM依赖penalty系数    
+* SVM本身是结构风险最小化模型，而LR是经验风险最小化模型(经验风险是模型关于训练样本集的平均损失, 结构风险最小化等价于正则化)    
+* 逻辑回归相对来说模型更简单，好理解，特别是大规模线性分类时比较方便。而SVM的理解和优化相对来说复杂一些，SVM转化为对偶问题后,分类只需要计算与少数几个支持向量的距离,这个在进行复杂核函数计算时优势很明显,能够大大简化模型和计算。 
+
+
+## 什么时候选用 LR, 什么时候选择 SVM 呢?
+
+*  如果Feature的数量很大，跟样本数量差不多，这时候选用LR或者是Linear Kernel的SVM    
+*  如果Feature的数量比较小，样本数量一般，不算大也不算小，选用SVM+Gaussian Kernel    
+*  如果Feature的数量比较小，而样本数量很多，需要手工添加一些feature变成第一种情况
+
+## SVM 与感知器的联系和优缺点比较
+
+* 间隔最大使得 SVM 有别于感知机, 如果数据集是线性可分的, 那么感知机获得的模型可能有很多个, 而 SVM 会选择间隔最大的那个    
+* SVM 支持核技巧    
+* 感知机使用误分类最小的策略, 求出分离超平面, 但是此时的解有无穷多个, SVM 利用间隔最大化求得最优分离超平面, 这样的解只有一个
+
