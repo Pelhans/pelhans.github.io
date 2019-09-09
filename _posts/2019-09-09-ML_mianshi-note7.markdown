@@ -122,8 +122,10 @@ $$ \overrightarrow{w} = \sum_{i=1}^{N}\alpha_{i}y_{i}\overrightarrow{x}_{i}, ~~~
 
 $$
 \begin{aligned}
-L(\overrightarrow{w}, b, \overrightarrow{\alpha})&= \frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) - \sum__{i=1}^{N}y_{i}\left[(\sum_{j=1}^{N}\alpha_{j=1}^{N}t_{j}\overrightarrow{x}_{j})*\overrightarrow{x}_{i} + b \right] + \alpha_{i=1}^{N}\alpha_{i} \\
-&= \frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) - \sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) + \sum_{i=1}^{N}\alpha_{i}y_{i}b + \sum_{i=1}^{N}\alpha_{i}
+L(\overrightarrow{w}, b, \overrightarrow{\alpha})&= \frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) \\
+        & ~~~~ - \sum_{i=1}^{N}y_{i}\left[(\sum_{j=1}^{N}\alpha_{j=1}^{N}t_{j}\overrightarrow{x}_{j})*\overrightarrow{x}_{i} + b \right] + \alpha_{i=1}^{N}\alpha_{i} \\
+&= \frac{1}{2}\sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) \\
+        & ~~~~ - \sum_{i=1}^{N}\sum_{j=1}^{N}\alpha_{i}\alpha_{j}y_{i}y_{j}(\overrightarrow{x}_{i}*\overrightarrow{x}_{j}) + \sum_{i=1}^{N}\alpha_{i}y_{i}b + \sum_{i=1}^{N}\alpha_{i}
 \end{aligned}
 $$
 
