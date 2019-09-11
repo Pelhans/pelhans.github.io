@@ -25,7 +25,7 @@ highlighter: rouge
 permalink: pretty
 paginate: 10
 exclude: ["less","node_modules","Gruntfile.js","package.json","README.md","README.zh.md"]
-anchorjs: false                          # if you want to customize anchor. check out line:181 of `post.html`
+anchorjs: true                          # if you want to customize anchor. check out line:181 of `post.html`
 
 
 
@@ -49,12 +49,12 @@ kramdown:
 # disqus_username: Lucy
 
 gitalk:
-enable: true
-owner: pelhans
-repo: pelhans.github.io
-clientID: 15b9fe2f4c186c1a0331
-clientSecret: 2cfe93101b4693abbccf523b126d8ffcc2985a7a
-admin: pelhans
+    enable: true
+    owner: pelhans
+    repo: pelhans.github.io
+    clientID: 15b9fe2f4c186c1a0331
+    clientSecret: 2cfe93101b4693abbccf523b126d8ffcc2985a7a
+    admin: pelhans
 
 # Netease setttings
 netease_comment: false
