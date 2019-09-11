@@ -16,9 +16,6 @@ RSS: false
 weibo_username:     poiny
 zhihu_username:     zhang-han-pei
 github_username:    Pelhans
-#twitter_username:   huxpro
-##facebook_username:  huxpro
-# linkedin_username:  firstname-lastname-idxxxx
 
 
 
@@ -47,15 +44,21 @@ kramdown:
   input: GFM                            # use Github Flavored Markdown !important
   enable_coderay: true
 
-
-
 # Disqus settings
-disqus_username: pelhans
+
+# disqus_username: Lucy
+
+gitalk:
+enable: true
+owner: pelhans
+repo: pelhans.github.io
+clientID: 15b9fe2f4c186c1a0331
+clientSecret: 2cfe93101b4693abbccf523b126d8ffcc2985a7a
+admin: pelhans
 
 # Netease setttings
 netease_comment: false
-git_issue : true
-
+#git_issue : true
 
 
 # Analytics settings
