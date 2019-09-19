@@ -19,12 +19,13 @@ tags:
 
 朴素贝叶斯法是基于贝叶斯定理与条件特征独立假设的分类方法. 它首先基于特征条件独立假设学习输入, 输出的联合概率分布. 而后基于此模型, 对给定输入 x, 利用贝叶斯定理求出后验概率最大的输出 y.因此可以看出它是一个生成式模型.
 
-具体来说, 设输入 为 $\overrightarrow{x} = (x_{1}, x_{2}, \dots, x_{n})^{T}$ 为定义在 n 维空间上的随机向量, $ Y \in \{c_{1}, c_{2},\dots, c_{k}\}. 假设训练数据集 $D = \{(\overrightarrow{x}_{1}, \tilde{y}_{1}), (\overrightarrow{x}_{2}, \tilde{y}_{2}), \dots, (\overrightarrow{x}_{N}, \tilde{y}_{N}) \}$ 由联合分布 $p(\overrightarrow{x}, y)$ 独立同产生. 
+具体来说, 设输入 为 $\overrightarrow{x} = (x_{1}, x_{2}, \dots, x_{n})^{T}$ 为定义在 n 维空间上的随机向量, $ Y \in \{c_{1}, c_{2},\dots, c_{k}\}$. 假设训练数据集 $$D = \{(\overrightarrow{x}_{1}, \tilde{y}_{1}), (\overrightarrow{x}_{2}, \tilde{y}_{2}), \dots, (\overrightarrow{x}_{N}, \tilde{y}_{N}) \}$$ 由联合分布 $p(\overrightarrow{x}, y)$ 独立同产生. 
 
 朴素贝叶斯法对联合概率分布建模. 具体来说是对:
 
 * 先验概率分布 $p(y)$    
-* 条件概率分布 $ p(\overrightarrow{x}|y) = p(x_{1}, x_{2}, \dots, x_{n}| y) $$
+* 条件概率分布
+$ p(\overrightarrow{x}|y) = p(x_{1}, x_{2}, \dots, x_{n}| y) $$
 
 朴素贝叶斯假设特征条件独立, 即:
 
