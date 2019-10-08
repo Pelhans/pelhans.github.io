@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "知识图谱论文阅读笔记（三）"
+title:      "实体链接（一）"
 subtitle:   "翻译 Entity Linking with a Knowledge Base: Issues, Techniques, and Solutions"
 date:       2019-08-16 00:15:18
 author:     "Pelhans"

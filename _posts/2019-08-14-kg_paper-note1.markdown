@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "知识图谱论文阅读笔记（一）"
+title:      "关系抽取（一）"
 subtitle:   "Neural Relation Extraction with Selective Attention over Instances"
 date:       2019-08-14 00:15:18
 author:     "Pelhans"

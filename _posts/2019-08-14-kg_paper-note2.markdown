@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "知识图谱论文阅读笔记（二）"
+title:      "关系抽取（二）"
 subtitle:   "Enriching Pre-trained Language Model with Entity Information for Relation Classification"
 date:       2019-08-14 00:15:18
 author:     "Pelhans"
