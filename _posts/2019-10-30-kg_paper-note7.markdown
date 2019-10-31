@@ -195,7 +195,7 @@ $$ M_{ij} = \frac{\overrightarrow{\alpha_{i}}^{T}}{\overrightarrow{\beta_{j}}}{|
 假设输入为 $ S = (s_{1}, s_{2}, \dots, s_{m})$ 和 $T = (t_{1},. t_{2}, \dots, t_{n})$。通过 T 和 S 我们可以构建相似匹配矩阵 $A_{mn}$。 A 中每个元素通过  
 $$ a_{ij} = \frac{s_{i}^{T}t_{j}}{||s_{i}||*||t_{j||}} $$ 得到。
 
-接下来计算 $\hat{s}_{i} = f_{match}(s_{i}, T)$, 其中 $f_{match}$ 被定义为
+接下来计算 $$\hat{s}_{i} = f_{match}(s_{i}, T)$$, 其中 $$f_{match}$$ 被定义为
 
 ![](/img/in-post/kg_paper/text_match_match_cnn_fmatch.jpg)
 
@@ -214,4 +214,192 @@ $$\alpha = \frac{s^{T}_{i}\hat{s}_{i}}{||s_{i}||*||\hat{s}_{i}||}$$，而后有 
 
 该论文的亮点是分解操作， 得到相似和不相似的部分，不过这个分解到底能从哪种程度上进行分解论文里没写，有时间研究一下。
 
+### BiMPM -- Bilateral Multi-Perspective Matching for Natural Language Sentences
 
+比较经典的双塔式结构， 在使用 BiLSTM 得到语义表示后通过四种匹配策略(Full matching, maxpooling matching, attentive matching, max attentive matching) 得到对应的交互匹配表示，最终再次采用 BiLSTM 的最终时间步输出进行聚合， 通过两个线性层和 softmax 计算相似概率。 模型结构如下图所示
+
+![](/img/in-post/kg_paper/text_match_blstm_bimpm.jpg)
+
+首先 word representation layer 对输入的词进行嵌入，可以用 word2vec 或者 glove。 context 表示层采用 BiLSTM 对句子进行语义编码，其中 对于文章 p 的第 i 个时间步的前后向输出为 $$ h_{i}^{p, for}, ~h_{i}^{p, back} $$, 查询 q 的第 j 个时间步的前后向输出为 $$ h_{j}^{q, for}, ~h_{j}^{q, back} $$.
+
+matching layer 这细说一下， 以 P --> Q 的匹配为例(即 P 中的某一个 $$h_{i}^{p}$$ 对整个 Q 序列计算余弦相似度， Q --> P 同理)。四个匹配方式如下图所示
+
+![](/img/in-post/kg_paper/text_match_blstm_bimpm_matchlayer.jpg)
+
+第一个 Full-matching, 用 P 中 $$h_{i}^{p}$$ 和 Q 的最终时间步输出 $$h_{N}^{q}$$/$$h_{1}^{q}$$ 计算余弦匹配函数。即
+
+$$ m_{i}^{full, for} = f_{m}(h_{i}^{p. for}, h_{N}^{q, for}, W^{1}) $$
+
+$$ m_{i}^{full, back} = f_{m}(h_{i}^{p. back}, h_{1}^{q, back}, W^{2}) $$
+
+$$ f_{m}(v1, v2, W) = cosine(W_{k}*v1, W_{k}*v2) $$
+
+第二个是 maxpooling 匹配，它首先正常计算 $$h_{i}^{p}$$ 与 Q 中每个元素的余弦匹配函数$$f_{m}$$， 最终进行 element-wise maximum 选取每一行最大的元素作为最终向量表示的一部分。
+
+第三个是 attentive 匹配，和注意力机制类似， 先分别计算 $$h_{i}^{p}$$ 与 Q 中每个元素的余弦相似度，并归一化得到对应的权重， 并加权求和得到 Q 的聚合表示 $$\hat{Q} $$, 最终用 $$h_{i}^{p}$$ 与 $$\hat{Q}$$ 计算余弦相似度匹配。
+
+最后一个是 max-attentive 匹配， 上一个不是计算完权重后进行加权求和嘛， 这里变了， 只要权值最大的那个作为 Q 的聚合表示， 之后用该表示和 $$h_{i}^{p}$$ 计算余弦相似度匹配。
+
+对于这四个匹配函数， 作者做了消融实验， 结果表明每个都很有用， 移除后模型下降程度差不多， 因此都保留了。最终四个匹配函数加上前后时间步， 一共 8个向量连接在一起作为该时间步的新表示。
+
+经过上一步 matching 层后， P 和 Q 都有了新的表示， 之后将新的表示输入到 BiLSTM 里进行聚合并计算 softmax 操作就可以了。
+
+除此之外作者还对比了只用 P --> Q 和 只用 Q --> P 的模型， 结果显示模型效果下降了很多， 并且下降效果在 Quora 上是对称的， 但是在 SNLI 上是不对称的， Q --> P 更重要一点， 因此是否采用双向语义匹配是需要根据数据集来定的， 但解释论文里没写，不过如果复杂度可以接受的话还是都用了好， 毕竟效果至少不会下降 = =。
+
+### DecAtt -- A Decomposable Attention Model for Natural Language Inference
+
+很轻量级的一个模型， 作者利用 attention 获得句子的交互表示， 而后利用全连接层和加和池化进行聚合。持此之外， 作者还提出  intra-sentence attention， 即将输入的向量表示进行自对齐(self-aligned)作为新的输入表示，实验结果表明 intra-sentence attention 可以有效提升模型性能。
+
+模型结构如下图所示
+
+![](/img/in-post/kg_paper/text_match_att_decatt.jpg)
+
+具体流程为：
+
+* 首先 输入采用 Glove 得到词向量嵌入 $p_{i}, ~q_{j} $    
+* 计算 注意力权重(attention weights) $$e_{ij} = F^{'}(p_{i}, q_{j}) = F(p_{i})^{T}F(q_{j}) $$， 其中 F 表示全连接 + ReLU 做线性和非线性变换    
+* 对权值矩阵归一化并加和平均得到新的软对齐表示 
+
+$$ \beta_{i} = \sum_{j=1}^{l_{q}}\frac{exp(e_{ij})}{\sum_{k=1}^{l_{p}}exp(e_{ik})}p_{j} $$
+
+$$ \alpha_{j} = \sum_{i=1}^{l_{p}}\frac{exp(e_{ij})}{\sum_{k=1}^{l_{q}}exp(e_{ik})}q_{i} $$
+
+将原表示和软对齐表示进行连接输入到全连接层进行比较
+
+$$ v_{1, i} = FN([p_{i}, \beta_{i}]) $$
+
+$$ v_{2, j} = FN([q_{j}, \alpha_{j}]) $$
+
+最终通过加和方法进行聚合
+
+$$ v_{1} = \sum_{i=1}^{l_{a}} v_{1, i} $$
+
+$$ v_{2} = \sum_{j=1}^{l_{b}} v_{2, j} $$
+
+剩下的就是用全连接层进行预测了。 除了上面的组块外， 作者提出可以用 Cheng 等人 提出的句内注意力(self-attention) 机制来捕获句子中单词之间的依赖语义表示：
+
+$$ f_{ij} = FN(p_{i})^{T}FN(p_{j}) $$
+
+$$ p_{i}^{'} = \sum_{j=1}^{l_{a}}\frac{exp(f_{ij} + d_{i-j})}{\sum_{k=1}^{l_{a}}exp(f_{ik} + d_{i-k})} $$
+
+距离偏置项 d 为模型提供了最小化的序列信息(这句话没太懂， 感觉是对于那些里的特别远的词， 该项会变大，使得模型能够考虑较远的依赖?)  同时保留了可并行化的特点。 对于所有距离大于 10 的词共享偏置， 也就是距离大于10 的话就都按照 10 算。 实验结果表明， 在embedding 后， 加上句内注意力可以有效提升模型效果。
+
+### ESIM -- Enhanced LSTM for Natural Language Inference
+
+很火的一个模型， 基于Parikh 的 DecAtt 改造得到的模型，作者认为 DecAtt 模型虽然考虑了句子内的对其匹配， 但没有考虑词序和上下文语义信息， 因此作者在匹配前后添加了 BiLSTM 层来获取更好的语义编码，充分利用时序和上下文语义信息。 最终该模型在NLI 任务上取得了很好的效果。不过这里其实带来一个小问题就是原论文 DecAtt 重点打的是快和参数少， 因为 DecAtt 只用了 attention 和 全连接层， 可以并行化处理， 用上 BiLSTM 的话并行化就会麻烦很多， 所以实际使用时可以权衡一下。
+
+模型的结构如下图(左面那个)所示：
+
+![](/img/in-post/kg_paper/text_match_blstm_esim.jpg)
+
+上图左侧可以分为四个部分: 输入编码(input encoding)，局部推断模型(local inference modeling)， 推断组件(inference composition) 以及聚合与相似度计算部分。重点是中间两个， 输入编码采用的是 BiLSTM，前向输出和后向输出连接在一起作为新的语义表示 $$h_{i,p}, ~~ h_{i,q}$$。
+
+局部推断模型首先根据 $$h_{ip}, ~~ h_{iq}$$ 计算匹配矩阵 E， E 中每个元素 $$ e_{ij} = h_{i,p}^{T} + h_{j,q} $$。接下来对相似度矩阵的进行第 j 列相似度进行归一化得到对应的权重， 而后利用这些权重与对应的 $$h_{j, q}$$ 加权求和得到 $$h_{i, p}$$ 的交互表示。是不是很眼熟。。。其实就是 attention 计算， 只不过用矩阵的方法来做， 按照 DecAtt 里的说法这么做时间复杂度会变为线性的(没想懂)。即
+
+$$ \hat{h}_{i, p} = \sum_{j=1}^{l_{q}}\frac{exp(e_{ij})}{\sum_{k=1}^{l_{q}}exp(e_{kj})}h_{j,q} $$
+
+$$ \hat{h}_{j, q} = \sum_{i=1}^{l_{p}}\frac{exp(e_{ij})}{\sum_{k=1}^{l_{p}}exp(e_{kj})}h_{i,p} $$
+
+其中 $l_{p}$ 和 $l_{q}$ 是 p 与 q 的长度 有了交互匹配的表示后， 接下来进一步利用这些表示， 得到  Enhancement of local inference information，也就是构建下面这个新的向量：
+
+$$ m_{p} = [h_{p}, \hat{h}_{p}, h_{p} - \hat{h}_{p}, h_{p}*\hat{h}_{p}] $$
+
+$$ m_{q} = [h_{q}, \hat{h}_{q}, h_{q} - \hat{h}_{q}, h_{q}*\hat{h}_{q}] $$
+
+这样模型就可以利用更高层次(high-order)的交互信息。 再往后这两个 m将会被送入 BiLSTM 再次进行语义编码， 利用 最大或均值池化进行聚合， 利用全连接层， softmax 进行分类。
+
+### A COMPARE-AGGREGATE MODEL FOR MATCHING TEXT SEQUENCES
+
+作者对之前的研究进行了总结， 提出通用的 "比较-聚合框架"(Compare-Aggregate)，明确将模型分为预处理、attention表示、比较、聚合 四个步骤，并且对比了 5 个比较函数， 得出两个比较有效的比较函数。模型结构如下图所示
+
+![](/img/in-post/kg_paper/text_match_att_ca.jpg)
+
+接下来看图说话， 以 Query 为例， 输入 $$ Q = (q_{1}, q_{2}, \dots, q_{Q}) $$, 经过预处理层， 采用只保留输入门的 LSTM 对其进行处理得到新的语义表示，保留输入门可以让网络记住有意义的词的信息。
+
+$$ \hat{Q} = \sigma(W^{i}Q + b^{i}) * tanh(W^{u}Q + b^{u}) $$
+
+$$ \hat{A} = \sigma(W^{i}A + b^{i}) * tanh(W^{u}A + b^{u}) $$
+
+其中 $$W^{i}, ~~W^{u} \in R^{l\times d} $$, $$ b^{i},~b^{u}\in R^{l} $$.  
+
+之后 $$\hat{A}$$ 对 $$\hat{Q}$$ 做 attention，得到 $$\hat{Q}$$ 的新表示 H
+
+$$ H = \hat{Q} * softmax((W^{g}\hat{Q} + b^{g})^{T}\hat{A}) $$
+
+其中 $$H\in R^{l\times A} $$， 接下来进入比较层。作者对比了 5 个比较函数， 其中
+
+* NEIRALNET(NN)：将两个向量连接起来， 用线性层+非线性激活的方式， $$ t_{j} = \hat{a_{j}, h_{j}} ReLU(W[\hat{a}_{j}, h_{j}]^{T + b}) $$    
+* NEURALTENSORNET(NTN):  将两个向量看做矩阵， 用矩阵乘法的方式做， $$ t_{j} = f(\hat{a}_{j}, h_{j}) = ReLU(\hat{a}_{j}^{T}T^{[1,\dots,l]}h_{j} + b  ) $$， NN 和 NTN 都没有考虑到语义相似度，因此接下来用了一些相似度度量函数来做这件事     
+* EUCLIDEAN+COSINE(EucCos)：将两个向量的余弦相似度和欧几里得距离连接起来， 
+$$t_{j} = f(\hat{a}, h_{j}) = [||\hat{a}_{j} - h_{j}||_{2}, cos(\hat{a}_{j}, h_{j})]^{T} $$, 但这又有问题了， 就是一下子都变成标量了， 丢失了很多语义信息    
+* SUB、MULT：既然想保留语义信息， 那就用元素级的点乘呗，这样得到的还是一个向量， $$SUB:~~t_{j} = (\hat{a}_{j} - h_{j})*((\hat{a}_{j} - h_{j}))$$,  $$ MULT~~~t_{j} = \hat{a}_{j}*h_{j} $$    
+
+作者总结了一下， 认为 SUB 可以在一定程度上代替 欧几里得距离， 而 MULT 呢和 cos 很像， 因此作者就把 SUB 和 MULT 用 NN 的方式结合在了一起。。。实验结果也表明这个效果最好(其实从结果来看， 单纯的 NN/MULT 效果也没差太多, MULT 在一些任务中还超过了一点， 因此根据情况定用哪个吧)
+
+$$ t_{j} = ReLU(W[(\hat{a}_{j} - h_{j}) * (\hat{a}_{j} - h_{j}), \hat{a}_{j}*h_{j}]^{T} + b ) $$
+
+聚合部分采用 CNN 来做。
+
+### DAM -- Multi-Turn Response Selection for Chatbots with Deep Attention Matching Network
+
+百度 2018 年提出的模型， 作者认为虽然 BiLSTM 能够捕捉序列的前后语义信息， 但代价比较大， 受到 Transformer 的启发， 作者提出了使用两种注意力机制来获取表示和匹配信息的模型。模型的结构模型如下图所以
+
+![](/img/in-post/kg_paper/text_match_dam_over.jpg)
+
+可以看到模型被分为 4 部分， input, representation, matching, Aggregate 这四部分， 还是比较经典的结构的。对于input, embedding 采用 word2vec 得到。
+
+对于 表示部分和匹配部分用到的 attention 组件， 作者使用 attentive module， 它是根据 Transformer 改变得到的， attentive module 的结构如下图所示
+
+![](/img/in-post/kg_paper/text_match_dam_att.jpg)
+
+输入为 query -->  $$ Q = [e_{i}]_{i=0}^{n_{Q}-1}$$,   key --> $$K = [e_{i}]_{i=0}^{n_{K} - 1}$$, value --> $$ V = [e_{i}]_{i=0}^{n_{V}-1}$$ 。
+
+首先根据 Q 和 K 计算 scaled dot-product attention, 之后将其应用到 V 上， 即
+
+$$ Att(Q, K) = [softmax(\frac{Q[i]K^{T}}{\sqrt{d}})]_{i=1}^{n_{Q} - 1} $$
+
+$$ V_{att} = Att(Q, K) * V $$
+
+$$ x_{i} = V_{att}[i] + Q[i] $$
+
+$$ FFN(x) = max(0, xW_{1} + b_{1})W_{2} + b_{2} $$
+
+模块中的 Norm 用的是 layer Norm. 激活函数用的是 ReLU。以上模块被记为 AttentiveModule(Q， K， V)
+
+定义了 AttentiveModule 后， 表示层就是对输入的相应 R 和 多轮句子 U 分别用 该模型， 实验表明 5 层 self-attention 效果最好。
+
+$$ U^{l+1} = AttentiveModule(U_{i}^{l}, U_{i}^{l}, U_{i}^{l}) $$
+
+$$ R^{l+1} = AttentiveModule(R^{l}, R^{l}, R^{l}) $$
+
+matching 部分可以匹配到段落与段落间的关系，包含 self-attention-match 和  cross-attention-match两种
+
+$$ M_{self}^{u_{i}, r, l} = \{U_{i}^{l}[k]^{T} * R^{l}[t] \}_{n_{u_{i}}\times n_{r}} $$
+
+其中 $$U_{i}^{l}[k]$$ 和 $$R^{l}[t]$$ 根据 self AttentiveModule 得到。对于 cross-match 
+
+$$ \hat{U}_{i}^{l} = AttentiveModule(U_{i}^{l}, R^{l}, R^{l}) $$
+
+$$ \hat{R}^{l} = AttentiveModule(R^{l}, U_{i}^{l}, U_{i}^{l}) $$
+
+$$ M_{corss}^{u_{i}, r, l} = \{\hat{U}_{i}^{l}[k]^{T} * \hat{R}^{l}[t]  \}_{n_{u_{i}}\times n_{r}} $$
+
+最终将每个utterance和response中的所有分段匹配度聚合成一个3D的匹配图像Q。 Q再经过一个带有最大池化层的两层3D卷积网络，得到fmatch(c,r)，最后经过一个单层感知机得到匹配分数。
+
+为了证明模型的有效性和必要性， 作者设计了一系列实验， 如 DAM-first 和 DAM-last 是只考虑第一层和最后一层 self-attention，但效果都不如 DAM 整体， 因此证明了使用多颗粒表示的好处。 还有 DAM-self 和 DAM-cross 是只用 self Attention match 和  cross attention match，效果也下降了， 表明选择响应时必须共同考虑文本相关性和相关信息。
+
+对于具有不同平均话语文本长度的上下文， 堆叠式自注意力可以持续提高匹配性能， 这意味着使用多粒度语义表示具有稳定的优势。还有对于 0-10 个单词的部分效果明显不如长的， 这是因为文本越短， 包含的信息就越少。 对于长度超过 30 的长话语， 堆叠式自注意力可以持续提高匹配性能。但所需要的堆叠层数要越多， 以此来捕获内部深层的语义结构。
+
+![](/img/in-post/kg_paper/text_match_dam.jpg)
+
+# 总结
+
+看完上面的论文， 大体总结出一个框架， 分为 输入、再编码、交互匹配、聚合、输出 四个部分。
+
+* 输入：除了 DSSM 等一开始用 word hashing 外， 基本上用的都是 word2vec 和 Glove 的各种向量嵌入方法,不过对于 IR 领域词典大的问题， 可以选择适合的方法    
+* 再编码：可选的一部分， 前期像DSSM 一类的没有用， 但后面很多工作用了，可选的方式为 self-attention(以及其他自对齐的方法)、BiLSTM, CNN，目的是获取句子内部的前后文语义信息    
+* 交互匹配: 基于表示的模型没用这步， 但这基本上都是早期的工作， 今年的工作基本上都考虑了交互匹配这步， 可选的方式如： cros-attention, 通过 cosine/ dot/ indicator/ 欧几里得距离 等构造的匹配矩阵、元素级别的点乘和相减等。    
+* 聚合： 交互匹配得到的通常是维度比较高的矩阵， 因此需要采用一定的方式进行降维，得到定长的低维向量表示， 可选方式为： 池化(最大池化，均值池化， 加和等)、线性+激活函数、CNN、BiLSTM 等方式    
+* 输出： 有了定长的向量表示后， 可以采用 cosine 和 FN + softmax 等方式计算相似度
+
+以上就是个人总结出来的框架。需要指出的是， 模型这种东西在论文里的效果和在实际使用中的效果是两回事， 生产中不是 stat-of-the-art 就好， 好需要考虑模型的复杂性， 与当前数据的匹配程度，模型的容量等等。大部分时候都需要自己根据数据去做相应的修改，不要迷信模型， 理解数据很重要。
