@@ -72,7 +72,7 @@ Global Attention 和传统的 注意力机制一样，所有的信息都用来�
 
 ![](/img/in-post/tensorflow/local_attention.jpg)
 
-上图中， $\hat{h}_{s}表示 全部的 encoder 向量，$h_{t}$表示 时间步 t 的 decoder 输出。Local Attention 首先会为 decoder 端当前的词预测一个 encoder 端对齐的位置(aligned position)$p_{t}$，而后基于 $p_{t}$选择一个窗口，用于计算 context vector $c_{t}$，$p_{t}$的计算公式为：
+上图中， $$\hat{h}_{s}$$表示 全部的 encoder 向量，$h_{t}$表示 时间步 t 的 decoder 输出。Local Attention 首先会为 decoder 端当前的词预测一个 encoder 端对齐的位置(aligned position)$p_{t}$，而后基于 $p_{t}$选择一个窗口，用于计算 context vector $c_{t}$，$p_{t}$的计算公式为：
 
 $$ p_{t} = S*sigmoid(v_{p}^{T}tanh(W_{p}h_{t})) $$
 
@@ -114,7 +114,19 @@ $$}
 
 除此之外，选择它的重要原因是这种构造的函数能够尝试学习相对位置信息，这是因为当我们固定位置 k时，相对位置 $PE_{pos+k}$ 是 $PE_{pos}$ 的线性函数，这就为表达相对位置提供了可能。
 
+问：为什么$PE_{pos+k}$ 是 $PE_{pos}$ 的线性函数?
+
+以 sin 为例， 我们可以对 $$PE(pos + k, 2i) $$ 根据三角函数公式进行展开
+
+$$ PE(pos + k, 2i) = PE(pos, 2i) \times PE(k, 2i + 1) + PE(pos, 2i + 1)\times PE(k, 2i) $$
+
+可以看到，对于固定偏移量k， PE(pos +k) 确实能用 PE(pos) 的线性函数(线性对应非线性)来表示。
+
 获得 位置向量后，将位置向量和词向量进行加和得到最终输入向量，所以前面我们看到词向量和位置向量维度是相同的。
+
+问：使用位置向量相加后，会不会破坏原有的 word embedding 对词含义的表述?
+
+个人理解，会有影响， 以往的 word embedding 是为了获取词义的精准表达，最终我们可以做像 "北京-中国 --> 巴黎-法国"这种。但是 transformer 里的 word embedding 是为了获得最佳效果优化出来的一个东西， 它虽然被 position embedding 改变了，但却也结合了一些位置的信息，最终与 position embedding 结合后得到的效果是提升模型性能。
 
 ## Encoder 部分
 
@@ -143,20 +155,24 @@ $$ Attention(Q, K, V) = \sum_{i}^{S}align(Q, K) * V $$
 
 $$ Attention(Q, K, V) = softmax(\frac{QK^{T}}{\sqrt{d_{k}}})V $$
 
-作者把这种叫Attention 叫做"Scaled Dot-Product Attention"，对应结构如下图所示，其中 Q 和 K 的维度是 $d_{k}$，V 的维度是 $d_{v}$。这个公式相比于正常的 Dot Attention 多了一个缩放因子 $\frac{1}{\sqrt{d_{k}}}$(这个缩放因子据说可以防止结果过大,但 无论多大,经过softmax不都变成归一化概率了么? 想不懂为什么)。除此之外作者还提到了 Additive Attention，这个没细看，等以后用到再说。。。
+作者把这种叫Attention 叫做"Scaled Dot-Product Attention"，对应结构如下图所示，其中 Q 和 K 的维度是 $d_{k}$，V 的维度是 $d_{v}$。这个公式相比于正常的 Dot Attention 多了一个缩放因子 $\frac{1}{\sqrt{d_{k}}}$，这个缩放因子可以防止结果过大，使得它经过 softmax 后落入饱和区间， 因为饱和区的梯度几乎为0， 容易发生梯度消失。 至于为什么是除以 dv ，感觉是相当于得到每个维度的平均数，更合理一点。除此之外作者还提到了 Additive Attention，这个没细看，等以后用到再说。。。
 
 在这个 scaled dot-product attention 中,还有一个 mask部分, 在训练时它将被关闭,在测试或者实际使用中,它将被打开去遮蔽当前预测词后面的序列. 
 
 ![](/img/in-post/tensorflow/multi_head_attention.png)
 
-所谓的 Multi-Head Attention 就是把 Q, K, V 通过参数矩阵映射一下，然后再做 Attention，把这个过程重复 h次，结果拼接起来。这个Multi-head 的 h就显而易见了。用公式表示为：
+所谓的 Multi-Head Attention 就是把 Q, K, V 通过参数矩阵映射一下，然后再做 Attention，把这个过程重复 h次，结果拼接起来，需要注意的是， WQ 相乘后会对其进行降维， 维度为 $d_{v}/h$，这样可以保证模块和单个 self-attention 一致。这个Multi-head 的 h就显而易见了。用公式表示为：
 
 $$ MultiHead(Q, K, V) = Concat(head1, \dots, head_{h})W^{O} \\
         where head_{i} = Attention(QW_{i}^{Q}, KW_{i}^{K}, VW_{i}^{V}) $$
 
 其中 $W_{i}^{Q} \in \mathbb{R}^{d_{model} \times d_{k}}$，$W_{i}^{K} \in \mathbb{R}^{d_{model} \times d_{k}}$, $W_{i}^{V} \in \mathbb{R}^{d_{model} \times d_{v}}$, $W_{i}^{O} \in \mathbb{R}^{d_{model} \times hd_{v}}$。
 
-其中需要注意的是，一方面不同的head的矩阵时不同的,另一方面 multi-head Attention 可以并行计算，论文里 h=8, $d_{k} = d_{v} = d_{model}/h = 64.
+其中需要注意的是，一方面不同的head的矩阵是不同的,另一方面 multi-head Attention 可以并行计算，论文里 h=8, $d_{k} = d_{v} = d_{model}/h = 64$.
+
+一般来说一个 attention 的效果要优于单个 attention. 按照谷歌官方的说法， 这么做形成多个子空间，可以让模型关注不同方面的信息，体现出差异性。但有实验表明，头之间的差距随着所在层数变大而减小，因此这种差异性是否是模型追求的还不一定。
+
+至于头数 h 的设置，并不是越大越好，到了某一个数就没效果了。
 
 ### Position-wise Feed-Forward Networks
 论文里说，它是一个前馈全连接网络，它被等同的应用到每一个位置上(pplied to each position separately and identically. )，它由两个线性变换和 ReLU 激活函数组成：
@@ -164,6 +180,8 @@ $$ MultiHead(Q, K, V) = Concat(head1, \dots, head_{h})W^{O} \\
 $$ FFN(x) = max(0, xW_{1} + b_{1})W_{2} + b_{2} $$
 
 这个线性变换被应用到各个位置上，并且它们的参数是相同的。不过不同层之间的参数就不同了。这相当于一个核大小为1 的卷积。
+
+一个注意的地方是， W1 的维度是(2048, 512), W2 是 (512, 2048)。 即先升维，后降维， 这是为了扩充中间层的表示能力，从而抵抗 ReLU 带来的模型表达能力的下降。
 
 ### Transformer 内的数据流动
 
