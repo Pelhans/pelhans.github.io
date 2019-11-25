@@ -1,0 +1,46 @@
+---
+layout:     post
+title:      "ES 笔记"
+subtitle:   "用 ES 做实体召回"
+date:       2019-11-17 00:15:18
+author:     "Pelhans"
+header-img: "img/tensorflow.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - Knowledge Graph
+---
+
+
+* TOC
+{:toc}
+
+# ES 简介
+
+官方文档内容很全，推荐阅读 [ES 官方文档](https://www.elastic.co/guide/cn/elasticsearch/guide/current/practical-scoring-function.html)
+
+Elasticsearch 是一个分布式、可扩展、实时的搜索与数据分析引擎。基于 Lucene 作为其核心来实现所有索引和搜索的功能。原本 Lucene 只是一个库， 想要使用它必须用 Java 语言将其集成到你的应用中， 麻烦在于 Lucene 比较复杂， 使用者必须深入了解检索的相关知识来理解它是如何工作的。但 ES 通过简单的 RESTful API 来隐藏 Lucene 的复杂性， 从而让全文搜索变得简单。
+
+对于多术语查询，Lucene采用布尔模型（Boolean model）、词频/逆向文档频率（TF/IDF）、以及向量空间模型（Vector Space Model），然后将他们合并到单个包中来收集匹配文档和分数计算。 只要一个文档与查询匹配，Lucene 就会为查询计算分数，然后合并每个匹配术语的分数。
+
+# 实用评分函数
+
+$$ score(q, d ) = 查询正则化 * 协调因子 * \sum_{t in d}(tf(t) * id(t)^{2} * t.getBoost() * norm(t, d)) $$
+
+其中
+
+* 查询正则化： 试图将查询进行正则化来达到比较不同查询结果的目的，但其实比较不同查询结果的相关度分数并没有什么意义，同一查询结果间的相对分值更有用。    
+* 协调因子： 文档里出现的查询术语越多，协调因子就会越大，结果也往往更好。    
+* 求和是对文档中每个与查询匹配的 t 进行遍历。    
+* tf(t)：术语在文档中出现的频次， $$tf(t) = \sqrt{频次}$$    
+* $$idf(t)^{2}$$：逆向文档频率的平方， 其中 $$ idf(t) = 1 + \log(总文档数/(包含t的文档数 + 1)) $$    
+* t.getBoost()：查询中使用的 boost，默认为1，用户也可以进行设置，使得某一个查询 term 比其他的更重要。但需要注意的是， 权重提升值会经过正则化和一些其他的内部优化过程，boost 为 2 的最终分数并不代表是 boost 为1 的2倍。但还是提高了的，也表明你想让该term 比 boost 比它低的 更重要。这一项很重要，因为大部分情况下简单查询配合 boost 就能获得不错的召回效果，但在实际应用中，无法通过简单的公式得出某个特定查询语句的 “正确” 权重提升值，只能通过不断尝试获得。需要记住的是 boost 只是影响相关度评分的其中一个因子；它还需要与其他因子相互竞争。    
+* 字段长度正则值：t 所在的字段越短权值越高，如 term 出现在标题中就会比出现在内容中的相关度更高， $$ norm(d) = 1 / \sqrt{t 所在段的长度}$$
+
+# 更牛的评分机制
+
+上面是常见的评分策略，但是对于实体来说，大部分都很短， 而且每个字都很重要， 此时 tf-idf 就不那么重要了， 此时可以用 constant_score 查询 来为任意一个匹配的文档制定分数，忽略掉 TF-IDF 信息。
+
+更进一步，如果想改变当前的排序规则，ES 还提供了[function_score 查询](https://www.elastic.co/guide/cn/elasticsearch/guide/current/function-score-query.html)， 实体链接没这么复杂，没用到就不记了。
+
+# 利用 python 控制 ES
