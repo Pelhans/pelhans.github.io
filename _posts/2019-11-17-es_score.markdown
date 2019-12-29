@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "ES 笔记"
+title:      "Elasticsearch 笔记"
 subtitle:   "用 ES 做实体召回"
 date:       2019-11-17 00:15:18
 author:     "Pelhans"
