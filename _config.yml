@@ -1,10 +1,10 @@
 # Site settings
 title: Pelhans Blog
-SEOTitle: 张涵沛的博客 | Pelhans Blog
+SEOTitle: Pelhans 的博客
 header-img: img/home-bg.jpg
 email: me@pelhans.com
 description: "自然语言处理学徒 | Pelhans，Machine Learning , NLP , ASR | 这里是 @Pelhans 的博客"
-keyword: "Pelhans, 自然语言处理, 语音识别, 知识图谱, 表示学习"
+keyword: "Pelhans, 自然语言处理, 知识图谱, 表示学习"
 #url: "https://pelhans.me"              # your host, for absolute URL
 url: "https://pelhans.github.io"              # your host, for absolute URL
 baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'

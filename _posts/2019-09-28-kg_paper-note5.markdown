@@ -104,6 +104,32 @@ $$ y^{*} = arg\max_{\tilde{y}\in Y_{X}} s(X, \tilde{y}) $$
 
 文章通过将 attention 可视化来证明方法的有效性。左图是local attention 的图，可以看出，模型学习到了短期的相关性，如 “美” 和 “国”这种。右图是全局的 attention，可以看出，模型也确实学习到了长期的依赖。
 
+## Chinese NER Using Lattice LSTM
+
+中文词内是包含大量的信息的，直接用基于词的方法会受到分词效果的影响，因此目前很多模型都是基于字的， 词级别信息则想办法通过好的向量嵌入和模型的上下文依赖来补充。改论文提出通过  Lattice LSTM 方法将词信息加入到基于字的 LSTM+CRF 模型中，减轻模型受到分词错误的影响，以此提升模型的效果。
+
+![](/img/in-post/kg_paper/ner_lattice_arc.JPG)yy
+
+模型输入是一个一个的字，词信息通过词典获得。输入的字符用 $c_{i}^{c}$ 表示，通过字符嵌入得到向量为 $ x_{i}^{c} = e^{c}(c_{i})$，LSTM 的输出为 $h_{i}^{C}$，词用 $ w_{be}^{w}$ 表示，嵌入后的向量为 $ x_{be}^{w}$，经过隐层后的输出时 $ c_{be}^{w}$。
+
+词向量和字的隐层输出连接起来进入 LSTM 得到对应的输出 $ c_{be}^{w}$ ，LSTM 的内部计算公式如下所示
+
+![](/img/in-post/kg_paper/ner_lattice_form1.JPG)
+
+![](/img/in-post/kg_paper/ner_lattice_form2.JPG)
+
+![](/img/in-post/kg_paper/ner_lattice_form3.JPG)
+
+后面两个是控制词级信息流入的门，论文中对这两个门做了特殊处理使得他们的和加起来为 1.
+
+![](/img/in-post/kg_paper/ner_lattice_form4.JPG)
+
+模型在 MSRA 数据集上的表现显示，该模型的效果远超当时的其他模型，但该模型由于结构问题，github 的代码给出的 bath_size 为 1，训练太慢。
+
+![](/img/in-post/kg_paper/ner_lattice_result.JPG)
+
+看完有几个问题，1. 单个字的怎么办？比如 “是” 这种字；2. 词汇表太大的话怎么办？效率会不会很低。论文中没看到答案，但这个模型很有趣，有时间用的话好好研究。
+
 ## New Research on Transfer Learning Model of Named Entity Recognition
 
 文章基于 BERT 模型，在后面加上了 BiLSTM + CRF 层，进行命名实体识别。在人民日报等语料库上进行训练和测试，最终表明，基于 BERT 强大的性能，该模型超过了以往的模型，同时相比于 BERT + MLP 做 NER ，也提升了一个点。算是意料之中的改进，就不详细介绍了。
