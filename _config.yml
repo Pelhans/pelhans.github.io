@@ -49,7 +49,7 @@ kramdown:
 # disqus_username: Lucy
 
 gitalk:
-    enable: true
+    enable: false
     owner: pelhans
     repo: pelhans.github.io
     clientID: 15b9fe2f4c186c1a0331

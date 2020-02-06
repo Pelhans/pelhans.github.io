@@ -392,6 +392,89 @@ $$ M_{corss}^{u_{i}, r, l} = \{\hat{U}_{i}^{l}[k]^{T} * \hat{R}^{l}[t]  \}_{n_{u
 
 ![](/img/in-post/kg_paper/text_match_dam.jpg)
 
+### HCAN - Bridging the Gap Between Relevance Matching and Semantic Matching for Short Text Similarity Modeling
+
+作者认为文本匹配大体上可分为两种：关联匹配和语义匹配。其中关联匹配更看重字符上的匹配，而语义匹配则更看重实际含义上的匹配。通常来说，针对这两种匹配任务所设计的模型不是通用的，为此作者提出了一个可以同时在两种任务上表现都很好的网络 HCAN(Hybrid Co-Attention Network)。
+
+该网络包含三个部分：混合编码模块，相关性匹配模块和 co-attention 的语义匹配模块。整体的模型结构如下所示：
+
+![](/img/in-post/kg_paper/hcan-global.JPG)
+
+第一层是一个混合编码模块，作者分别尝试了 Deep(堆叠 CNN)、Wide(同一层不同大小卷积核)和 BiLSTM 三种编码方式。这三种编码器代表了不同的权衡，基于 CNN 的更容易并行化处理，同时也允许我们显示的通过控制窗口大小获得不同粒度的短语特征，这在相关性匹配中很重要。同时更深的 CNN 可以通过组合获得更大的感受野得到更高层次和更整体化的特征。而 BiLSTM 的上下文语义编码则更看重整体的语义信息和位置相关信息。
+
+第二部分相关性匹配，首先计算混合编码层输出($$U_{q}$$, $$U_{c}$$)的相关性匹配矩阵
+
+$$ S = U_{q}U_{c}^{T},~~~ S \in R^{n\times m} $$
+
+而后在 context columns 上做 softmax 将其转化为 0-1 之间的相似性分数 $$\tilde{S}$$。接下来对于每个 query 短语 i，分别采用 max 和 avg 池化来获得更显著的特征表示。
+
+$$ Max(S) = [max(\tilde{S}_{1,;}), \dots, max(\tilde{S}_{n,;})] $$
+
+$$ Mean(S) = [mean(\tilde{S}_{1,;}), \dots, mean(\tilde{S}_{n,;})] $$
+
+$$ Max(S),~~Mean(S)\in R^{n} $$
+
+Max 池化可以得到最显著的匹配特征，Avg 特征可以从多个匹配信号中获益，但可能会受到负面信号的干扰。到这里我们就乐意将它们两个连接起来用了。但论文有一个更好的想法，就是针对 IR 等任务来说，我们可以赋予各个 Term 不同的权重，这个权重可以是 IDF 或者其他的什么权重。即
+
+$$ o_{RM} = {wgt(q) \odot Max(S), wgt(q) \odot Mean(S)} $$
+
+$$ o_{RM} \in 2\dot R^{n} $$
+
+第三个是语义匹配，论文里是用 co-attention 来做，即堆叠的 Query-context 和 context-query 的 attention。需要注意的是，语义匹配和第二个是并列的。第一个是 bilinear attention
+
+$$ A = REP(U_{q}W_{q}) + REP(U_{c}W_{c}) + U_{q}W_{b}U_{c}^{T} $$
+
+$$ A = softmax_{col}(A)~$$
+
+$$U_{q}\in R^{n\times F}~~,~~U_{c}\in R^{m\times F}~~,W_{q},W_{c}\in R^{F}~~,~~W_{b}\in R^{F\times F}~~,~~A\in R^{n\times m}~~,~~ $$
+
+REP 是将输入向量扩展到 $$n\times m$$ 的维度。有了相似矩阵后，则有
+
+$$ \tilde{U}_{q} = A^{T}U_{q} $$
+
+$$ \tilde{U}_{c} = REP(max_{col}(A)U_{c}) $$
+
+$$\tilde{U}_{q} \in R^{m\times F}~~,~~ \tilde{U}_{c}\in R^{m\times F} $$
+
+我们就得到了query 和 context  的交互语义表示。接下来用 BiLSTM 对它们的组合进行语义编码：
+
+$$ H = [U_{c}; \tilde{U}_{q}; U_{c}\otimes \tilde{U}_{q}; \tilde{U}_{c}\otimes \tilde{U}_{q}] $$
+
+$$ o_{SM} = BiLSTM(H) $$
+
+$$ H = R^{m\times 4F},~~~o_{SM} \in R^{d} $$
+
+最终结合第二部和第三部的输出放进 MLP + softmax 进行分类
+
+$$ o = softmax(MLP([o_{RM}^{l}; o_{SM}^{l}])) $$
+
+$$ l = 1, 2, \dots, N~~~,o\in R^{num_class} $$
+
+下图是HCAN 与各个模型的对比结果，其中 RM 是只用关联匹配(第二个)，SM 是只用语义匹配(第三个)部分。我们发现，在这三个数据集上，关联匹配（RM）比语义匹配（SM）具有更高的效率。它在TrecQA数据集上以较大的优势击败了其他竞争性基线（InferSent、DecAtt和ESIM），并且仍然可以与TwitterURL和Quora上的基线相媲美。这一发现表明，**对于许多文本相似性建模任务，单靠软项匹配信号是相当有效的**。然而，SM在TrecQA和TwitterURL上的性能要差得多，而在Quora上，SM和RM之间的差距减小了。通过结合SM和RM信号，我们观察到在所有三个数据集中HCAN的一致有效性增益。
+
+![](/img/in-post/kg_paper/hcan-res1.JPG)
+
+下图是比较不同语义编码层的区别，整体来说，当关键字匹配更重要时， CNN 可能获得更好的结果，更看重语义和长距离依赖时， 上下文编码更好。
+
+至于 RM 和 SM，SM 往往需要更大的数据集才能获得较好的表现，因为它的参数空间更大。对于所有任务来说，将二者进行结合都可以得到一定的增强。
+
+![](/img/in-post/kg_paper/hcan-res2.JPG)
+
+### QANet - Extending Neural Question Answering with Linguistic Input Features
+
+论文提出，对于专业领域QA，一个有效的方法是先学习通用领域的，再在专业领域上做适应性训练。而学习通用领域普遍的知识一个很好的途径是利用句法、语义抽象的高层上丰富的语言知识表示。
+
+作者分别利用了三个层次的语言学特征：POS 词性标记、依存句法、语义角色关系三种，其中 
+
+* POS 可以减少特定类型候选答案的数量。用 Spacy 工具获得    
+* 依存句法可以精准预测 Span 的边界。也是用 Spacy 工具获得。    
+* 语义角色标记对回答类似于“谁”对“谁”、哪里、何时、做了什么这类问题有帮助。
+
+有了它们后，将对应标记做 embedding 而后 concat 起来。具体流程如下图所示
+
+![](/img/in-post/kg_paper/qanet_embed.JPG)
+
+
 # 总结
 
 看完上面的论文， 大体总结出一个框架， 分为 输入、再编码、交互匹配、聚合、输出 四个部分。
