@@ -23,7 +23,9 @@ tags:
 
 但科学的研究显然不满足于此的，word2vec 有什么缺点呢？最明显的一个就是多义词问题，像 play，除了 play game 的 “玩”之外，还有 play music 的“演奏”含义等等。在 word2vec 中却只用一个向量表示了，这就注定会对原始的多语义造成损失。那么解决方法是什么呢？一个目前大家都在走的路就是尽可能的把上下文(单纯的上文或下文也可以)信息包含进来，以此获得当前词更精准的表示，毕竟 play 和 music 放在一起我们就一目了然它的含义了。这条路还需要大量的数据和能吃下这么多数据的大容量网络，这样我们的模型“见多识广”，自然能学习到更精准的语义表示。
 
-这条路上个人认为做的比较有代表性的有 ELMO、GPT1.0、BERT、XLNET 等，除此之外还有像 GPT2.0、ULMFiT、SiATL、MASS、ULINM、百度的 ENRIE1.0、ENRIE2.0、清华的 ENRIE、MTDNN、SpanBERT、RoBERTa、TinyBert、ALBERT、K-BERT 等等。。。目前这个领域还处于飞速发展之中，但整体脉络还是很清晰的。
+这条路上个人认为做的比较有代表性的有 ELMO、GPT1.0、BERT、XLNET 等，除此之外还有像 GPT2.0、ULMFiT、SiATL、MASS、ULINM、百度的 ENRIE1.0、ENRIE2.0、清华的 ENRIE、MTDNN、SpanBERT、RoBERTa、TinyBert、ALBERT、K-BERT 等等。。。目前这个领域还处于飞速发展之中，但整体脉络还是很清晰的。借用一张清华的图:
+
+![](/img/in-post/pretrain_model/PLMfamily.jpg)
 
 # 模型概览
 ## ELMO - Deep contextualized word representations
@@ -567,6 +569,7 @@ SBO 在训练时取 Span 前后边界的两个词(mask 外的)，而后用这两
 
 大 batch 训练：论文比较了 BERTBASE 在增大 batch size 时的复杂性和最终任务性能，控制了通过训练数据的次数。发现large batches 训练提高了 masked language modeling 目标的困惑度，以及最终任务的准确性。最终 batch 定位 8k(真有钱)。
 
+# 模型压缩
 ## ALBERT: A LITE BERT FOR SELF-SUPERVISED LEARNING OF LANGUAGE REPRESENTATIONS
 
 虽然 BERT 模型本身是很有效的，但参数太多了。本论文引入一种瘦身版的 BERT 模型 ALBERT，提出2中降低内存消耗和提高训练速度的参数减少策略。
@@ -581,3 +584,57 @@ SBO 在训练时取 Span 前后边界的两个词(mask 外的)，而后用这两
 
 第三个 Sentence Order Prediction(SOP) 任务，论文认为原版的 NSP 任务太简单了，因此 SOP 对其加强，将负样本换成了同一篇文章中的两个逆序的句子。除此之外，原始的 BERT 是先用 128 个 toekn 训练90% ，后用 512 的训练，但之前的研究表明，单一的长句子对预训练很重要，因此 ALBERT 在 90% 时用满 512 的，10 % 随机找短于 512 的 segment。
 
+
+# 模型分析
+## How Contextual are Contextualized Word Representations? Comparing the Geometry of BERT, ELMo, and GPT-2 Embeddings
+
+BERT 和 GPT 等预训练模型的一个主要贡献是证明带有上下文信息的词表示比传统 word2vec 得到的静态词向量对下游任务带来的提升更大。但这个上下文化的信息表示到底和上下文关系多大？是每一个不同的上下文都有一个对应的词表示么？若是多个的话，它们之间差距会很大么？改论文对此进行研究，并给出了一些结论：
+
+* 在BERT、ELMo和GPT-2的所有层中，所有的词它们在嵌入空间中占据一个狭窄的锥，而不是分布在整个区域。    
+* 在这三种模型中，**上层比下层产生更多特定于上下文的表示**，然而，这些模型对单词的上下文环境非常不同。**GPT-2是最具特定上下文化的, ELMo中相同句子中的单词之间的相似性最高，而GPT-2中几乎不存在，其最后一层中的表示几乎是与上下文相关程度最高的**。在BERT中，同一句话的上层单词之间的相似性更大，但平均而言，它们之间的相似性比两个随机单词之间的相似性更大。相比之下，对于GPT-2，同一句话中的单词表示彼此之间的相似性并不比随机抽样的单词更大。这表明，**BERT和GPT-2的上下文化比ELMo的更微妙，因为它似乎认识到，出现在相同上下文中的单词不一定有相同的意思**。    
+* 如果一个单词的上下文化表示根本不是上下文化的，那么我们可以期望100%的差别可以通过静态嵌入来解释，其中静态嵌入是第一个主成分。相反，我们发现，平均而言，只有不到5%的差别可以用静态嵌入来解释。这表明，**BERT、ELMo和GPT-2并不是简单地为每个词意义分配一个嵌入**：否则，可解释的变化比例会高得多。在许多静态嵌入基准上，**BERT的低层上下文化表示的主成分表现优于GloVe和FastText**。这可以有一个应用，即如果我们通过简单地使用上下文化表示的第一个主成分为每个单词创建一种新的静态嵌入类型，通过对 BERT 底层表示的使用，可以在涉及语义相似、类比求解和概念分类的基准测试任务上胜过 Glove 和 FastText。(5-10% 个点)    
+
+## Are Sixteen Heads Really Better than One?
+
+MultiHead-Attention 是 Transformer 的基石，通过令不同的头关注不同的输入片段，使得模型关注输入的不同可能部分，从而使 attention  超出普通的加权平均的方式，表达更复杂的函数成为可能。但该论文却发现，并不是所有的 Head 都同样重要，在实践中，有很大一部分可以在测试时移除，而不会显著影响性能。甚至有些层可以只保留一个 head 。下图是测试再不同层只保留 1 个主要 head 时性能的表现
+
+![](/img/in-post/pretrain_model/remove_heads.JPG)
+
+可以看出， 对于大部分层，影响都不大，只有 enc-dec 那掉了 13.56 个点。因此论文认为， encoder-decoder 的 attention 比 self-attention 更依赖于 multi-head 机制。不过没给出进一步的解释，我个人猜测有没有可能是在 encoder-decoder 时，对齐矩阵不那么一致，也就是说这一次我还只关注自身周围的，下一次就可能来一个长程依赖。而 self-attention 时，关注的点更稳定些，我就只关注上下文或者长程的某些结构依赖。因此 enc-dec 更需要多头来满足不同的可能性。只是猜测，待证实。
+
+作者还采用 MNLI 和 MTNT 任务来试验了一下，表明大部分 Head 都不重要这个结论的普适性。除此之外，作者又分析了一下这个情况是什么时候产生的，经实验发现，在前几个 epoch 时，每个头都很重要，但当 Epoch 大于10时，就出现了一些不那么重要的头 head 了。据此论文提出一个假设，即模型在整个训练过程中可以分为两个阶段：
+
+* 经验风险最小化阶段：此时最大化与标签之间的中间表示的互信息    
+* 压缩阶段：与输入的互信息最小化
+
+嗯。。。没看懂，作者说给未来研究。。。
+
+# Ref
+
+* [清华 PLM 必读论文 ](https://github.com/thunlp/PLMpapers)    
+* Unsupervised Pretraining for Sequence to Sequence Learning. Prajit Ramachandran, Peter J. Liu, Quoc V. Le. EMNLP 2017.     
+* Deep contextualized word representations. Matthew E. Peters, Mark Neumann, Mohit Iyyer, Matt Gardner, Christopher Clark, Kenton Lee and Luke Zettlemoyer. NAACL 2018.     
+* Universal Language Model Fine-tuning for Text Classification. Jeremy Howard and Sebastian Ruder. ACL 2018.    
+* Improving Language Understanding by Generative Pre-Training. Alec Radford, Karthik Narasimhan, Tim Salimans and Ilya Sutskever.     
+* BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding. Jacob Devlin, Ming-Wei Chang, Kenton Lee and Kristina Toutanova. NAACL 2019    
+* Language Models are Unsupervised Multitask Learners. Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei and Ilya Sutskever. Preprint.    
+* ERNIE: Enhanced Language Representation with Informative Entities. Zhengyan Zhang, Xu Han, Zhiyuan Liu, Xin Jiang, Maosong Sun and Qun Liu. ACL 2019.    
+* ERNIE: Enhanced Representation through Knowledge Integration. Yu Sun, Shuohuan Wang, Yukun Li, Shikun Feng, Xuyi Chen, Han Zhang, Xin Tian, Danxiang Zhu, Hao Tian and Hua Wu.     
+* Cross-lingual Language Model Pretraining. Guillaume Lample, Alexis Conneau. NeurIPS 2019.    
+* Multi-Task Deep Neural Networks for Natural Language Understanding. Xiaodong Liu, Pengcheng He, Weizhu Chen, Jianfeng Gao. ACL 2019.     
+* MASS: Masked Sequence to Sequence Pre-training for Language Generation. Kaitao Song, Xu Tan, Tao Qin, Jianfeng Lu, Tie-Yan Liu. ICML 2019    
+* Unified Language Model Pre-training for Natural Language Understanding and Generation. Li Dong, Nan Yang, Wenhui Wang, Furu Wei, Xiaodong Liu, Yu Wang, Jianfeng Gao, Ming Zhou, Hsiao-Wuen Hon    
+* XLNet: Generalized Autoregressive Pretraining for Language Understanding. Zhilin Yang, Zihang Dai, Yiming Yang, Jaime Carbonell, Ruslan Salakhutdinov, Quoc V. Le. NeurIPS 2019    
+* RoBERTa: A Robustly Optimized BERT Pretraining Approach. Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi, Danqi Chen, Omer Levy, Mike Lewis, Luke Zettlemoyer, Veselin Stoyanov    
+* SpanBERT: Improving Pre-training by Representing and Predicting Spans. Mandar Joshi, Danqi Chen, Yinhan Liu, Daniel S. Weld, Luke Zettlemoyer, Omer Levy    
+* K-BERT: Enabling Language Representation with Knowledge Graph. Weijie Liu, Peng Zhou, Zhe Zhao, Zhiruo Wang, Qi Ju, Haotang Deng, Ping Wang    
+* ERNIE 2.0: A Continual Pre-training Framework for Language Understanding. Yu Sun, Shuohuan Wang, Yukun Li, Shikun Feng, Hao Tian, Hua Wu, Haifeng Wang    
+* Pre-Training with Whole Word Masking for Chinese BERT. Yiming Cui, Wanxiang Che, Ting Liu, Bing Qin, Ziqing Yang, Shijin Wang, Guoping Hu. Preprint(Chinese-BERT-wwm)    
+* ELECTRA: Pre-training Text Encoders as Discriminators Rather Than Generators. Kevin Clark, Minh-Thang Luong, Quoc V. Le, Christopher D. Manning.    
+* Pre-training Tasks for Embedding-based Large-scale Retrieval. Wei-Cheng Chang, Felix X. Yu, Yin-Wen Chang, Yiming Yang, Sanjiv Kumar. ICLR 2020    
+* ALBERT: A Lite BERT for Self-supervised Learning of Language Representations. Zhenzhong Lan, Mingda Chen, Sebastian Goodman, Kevin Gimpel, Piyush Sharma, Radu Soricut. ICLR 2020.     
+* Q-BERT: Hessian Based Ultra Low Precision Quantization of BERT. Sheng Shen, Zhen Dong, Jiayu Ye, Linjian Ma, Zhewei Yao, Amir Gholami, Michael W. Mahoney, Kurt Keutzer
+* TinyBERT: Distilling BERT for Natural Language Understanding. Xiaoqi Jiao, Yichun Yin, Lifeng Shang, Xin Jiang, Xiao Chen, Linlin Li, Fang Wang, Qun Liu. Preprint.     
+* How Contextual are Contextualized Word Representations? Comparing the Geometry of BERT, ELMo, and GPT-2 Embeddings. Kawin Ethayarajh. EMNLP 2019    
+* Are Sixteen Heads Really Better than One?. Paul Michel, Omer Levy, Graham Neubig.    
+* Patient Knowledge Distillation for BERT Model Compression
