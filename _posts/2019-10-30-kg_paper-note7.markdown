@@ -26,6 +26,62 @@ tags:
 * 一类是纯基于表示的模型， 该类方法采用双塔式结构， 通过一些列深度网络将 Query 和 Doc 用低维向量表示出来， 而后采用 cosin , 欧氏距离等方式计算 Q 与 D 间的相似度。 典型的结构代表是 SiameseNet, DSSM, CDSSM, LSTM-DSSM, MV-DSSM 等。    
 * 另一类在获取Q 和 D 的表示后， 还加入了了二者的交互匹配策略， 该类方法认为纯基于表示的模型没有有效利用文本间的信息， 忽略了 Q 与 D 间的特征匹配，通过构建不同的特征匹配策略，模型可以获得更好的表现， 这里比较有代表性的就比较多，如 DecAtt, ESIM, BiMPM, ARC-I, MatchPyramid 等。
 
+## 传统匹配模型
+### TF-IDF 
+#### TF-IDF 定义
+TF-IDF 中，TF 是  Term Frequency 的缩写， IDF 是 Inverse Document Frequence 的缩写，因此 TF-IDF 即 词频-逆文档频率。它的公式定义为：
+
+$$ TF = \frac{词汇在文本中出现的次数}{文本词汇的总个数} $$
+
+$$ IDF = \log(\frac{语料库中文本的总个数}{包含该词汇的文本个数} + 1) $$
+
+TF 表示词汇在文本中出现的频率。直觉上我们也知道，一个词在文档中出现的频率越高，那么这个词就越重要。
+
+IDF 是包含该词汇文档频率的倒数再取对数。这意味着包含该词汇的文档越少，IDF 越大，这个词就越重要。最终 TF-IDF 表示为
+
+$$ TF-IDF = TF * IDF $$
+
+即一个词在该文本中出现的次数越多，而在其他文本中出现很少时，则该词汇越能表示该文本的信息。
+
+应用到文档检索中，就是根据 query 中的 term 在候选文档中的 TF-IDF 值求和作为候选文档的匹配得分。在早期的 Lucence 中，是直接把 TF-IDF  作为默认相似度来用的。在 Lucence 中，相似度计算公式做了一些调整：
+
+$$ sim = \log(\frac{numDocs}{docFreq + 1}) * \sqrt{tf} * (\frac{1}{\sqrt{length}}) $$
+
+其中 tf 是 关键字在文档中出现的次数。 后面的部分是文本长度归一化部分。
+
+#### TF-IDF 为什么对逆文档频率取对数？
+
+原因有二：
+
+* 使用 Log 可以防止权值爆炸，如某个词只出现在一篇或者少数文档中，那么逆文档频率就会特别的大，从而使 TF 无效，使用 Log 可以减轻该影响。    
+* 对停用词("的","是")这种在每个文档都有的词，逆文档频率接近于1，又因为对这种词 TF 会很高，因此也会得到较高的 TF-IDF 分，这不符合我们的期望，但加上 Log 后，该部分接近0，符合我们的预期。
+
+#### TF-IDF 为什么长这个样子？除了感性的解释外，有什么理论依据么？
+
+ 传统的TF-IDF是自然语言搜索的一个基础理论，它符合信息论中的熵的计算原理，虽然作者在刚提出它时并不知道与信息熵有什么关系，但你观察IDF公式会发现，它与熵的公式是类似的。实际上IDF就是一个特定条件下关键词概率分布的交叉熵。
+
+还有一种是基于先验的解释，可以看这篇文章，[TF-IDF模型的概率解释](https://coolshell.cn/articles/8422.html)
+
+### BM25
+
+BM 是 Best Matching 的简写，它是基于 TF-IDF 进行改进了的算法。从上面 TF-IDF 的公式中可以看到，二者的乘积理论上可以是无限大的，BM25 对其进行了限制，使其收敛某一特定值。
+
+BM25 设计的一个重要依据是：词频和相关性之间的关系是非线性的，也就是说，每个词对于文档的相关性分数都不会超过一个特定的阈值。当词出现的次数到达一定的阈值后，其影响就不在线性增加了，而这个阈值和文档本身有关。因此对于TF 部分，BM25 将原始公式替换为
+
+$$ TF = \frac{(k+1)*tf}{k+tf} $$
+
+其中 tf 表示单词在文档中的词频， k 是一个常量，用来限制 TF 值的增长极限, TF 极限被限制在 0 - k+1之间，在业务中理解为某一音速的影响强度不能是无限的，而是有一个最大值，这样才符合实际逻辑。在 Lucence 中 k被设置为 1.2。
+
+除此之外， BM25 还引入了平局文档长度的概念，单个文档长度对相关性的影响力与它和平均长度的比值有关系。 因此BM25 的 TF 公式里还有另外另个参数 文档长度和平均长度的比值L 和 常数b, b 用来规定 L 对评分的影响有多大。因此最终评分为
+
+$$ TF = \frac{(k+1)*tf}{k*(1.0 - b + b*L) + tf} $$
+
+上面这些都是 TF 部分，对于 TDF 部分，变化比较小：
+
+$$ IDF = \log(\frac{语料库中文本的总个数 - 包含该词汇的文本个数 + 0.5}{包含该词汇的文本个数 + 0.5}) $$
+
+BM25在传统TF-IDF的基础上增加了几个可调节的参数，使得它在应用上更佳灵活和强大，具有较高的实用性。
+
 ## 基于表示的模型
 
 ### SiameseNet -- Signature Verification using a "Siamese" Time Delay Neural Network
@@ -130,6 +186,50 @@ DSSM 的另一种改进， 第一次尝试在 信息检索（IR）中使用 LSTM
 还有该模型在一定程度上考虑了 Q 和 D 间的交互匹配， 也就是 $$x_{q}^{T}Mx_{d} $$ 这块，后续交互改进的一大重点就是挖掘Q 和 D 间的交互匹配。
 
 最后一个变化是训练优化目标变成了交叉熵损失函数， L2 正则化。
+
+### Convolutional Neural Network Architectures for Matching Natural Language Sentences
+
+一个成功的匹配算法需要 对语言对象的内部结构以 及它们之间的交互进行充 分的建模。DSSM 只使用 非线性映射对 query 和  doc 序列进行编码，并且没有考虑 query 和 doc 间的交互作用。本论文针对这两个缺点，提取 ARC-I 和 ARC-II 两个模型。前者是基于表示的模型，和 CLSM 思想相同，都是用 CNN 去提取 Local 特征再聚合。后者是基于匹配函数得到匹配矩阵再用 CNN提取特征。所提出的模型不仅 能很好地描述句子的层次 结构及其分层组合和集 合，而且能捕捉到不同层 次上丰富的匹配模式。
+
+ARC-I 的结构如下图所示：
+
+![](/img/in-post/kg_paper/arc_arc1.JPG)
+
+典型的 Siamese 结构，对于 query 和 doc  分别进行特征提取得到固定维度的向量，而后用 MLP 进行聚合和分类。因此重点是 CNN 怎么用的：    
+* 多层CNN 的堆叠：卷积 + pooling 堆叠    
+* 卷积操作采用窗口宽度为k1 的卷积核，初始输入时采用 0 填充到固定长度    
+* pooling 采用 宽度为 2 的 max-pooling， max-pooling 可以提取最重要的特征，进而得到 query 和 doc 的表示。    
+* 单层 CNN 可以捕捉相邻 Term 间得多种组合关系，即 local 的 n-gram 特征。比 DSSM 要强一些。    
+* 虽然多层 CNN 的堆叠通过感受野的扩张可以得一定的全局信息，但对于序列信息还是不敏感。对语义依赖强的任务效果一般。
+
+ARC-II 的网络结构如下图所示：
+
+![](/img/in-post/kg_paper/arc_arc2.JPG)
+
+ARC-II 在一开始就引入了 query 和 doc 间的交互，构建一个矩阵，先用 1 维卷积作用，而后用多层二维卷积 + 池化进行作用，最终输入 MLP 进行分类。因此重点是 1 维卷积和 2 维卷积 + 池化如何做的：
+
+* 先构建矩阵，假设 query 长度为 m，嵌入维度为  H， doc 长度为 n， 嵌入维度为 H 。则 矩阵中每个元素是 query 中的 第 i 个 词向量与 doc 中第 j 个词向量进行 concat 得到的向量。因此矩阵的维度是 [m, n, 2H] 。    
+* 用 1 维卷积进行扫描，宽度为 k1。通过这种方式即可以得到 query 和 doc 间的匹配关系，还保留了语义和位置信息。    
+* 对得到的结果用 2维 卷积进行处理，池化还是 宽度为 2 的池化。这一步就和图像那面处理多通道图片是一样的了。    
+* 其实 ARC-I  可以看做 ARC-II 的特殊情况。即中间的交互过程中二者没有交互，特殊的权值使它们在 MLP 前都独自流动，如下图所示：
+
+![](/img/in-post/kg_paper/arc_arc3.JPG)
+
+在推特匹配任务中， ARC-I 比以往的模型好很多， ARC-II 又比 ARC-I 好很多，说明 CNN 模块的有效性和 doc 与 query 交互的必要性。
+
+![](/img/in-post/kg_paper/arc_res.JPG)
+
+### CNTN -- Convolutional Neural Tensor Network
+
+论文用 CNN 进行编码，创新点是在聚合的时候用 Neural tensor network( NTN) 匹配， 得到匹配分数。网络结构如下图所示：
+
+![](/img/in-post/kg_paper/cntn_arc.JPG)
+
+对于给定的 query 和  doc，先 embedding 得到对应的向量表示。而后用 CNN 得到对应的定长的向量 q 和 d。则 NTN(neural tensor network) 用公式表达如下：
+
+$$ s = u^{T}f(q^{T}M^{[1:r]}d + V[q;d] + b) $$
+
+其中第一项可以看做是 bilinear 计算相似性，第二项是 concat 计算相似性，和在 attention 里那些计算相似性方法一样，核心思想是用更多的网络参数来学习 q 和 d 的匹配分数，而不像 cosine 那样。 f 是一个非线性操作， u 是映射矩阵，都是可学习的。
 
 ## 基于交互的模型
 
@@ -361,6 +461,344 @@ $$t_{j} = f(\hat{a}, h_{j}) = [||\hat{a}_{j} - h_{j}||_{2}, cos(\hat{a}_{j}, h_{
 $$ t_{j} = ReLU(W[(\hat{a}_{j} - h_{j}) * (\hat{a}_{j} - h_{j}), \hat{a}_{j}*h_{j}]^{T} + b ) $$
 
 聚合部分采用 CNN 来做。
+
+### Match-SRNN：Match-SRNN Modeling the Recursive Matching Structure with Spatial RNN
+
+本文提出将两个文本之间的全局交互的生成看作一个递归过程：即两个文本在每个位置的交互是之前前面(左、上、左上三个位置)之间交互和当前位置的词级交互的组合。基于这一思想，论文提出了一种新的深层结构，即Match-SRNN，来对递归匹配结构进行建模。首先，构造一个 Tensor 来捕捉单词级的交互作用。然后应用 Spatial RNN 递归地聚集局部交互，重要性由四种类型的门决定。最后，基于全局交互计算匹配得分。
+
+模型结构如下图所示：
+
+![](/img/in-post/kg_paper/match_srnn_arc.JPG)
+
+模型有三层： query 与  doc 的匹配矩阵层、 spatial  RNN 层 和 输出聚合层。其中  spatial RNN 是我们关注的重点。
+
+对于匹配矩阵的构建，对于 query 中的 第 i 个词 $$w_{i}$$ 和 doc 中的第 j 个词 $$v_{j}$$，矩阵中的元素 $$ \overrightarrow{s}_{ij} $$：
+
+$$ \overrightarrow{s}_{ij} = F(u(w_{i}))^{T} T^{[1:c]} u(v_{j}) + W[u(w_{i}; v_{j})] + \overrightarrow{b} $$
+
+嗯。。。。和 NTN 得到匹配矩阵一样。
+
+接下来是 spatial RNN,作者用它来提取 query 和 doc 两段文本的关系。矩阵中每一个元素由其左侧、上方、左上 3 个相邻元素 及 当前的匹配矩阵元素 $$ s_{ij} $$ 决定：
+
+$$ \overrightarrow{h}_{ij} = f(\overrightarrow{h}_{i-1,j}, \overrightarrow{h}_{i,j-1}, \overrightarrow{h}_{i-1, j-1}, \overrightarrow{s}_{ij}) $$
+
+可以看出这是一个递推关系，而且不懂为啥这么组合。。。。我个人理解是通过这种方式，捕捉当前匹配点之前的可能语义组合，用 f 找出组合中语义关联性强的 词/短语 级别响应，从而捕获匹配信息。举个例子应该容易些，如下图所示：
+
+![](/img/in-post/kg_paper/match_srnn_exam.JPG)
+
+其中我们用 $$ S_{1}[1:i-1] \~ S_{2}[1:j] $$ 表示 $$ \overrightarrow{h}_{i-1,j} $$。即句子 $$ S_{1}$$ 中的词 1 到 i-1 和 $$S_{2} $$ 中的词 1 到 j 间的交互。在上图中， $$ S_{1}[1:2] $$ 表示 The cat， $$ S_{2}[1:3] $$ 表示 The dog played。假设 i 等于3，j 等于4，那么我们要用到 $$ h_{24},~~h_{33}, ~~h_{23} $$ 。可以发现， $$h_{33}$$ 的语义相关性更强，因此通过该方式可以捕获两个句子间的长依赖关系。
+
+那 f 怎么定义呢？论文中使用了更改版的 GRU 模块。原始的 GRU 模块如下图左侧所示：
+
+![](/img/in-post/kg_paper/match_srnn_gru.JPG)
+
+有一个 reset 门和 一个 update 门，但我们这里输入有 三个 h，因此论文对其进行更改，设计了一个三个 reset 门的 GRU，如上图右侧所示。除此之外，对于 update 门，对应于那三个 h 和原来的 $h^{'} $。
+
+得到交互矩阵后，用 MLP 进行聚合，pairwise loss 优化。整体比较常规，不多评价。
+
+### aNMM: Ranking Short Answer Texts with Attention-BasedNeural Matching Model
+
+前面那些构建匹配矩阵后，很多都用 CNN 提取特征。这相当于认为这种匹配特征具有平移不变性，权值在不同位置的 word 中共享。作者认为这种共享是不合理的，因此基于此提出了基于 value 的共享权重方法。对于匹配矩阵来说，即卷积核中的权重不是位置固定的，而是输入的 value 所在区间对应的值。这个后面细说。
+
+整个模型的结构如下图所示，这个是模型 aNMM-2， aNMM-1 相比于 2 只有一个 value-share 网络：
+
+![](/img/in-post/kg_paper/anmm_arc.JPG)
+
+整体分为 4 层：输入层、 QA 匹配矩阵构建、value shared 层、 question attention  network 层。
+
+输入层没什么好说的，embedding 就完事了。匹配矩阵就是对应 term 间计算 cos 相似度。
+
+接下来进入重点 value share 层，对于普通的 CNN，position -shared 的如下图左侧所示：
+
+![](/img/in-post/kg_paper/anmm_ncnn.JPG)
+
+但我们扫描的是匹配矩阵，query 和 term 的匹配可能出现在任意位置上，并不一定是位置强相关的。且相同权重对结果的共享应该是一致的。因此作者提出这种 value-share 的方法，如上图右侧所示：
+
+* 先按照权值的分布对其进行分桶：由于匹配矩阵是通过计算 cosine 得到的，因此范围在 -1 到 1 之间。所以作者采用 间隔 0.1 进行分桶，共得到 21 个分桶。    
+* 落到相同桶分区的 value 共享权值
+
+通过该方式，可以将匹配矩阵转化为相同的维度而不同考虑输入矩阵的维度大小。
+
+假设 w 表示从输入层到隐藏层的 K+1 维模型参数， $$x_{jk}$$ 表示第 k个 bin 内所有匹配信号的和，对于给定的查询 q，第 j 个节点的 combine 分数为：
+
+$$ h_{j} = \delta(\sum_{k=0}^{K}w_{k} * x_{jk}) $$
+
+最后用 attention 层对其进行聚合得到匹配分数。经过前面的网络，对于每个 query - doc 对，都可以计算得到一个 M 维向量，向量的每个元素都表示 doc 与当前 query 中M 个 term 中每个 term 的相似度。
+
+引入参数向量 v，通过计算它与 q 的乘积得到权值分布，而后对 h 进行加权求和得到最终的匹配分数：
+
+$$ y = \sum_{j=1}^{M}g_{j}h_{j} = \sum_{j=1}^{M}\frac{exp(v * q_{j})}{\sum_{l=1}^{L}exp(v*q_{l})}\delta(\sum_{k=1}^{K}w_{k}x_{jk}) $$
+
+### ABCNN: Attention-Based Convolutional Neural Network for Modeling Sentence Pairs
+
+本论文在 attention 在匹配任务中做了早期尝试。 分别在 卷积层和池化层引入 attention，将句子之间的相互影响整合到 CNN 中。因此每个句子的表示都考虑到了其对应的句子，这些相互依存的句子对表示比孤立的句子表示法更强大。
+
+下图是没有加入 Attention 的 CNN 模型：
+
+![](/img/in-post/kg_paper/abcnn_bcnn.JPG)
+
+就是之前常见的类型，需要注意的是 这里面的 CNN 是 wide convolution 。假设 输入文本的长度为 s，维度为 d，卷积核宽度为 w。则卷积后的 feature map 大小是 s + w - 1。也就是说卷积后反而变宽了。不过不要紧，池化采用均值池化，窗口大小为 w，则池化后重新变为  s 列。这样就可以叠加多层的 wide convolution + avg pooling 了。
+
+接下来加 attention，分别在卷积层和池化层或二者同时加。这样就有三个模型，分别是 ABCNN-1、ABCNN-2、ABCNN-3：
+
+先在 卷积层加，结构如下图所示：
+
+![](/img/in-post/kg_paper/abcnn_abcnn1.JPG)
+
+在卷积层之前加 attention，attention 是作用在原始输入向量的匹配矩阵上的。设原始输入向量用 $$ F_{0,r}$$ 和 $$ F_{1,r}$$ 表示，则匹配矩阵中每个元素为：
+
+$$ A_{ij} = match-score(F_{0,r}[:,i], F_{1,r}[:, j]) $$
+
+其中 match-score 可以是我们熟知的 cosine 或者 其他什么的。论文里提出一个，如果 x 和 y 越接近，匹配分数越接近于 1：
+
+$$ \frac{1}{1 + |x-y|}  $$
+
+有了匹配矩阵后，引入 attention 矩阵$$W_{0}$$ 和 $$W_{1}$$ ，得到两段文本 query 和 doc 的最终加权特征向量
+
+$$ F_{0,a} = W_{0}A^{T}, ~~~ F_{1,a} = W_{1}A,~~~ W_{0}\in R^{d\times s}, ~~~ W_{1}\in R^{d\times s} $$
+
+attention 后，将原始的句子向量 $$ F_{0,r}, ~~F_{1,r}$$ 以及 attention 特征向量 $$F_{0,a}, ~~~F_{1,a}$$ 用 concat 的方式连接作为接下来的输入进入到卷积层。
+
+类似的，ABCNN-2 在 cnn 后做，结构如下图所示：
+
+![](/img/in-post/kg_paper/abcnn_abcnn2.JPG)
+
+令 $$ a_{0,j}$$ 表示句子 query s0 的第 j 个单词，它的权重为 attention 矩阵中第 j 行的和， $$a_{1j}$$ 表示的是句子 doc s1 的第 j 个单词：
+
+$$ a_{0,j} = \sum A[j,:] ,~~~~a_{1,j} = \sum A[:, j] $$
+
+则池化层的输出 $$F_{i,r}^{p}[:, j]$$ 可以通过对卷积层的输出 $$ F_{i,r}^{c}$$ 加权求和表示：
+
+$$ F_{i,r}^{p}[:, j] = \sum_{k=j:j+w} a_{i,k}F_{i,r}^{c}[:, k], ~~~~j=1,\dots, s_{i} $$
+
+可以看到， ABCNN-1 由于需要两个额外的参数矩阵 $$W_{0}$$ 和 $$ W_{1}$$ 来得到 attention 向量，而 ABCNN-2 不需要，因此 作者认为 1 更容易过拟合。
+
+对于 ABCNN-3 就好说了，直接在卷积前和卷积后一起用，模型结构如下所示：
+
+![](/img/in-post/kg_paper/abcnn_abcnn3.JPG)
+
+最终模型在 MSRP 上的表现如下所示：
+
+![](/img/in-post/kg_paper/abcnn_res.JPG)
+
+### MCAN ： Multi-Cast Attention Networks for Retrieval-based QuestionAnswering and Response Prediction
+
+在应用 attention 时，可以通过采用不同的 attention 得到不同的匹配特征，但如何结合这些特征却是一个问题。传统的采用 concat 来连接，但这回带来维度太高的问题。因此本论文提出 multi-cast attention 来解决这件事。 
+
+模型结构如下图所示：
+
+![](/img/in-post/kg_paper/mcan_arc.JPG)
+
+整个模型分为 5 层：
+
+* 输入编码层：先 embedding，每个 term 的维度是 d。而后通过 highway encoder 进行映射，当输入为 x，输出为 y  时，highway的公式为：
+
+
+$$ y = H(x, W_{H})*T(x, W_{T}) + (1 - T(x, W_{T}))x $$    
+
+其中H 是 ReLU 函数，T 是 sigmoid 函数。    
+
+* co-attention 层
+
+先计算匹配矩阵，这通过对输入进行映射后进行点积得到：
+
+$$ s_{ij} = F(q_{i})^{T}F(d_{j}) $$
+
+也可以用其他的方法。之后开始做 attention，因为 query 和 doc 的输入长度不是固定的，因此论文提出 4 中 attention 方法：
+
+* max pooling：用权值最大的，对于 query 来说就是对应 col 上最大的，对 doc 来说就是对应 row 上最大的。即：
+
+$$ q^{'} = Soft(\max_{col}(s))^{T}q ~~~~and~~~~ d^{'} = Soft(\max_{row}(s))^{T} d $$
+
+* mean pooling：取对应 列或者行的权值均值：
+
+$$ q^{'} = Soft(mean_{col}(s))^{T}q ~~~~and~~~~ d^{'} = Soft(mean_{row}(s))^{T} d $$
+
+* alignment Pooling：正常的 cross attention
+
+$$ d^{'}_{i} = \sum_{j=1}^{l_{q}}\frac{exp(s_{ij})}{\sum_{k=1}^{l_{q}}exp(s_{ik}) }q_{j} $$
+
+$$ q^{'}_{i} = \sum_{i=1}^{l_{d}}\frac{exp(s_{ij})}{\sum_{k=1}^{l_{d}}exp(s_{kj}) }d_{i} $$
+
+* intra attention：就是 self-attention
+
+$$ x_{i}^{'} = \sum_{j=1}^{l}\frac{exp(s_{ij})}{\sum_{k=1}^{l}exp(s_{ik})}x_{j} $$
+
+上面这些 attention 可以提取不同的特征，接下来用 multi-cast attention 来结合它们。
+
+设 $$\bar{x}$$ 是 query 或 doc 的表示(操作一样，用通用符号替代)，设 co-attention 得到的表示用 x 表示，则对两个向量通过如下三种方式进行编码：
+
+$$ f_{c} = F_{c}([\bar{x}; x]) $$
+
+$$ f_{m} = F_{c}([\bar{x}\odot x]) $$
+
+$$ f_{s} = F_{c}(\bar{x} - x) $$
+
+其中 FC 压缩函数，可以采用如下三种：
+
+* Sum Function(SM)： $$ F(x) = \sum_{i}^{n}x_{i} $$    
+* Neural Network(NN)：$$ F(x) = ReLU(W_{c}(x) + b_{c}) $$    
+* Factorization Machines(FM)： $$ F(x) = w_{0} + \sum_{i=1}^{n}w_{i}x_{i} + \sum_{i=1}^{n}\sum_{j=i+1}^{n}<v_{i}, v_{j}> x_{i}x_{j} $$
+
+通过以上步骤，每个 attention 都可以得到一个 3 维向量(三个压缩函数的输出)，用它和原始的 word embed 连接输入到 LSTM 层。对 LSTM 的输出时间步，用 mean 池化和 max 池化 concat 起来(Mean-Max 操作)。这样对 query 和 doc 都得到一个固定的输出向量 $$ x_{q}$$ 和 $$x_{d} $$。
+
+对前面得到的表示与过点积、做差的表示进行连接，将其作为两层 highway 的输入，highway 的输出再进入 MLP 和 softmax 得到预测结果
+
+$$ y_{out} = H_{2}(H_{1}([x_{q}; x_{d};x_{q}\odot x_{d}; x_{q}-x_{d} ])) $$
+
+$$ y_{pred}  = softmax(W_{F}*y_{out} + b_{F}) $$
+
+Loss 用带正则项的 交叉熵损失函数。模型整体很复杂，很多地方存在的必要性我还没理解。等理解后再进行评论。
+
+模型在 Ubuntu 数据集上的结果如下图所示：
+
+![](/img/in-post/kg_paper/mcan_arc.JPG)
+
+### HCRN：Hermitian Co-Attention Networks for Text Matching in Asymmetrical Domains
+
+co-attention 是文本匹配应用中非常有效的注意机制。共同注意能够学习成对注意，即基于计算两个文档之间的词级亲和力分数来学习注意。然而， 文本匹配问题可以存在于对称域或非对称域中。例如，释义识别是一个对称的任务，而问答匹配和蕴涵分类则被认为是非对称的领域。本文认 为，与对称域相比，非对称域中的共同注意模型需要不同的处理方法，即在学习词级相似度得分时，需要引入词级方向性的概念。因此，现实空 间中共同注意常用的标准内积是不合适的。利用复向量空间的吸引性质，提出了一种基于复值内积（Hermitian积）的协同注意机制。与实点积不 同，复空间中的点积是不对称的，因为第一项是共轭的。量子力学常规操作。。。。里面有学物理的？？
+
+下图是它们网络的结构图：
+
+![](/img/in-post/kg_paper/hcrn_arc.JPG)
+
+图中重点是映射到复数空间和仿射矩阵的构建，不过还是整体说一下。先是 embedding，而后经过非线性全连接层得到对应的表示，再将该表示输入到 BiLSTM 进行编码得到对应时刻的输出。
+
+进入正题，论文提出将原始向量映射到复数向量的方法，对于两个复数向量的乘积叫 Hermitian Inner Product，定义为：
+
+$$ <a_{i}, b_{j}> = \bar{a}_{i}^{T}b_{j} $$
+
+其中 $$a_{i} = Re(a_{i}) + iIm(a_{i}) $$。但 BiLSTM 输出的都是实值向量，怎么得到虚数部分呢？论文指出，虚数向量采用随机初始化或直接用 word embedding 的话，效果都不好，因此模型最终使用非线性映射得到复数部分，而后将两个实值向量复合成复数向量。比如对于向量 a，进行非线性映射 F，则得到复数向量 $$ a + i F(a) $$。
+
+则 query 第 i 个 term 和 doc 第 j 个 term的匹配分数可以通过计算两者的 Hermitian Inner product，并取实数部分得到：
+
+$$ s_{i,j} = Re(<a_{i}, iF_{proj}(a_{i}), b_{j} + iF_{proj}(b_{j})>) $$
+
+需要注意的是，该模型只是在 co-attention 模块中利用复数空间的性质，以此避免在处理复数的输入-输出中遇到的复数微分和 holomorphic  激活函数问题。而该模型通过一个映射得到复数部分并模拟复数运算，实际输入是两个实值向量，因此避免以上问题。
+
+
+### DIIN：Natural Language Inference over Interaction Space
+
+DIIN 即 Densely Interactive inference network （密集交互推理网络）的简写。网络结构如下图所示：
+
+![](/img/in-post/kg_paper/diin_arc.JPG)
+
+整个模型分为  embedding 层、编码层、交互层、特征抽取层和输出层。
+
+对于输入， embedding 包含 word embedding 、 character embedding 、 syntactical feature 三种。 word 嵌入用 Glove， char 嵌入用 CNN  提取，再用 max pooling 得到 char embedding。 对于语法特征，包含 POS 和二进制精确匹配特征(EM)。将上面得几个 embedding 进行 concat 得到维度为 d 的向量表示。对该向量用两层 highway network 进行处理得到 $$\hat{P}$$ 和 $$ \hat{H} $$。
+
+为进一步提取信息，论文使用 self-attention 对上下文信息进行编码 得到向量  $$\bar{P}_{i}$$。 其中 self-attention 的匹配分数是通过 $$ w^{T}_{\hat{P}}[\hat{P}; \hat{H}; \hat{P}\odot \hat{H}] $$ 得到的。
+
+将编码后的向量 $$\hat{P}$$ 和编码前的向量 $$\bar{P}$$ 进行连接，作为 fuse gate 的输入(和 skip connection 相似)。得到对应的输出 $$\tilde{P}_{i} $$
+
+$$ z_{i} = tanh(W^{1T}[\hat{P}_{i}; \bar{P}_{i}] + b^{1}) $$
+
+$$ r_{i} = \sigma(W^{2T}[\hat{P}_{i}; \bar{P}_{i}] + b^{2}) $$
+
+$$ f_{i} = \sigma(W^{3T}[\hat{P}_{i}; \bar{P}_{i}] + b^{3}) $$
+
+$$ \tilde{P}_{i} = r_{i}\odot \hat{P}_{i} + f_{i} \odot z_{i} $$
+
+上述流程对 query 和 doc 通用，但二者不共享权重。
+
+在交互层，将对qeury 和 doc 中的每个 term 计算匹配分数得到匹配矩阵，论文用的是 点积。
+
+在特征提取层，论文采用 DenseNet 作为 DIIN 的卷积特征提取器。尽管论文实验表明 ResNet 效果良好，但 DenseNet 在保存模型参数方面有效。
+
+输出层用简单的线性层个 softmax 进行分类。
+
+### MwAN：Multiway Attention Networks for Modeling Sentence Pairs
+
+模型中 用多种 attention 可以从不同角度提取交互信息，但直接把所有的表型进行 concat 效果不好而且维度太高了。因此论文提出一种多 attention 融合的方法。模型结构如下图所示：
+
+![](/img/in-post/kg_paper/mwan_arc.JPG)
+
+整个模型分为五部分： 编码层、 multiway matching、 inside aggregation、mixed aggregation 、 预测层。接下来分开说。
+
+编码层首先 embedding 得到 Q 和 P 各自的 word 嵌入和 语义嵌入(语义嵌入用预训练语言模型得到，用 lm 表示)，将二者 concat 后输入到 BiGRU 中得到最终 embedding 表示。公式表示有：
+
+$$ w_{t}^{q} = [e_{t}^{q}, lm_{t}^{q}] $$
+
+$$ \overrightarrow{h}_{t}^{q} = GRU (\overrightarrow{h}_{t-1}^{q}, w_{t}^{q}) $$
+
+$$ \overleftarrow{h}_{t}^{q} = GRU (\overleftarrow{h}_{t-1}^{q}, w_{t}^{q}) $$
+
+接下来是 multiway matching，通俗来说就是用四种方法计算 attention ：
+
+* concat attention：匹配分数为 $$ s_{j}^{t} = v_{c}^{t} tanh(W_{c}^{1}h_{j}^{q} + W_{c}^{2}h_{t}^{p}) $$     
+* bilinear attention：匹配分数为  $$ s_{j}^{t} = h_{j}^{qT}W_{b}h_{t}^{p} $$     
+* dot attention：匹配分数为  $$ s_{j}^{t} = v_{d}^{T} tanh(W_{d}(h_{j}^{q}\odot h_{t}^{p})) $$    
+* minus attention： 匹配分数  $$ s_{j}^{t} = v_{m}^{T} tanh(W_{m}(h_{j}^{q} - h_{t}^{p})) $$
+
+有了这么多 attention 怎么办？论文提出对每个 attention做 inside 的聚合，以 concat 的 attention 为例，先将 attention 后的和 attention 前的向量 concat 连接得到新的向量 $$ x_{t}^{c} = [q_{t}^{c}, h_{t}^{p}] $$。
+
+为了判定该 attention 的重要性，论文采用一个 gate 对输入进行选择：
+
+$$ g_{t} = sigmoid(W_{g}x_{t}^{c}) $$ 
+
+$$ x_{t}^{c*} = g_{t}\odot x_{t}^{c} $$
+
+将处理后的向量输入到 BiGRU 中得到聚合后的输出：
+
+$$ \overrightarrow{h}_{t}^{c} = GRU(\overrightarrow{h}_{t-1}^{c}, x_{t}^{c*}) $$
+
+$$ \overleftarrow{h}_{t}^{c} = GRU(\overleftarrow{h}_{t-1}^{c}, x_{t}^{c*}) $$
+
+$$ h_{t}^{c} = [\overrightarrow{h}_{t}^{c}, \overleftarrow{h}_{t}^{c}] $$
+
+同理可以用到其余几个 attention 上，得到对应的聚合表示 $$ h_{t}^{b}$$ 、 $$ h_{t}^{d}$$、 $$ h_{t}^{m} $$ 。
+
+将上述 4 种 聚合后的 attention 输出在 mixed aggregation 层进行融合。大体思想是认为这四个 attention 作为一个整体看待，分别计算其中每个元素的饿权重并加权求和得到最终向量表示：
+
+$$ s_{j} = v^{T} tanh(W^{1}h_{t}^{j} + W^{2}v^{a})(j=c, b,d, m) $$
+
+$$ a_{i} = \frac{exp(s_{i})}{\sum_{j=(c,b,d,m)}exp(s_{j})} $$
+
+$$ x_{t} = \sum_{i=(c,b,d,m)}a_{i}h_{t}^{i} $$
+
+对 mixed 聚合后得到的表示输入到 BiGRU 中提取有效特征：
+
+$$ \overrightarrow{h}_{t}^{o} = GRU(\overrightarrow{h}_{t-1}^{o}, x_{t}) $$
+
+$$ \overleftarrow{h}_{t}^{o} = GRU(\overleftarrow{h}_{t-1}^{o}, x_{t}) $$
+
+$$ h_{t}^{o} = [\overrightarrow{h}_{t}^{o}, \overleftarrow{h}_{t}^{o}] $$
+
+BiGRU 的输出再经过一个 attention 得到定长向量表示，而后经过 MLP 和softmax 进行分类，损失函数是交叉熵损失函数。该 attention 公式如下：
+
+$$ s_{j} = v^{T} tanh(W_{p}^{1}h_{j}^{o} + W_{p}^{2}r^{q}) $$
+
+$$ a_{i} = \frac{exp(s_{i})}{\sum_{j=1}^{M}exp(s_{j})} $$
+
+$$ r^{p} = \sum_{i=1}^{M}a_{I}h_{i}^{o} $$
+
+论文在 SNLI 数据集上的表现如下：
+
+![](/img/in-post/kg_paper/mwan_res.JPG)
+
+### HAR：A Hierarchical Attention Retrieval Model for Healthcare Question Answering
+
+对于医疗问答检索模型来说，query 一般比较短，而 doc 是由多个句子构成的，这就意味着 doc 会很长，并且有内部子结构。因此如果将 doc 的 attention 进行分层：先对句子内部，再对句子间做 attention ，这样得到的向量表示再和 query 做 attention 就会很合适。模型结构如下图所示：
+
+![](/img/in-post/kg_paper/har_arc.JPG)
+
+整体分为 5 层：word embedding、编码层、 query-doc 交叉 attention、query 内部 attention、doc 内部不同句子内和之间的 attention层、输出层。重点是 doc 内部的 attention，不过还是整体过一遍。
+
+对于 word embedding 用Glove或 word2vec就可以。在编码层，用BiGRU 来做，对于 query，得到表示 $$ U^{q} \in R^{m\times H}$$，doc 由于包含多个句子，因此应用句子级别的 BiGRU，具体来说就是先在每个句子上做，得到 $$ U^{id} \in R^{n\times H}$$ ，其中 i 表示第 i 个句子，d是嵌入维度，t表示第 t 个时间步。如果有 l 个句子，则得到 l*n*H 维表示。
+
+接下来是 query 和 doc 的交叉 attentio，这步就是 cross attention，匹配矩阵中每个元素为 $$ s_{xy} = w_{c}^{T}[u_{x}^{id}; u_{y}^{q}; u_{x}^{id}\odot u_{y}^{q}] $$。 做完 corss attention 后，将得到的结果进行拼接：
+
+$$ V^{id} = [U^{id}; A_{D2Q}; U^{id}\odot A_{D2Q}; u^{id}\odot A_{Q2D}] \in R^{n\times 4H} $$
+
+其中 $$ A_{D2Q}$$ 表示 cross attention 后 doc 的结果， $$ A_{Q2D}$$ 是 cross attention 后 query 的结果。
+
+接下来做 query 内部的 attention ，这个就是 self-attention，匹配分数计算公式为：$$c_{t}^{q} = w_{q}^{T}(tanh(W_{q}u_{t}^{q})) $$。
+
+query 做完内部 attention后，就是 Doc 的了，根据前面的说法，先做句子内部的，而后做句子之间的。对于句子内部的，和 query 的一样，都是 self-attention，得到 $$ x^{id}$$。在句子之间的 attention 和 句子内部的类似，都是 self-attention，只不过每个元素是句子的 attention 表示，最终得道 doc 的 attention 表示 $$y^{d}$$。
+
+得到 query 和 doc 的表示后，用 MLP 进行降维，再通过点积得到匹配分数，最后通过 MLP 得到最终匹配分数。整篇论文的思路还是很清晰的，尤其是QA 问题中，候选文本的长度相当的长，如果简单用 cross attention 的话，矩阵将会非常大。
+
+![](/img/in-post/kg_paper/har_res.JPG)
 
 ### DAM -- Multi-Turn Response Selection for Chatbots with Deep Attention Matching Network
 

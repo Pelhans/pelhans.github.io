@@ -2,7 +2,7 @@
 layout:     post
 title:      "实体对齐论文总结"
 subtitle:   ""
-date:       2019-03-18 00:15:18
+date:       2020-03-18 00:15:18
 author:     "Pelhans"
 header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
@@ -14,6 +14,9 @@ tags:
 
 * TOC
 {:toc}
+
+# 学习中...
+
 
 # 概览
 
