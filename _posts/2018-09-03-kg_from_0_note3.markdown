@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "从零开始构建知识图谱（三）"
+title:      "从零开始构建影视类知识图谱（三）"
 subtitle:   "基于REfO的简单知识问答"
 date:       2018-09-03 00:15:18
 author:     "Pelhans"
@@ -20,6 +20,8 @@ tags:
 # 简介
 
 基于浙江大学在openKG上提供的[ 基于REfO的KBQA实现及示例](http://openkg.cn/tool/eb483ee4-3be1-4d4b-974d-970d35307e8d)。代码部分浙大方面已经完成绝大部分，这里主要将其应用到自己的知识图谱上。在运行KBQA代码前，应按照前面的教程将电影类知识图谱导入到Jena的TDB数据库中，并运行fuseki服务器，这样我们才能进行访问查询。
+
+更改后的影视类问答[项目连接](https://github.com/Pelhans/Z_knowledge_graph/tree/master/KBQA/patternREfO)
 
 ## 代码结构 
    
@@ -121,7 +123,7 @@ def who_is_question(x):
     return sparql
 ```
 
-有了查询模板后，我们通过SPARQLWrapper 模块的SPARQLWrapper 执行该查询，并对返回的结果进行转换得到回答。对应的代码如下：
+有了查询模板后，我们通过SPARQLWrapper 模块的SPARQLWrapper 执行该查询，并对返回的结果进行转换得到回答。对应的代码如下，其中 http://localhost:3030/kg_demo_movie/query ：
 
 ```python
 from SPARQLWrapper import SPARQLWrapper, JSON    

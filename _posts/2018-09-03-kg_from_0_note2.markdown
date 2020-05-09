@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "从零开始构建知识图谱（二）"
+title:      "从零开始构建影视类知识图谱（二）"
 subtitle:   "数据库到 NTriples 以及通过Apache jena 访问NT"
 date:       2018-09-03 00:15:18
 author:     "Pelhans"
@@ -35,15 +35,22 @@ tags:
 @prefix xsd:<http://www.w3.org/2001/XMLSchema#> .
 
 <actor/actor_id=1> rdf:type <actor> .
+
 <actor/actor_id=1> <actor#actor_id> 1 .
+
 <actor/actor_id=1> <actor#actor_chName> "周星驰" .
+
 <actor/actor_id=1> <actor#actor_bio> "周星驰是。。。"
+
 <actor/actor_id=1> <actor#actor_repWorks> "赌圣" .
+
 <actor/actor_id=1> <actor#ref-movie> <movie/movie_id=1> .
+
 ...."其他属性"
 
 <movie/movie_id=1> rdf:type <movie> .
 <movie/movie_id=1> <movie#movie_id> 1.
+
 <movie/movie_id=1> <movie#movie_chName> "赌圣" .
 ...
 ```
@@ -62,41 +69,35 @@ The D2RQ Platform is a system for accessing relational databases as virtual, rea
 D2RQ 由自己的mapping语言，R2RML-kit。它和W3C推荐的R2RML类似。你可以通过D2RQ提供的工具来根据数据库自动生成mapping文件。你可以根据自己的需求去修改定制自己的mapping文件。
 
 ```
-./generate-mapping -uroot -p nlp -o kg_demo_mapping_baidu_baike.ttl jdbc:mysql:///baidu_baike
+./generate-mapping -uroot -p nlp -o kg_demo_mapping_baidu_baike.ttl jdbc:mysql:///movie_baidu_baike
 ```
 
-对上一篇文章的数据库，您可以通过struct_to_rdf/get_ttl.sh 脚本去自动生成mapping文件。对应代码如下：
+对上一篇文章的数据库，您可以通过struct_to_rdf/movie_actor/get_ttl.sh 脚本去自动生成mapping文件。以百度百科为例，对应代码如下：
 
 ```
 #!/bin/bash
 
 echo "Downloaing d2rq tools"
 wget https://github.com/downloads/d2rq/d2rq/d2rq-0.8.1.tar.gz;
-echo"Done"
+echo "Done"
 tar -xvzf d2rq-0.8.1.tar.gz;
 cd d2rq-0.8.1;
-for x in {hudong_baike,baidu_baike}; do
-#\
-    echo "Generating ttl and nt files for $x"
-    name_ttl=`echo "kg_demo_mapping_$x.ttl"`
-    name_nt=`echo "$x.nt"`
-    ./generate-mapping -u root -p nlp -o $name_ttl jdbc:mysql:///$x;
-    sed -i '/\@prefix vocab.* \./d' $name_ttl # delete vocab prefix    
-    sed -i 's/vocab/ /g' $name_ttl    
-    sed -i 's/actor_actor/actor/g' $name_ttl    
-    sed -i 's/d2rq\:jdbcDSN "jdbc\:mysql.*;/d2rq\:jdbcDSN "jdbc\:mysql\:\/\/\/hudong_baike\?useUnicode=true\&characterEncoding=utf8";/g' $name_ttl
-    sed -i '8a \@prefix : <http://www.kgdemo.com#> .' $name_ttl;
-    ./dump-rdf -o $name_nt $name_ttl; # get NTriples
-done
-#\
-if [ $? -ne 0  ]; then
-        echo "Generate mapping and nt files failed. Terminated."
-        exit 1 
+x="movie_baidu_baike"
+echo "Generating ttl and nt files for $x"
+name_ttl=`echo "kg_demo_mapping_$x.ttl"`
+name_nt=`echo "$x.nt"`
+./generate-mapping -u root -p nlp -o $name_ttl jdbc:mysql:///$x;
+sed -i '/\@prefix vocab.* \./d' $name_ttl # delete vocab prefix
+sed -i 's/vocab/ /g' $name_ttl
+sed -i 's/actor_actor/actor/g' $name_ttl
+sed -i 's/d2rq\:jdbcDSN "jdbc\:mysql.*;/d2rq\:jdbcDSN "jdbc\:mysql\:\/\/\/movie_baidu_baike\?useUnicode=true\&characterEncoding=utf8";/g' $name_ttl
+sed -i '8a \@prefix : <http://www.kgdemo.com#> .' $name_ttl;
+./dump-rdf -o $name_nt $name_ttl; # get NTriples
 ```
 
-根据默认生成的ttl文件被保存到坚果云上，您可以下载后查阅，[百度百科mapping 文件](https://www.jianguoyun.com/p/DeYhwnkQq_6CBxiKtGw)、[互动百科 mapping 文件](https://www.jianguoyun.com/p/DVDl5b0Qq_6CBxiQtGw)。
+根据默认生成的ttl文件被保存到坚果云上，您可以下载后查阅，[百度百科mapping 文件, 提取码 n194](https://pan.baidu.com/s/1c6-lNtW0-UCuMXuU9qrfgg)、[互动百科 mapping 文件 提取码 5dzk](https://pan.baidu.com/s/1p3o5F4G9ZAqEQY7FfxWF9A)。
 
-在生成mapping文件后，您可以通过：``` ./dump-rdf -o baidu_baike.nt kg_demo_mapping_baidu_baike.ttl; ``` 命令将数据转换为Ntriples。文件存放在坚果云盘中，[百度百科](https://www.jianguoyun.com/p/DfRZwwoQq_6CBxjmkGw)、[互动百科](https://www.jianguoyun.com/p/Db9tA1AQq_6CBxjnkGw)。
+在生成mapping文件后，您可以通过：``` ./dump-rdf -o baidu_baike.nt kg_demo_mapping_baidu_baike.ttl; ``` 命令将数据转换为Ntriples。文件存放在坚果云盘中，[百度百科 提取码 p158](https://pan.baidu.com/s/1cVsSjhawce0UQLAA0rgB8g)、[互动百科 提取码 jnr2](https://pan.baidu.com/s/1_63bpwmU_z_juI5oh7WS7g)。
 
 # Apache jena
 
@@ -116,4 +117,4 @@ Jena fuseki开启服务后，可以通过网页端和命令行方式进行SPQRQL
 
 # 本体建模
 
-为了能够让Jena在我们的本体上进行推理，需要提供自定义的本体文件。本项目的本体通过protege 生成，详细流程请查看SimmerChan的专栏[实践篇（一）：数据准备和本体建模](https://zhuanlan.zhihu.com/p/32552993)。根据上述流程生成的针对本项目的本体文件为struct_to_rdf/kg_movie_tultle.owl。
+为了能够让Jena在我们的本体上进行推理，需要提供自定义的本体文件。本项目的本体通过protege 生成，详细流程请查看SimmerChan的专栏[实践篇（一）：数据准备和本体建模](https://zhuanlan.zhihu.com/p/32552993)。根据上述流程生成的针对本项目的本体文件为struct_to_rdf/movie_actor/kg_movie_tultle.owl。

@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      "从零开始构建知识图谱（七）"
-subtitle:   "百科知识图谱构建（一）百科类知识抽取"
+title:      "从零开始构建百科知识图谱"
+subtitle:   "百科类知识抽取"
 date:       2019-01-04 00:15:18
 author:     "Pelhans"
 header-img: "img/kg_bg.jpg"
@@ -12,7 +12,7 @@ tags:
 ---
 
 
-> 之前做的知识图谱还是太小，而且单一领域的图谱构建技术和通用百科类图谱间的技术差别也较大，因此根据前人的论文，尝试构建百科类知识图谱。需要注意的是，由于本人对知识图谱是自学的，所以有可能在构建过程中存在一些错误的地方，希望大家指正。
+> 之前做的知识图谱还是太小，而且单一领域的图谱构建技术和通用百科类图谱间的技术差别也较大，因此根据前人的论文，尝试构建百科类知识图谱。
 
 * TOC
 {:toc}
@@ -23,25 +23,13 @@ tags:
 
 [项目链接](https://github.com/Pelhans/Z_knowledge_graph)
 
-希望在该图谱上尝试应用以下技术：    
+[百度百科 SQL 数据下载，提取码 gcwa](https://pan.baidu.com/s/1LHfYn4bktms-zIBzXt0Fog)
 
-* 关系抽取：    
-    * 神经网络关系抽取 [OpenNRE](https://github.com/thunlp/OpenNRE) 采用清华团队的OpenNRE框架    
-    * DeepDive 关系抽取    
-    * 制作类似于NYT的远程监督学习语料
-* 知识融合(TODO)：    
-    * LIMES 实战    
-    * Silk 实战
-* 自底向上的本体构建技术(TODO)：    
-* 知识表示(TODO)：    
-    * TransE    
-* 知识存储    
-    * Jena    
-    * Neo4j    
-* 知识挖掘(TODO):   
-* KBQA    
-    * 基于Refo和固定模板的QA    
-    * TODO
+[互动百科 SQL 数据下载，提取码 rza6](https://pan.baidu.com/s/1WqDW_trdIXxNBxqT1j733Q)
+
+[百度百科 neo4j 数据下载，提取码 z6fj](https://pan.baidu.com/s/1kUQLIb1TbHsWaIvYp-ncHQ)
+
+[互动百科 neo4j 数据下载，提取码 kdkt](https://pan.baidu.com/s/1Ba9oxM05fgCQw-cadPkhaw)
 
 # 数据获取
 
@@ -65,7 +53,7 @@ tags:
 
 ## 爬虫介绍
 
-爬虫的基本思想和之前电影的那个是一样的，只不过为了加速爬取，我们增加了多爬虫爬取和断点续爬功能，防止爬到一半断点的尴尬情况(别问我为什么这么说。。。。)
+爬虫的基本思想和之前电影的那个是一样的，只不过为了加速爬取，我们增加了多爬虫爬取和断点续爬功能，防止出现爬到一半断掉的尴尬情况。
 
 首先在items.py里设置想要爬取内容，名字都和上面介绍的对应着。
 

@@ -1,8 +1,8 @@
 ---
 layout:     post
-title:      "从零开始构建知识图谱（一）"
+title:      "从零开始构建影视类知识图谱（一）"
 subtitle:   "半结构化数据的获取"
-date:       2018-08-31 00:15:18
+date:       2018-09-01 00:15:18
 author:     "Pelhans"
 header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
@@ -25,6 +25,32 @@ tags:
 
 [从零开始构建知识图谱项目链接](https://github.com/Pelhans/Z_knowledge_graph)
 
+## Mysql 安装
+
+我用的是 Ubuntu 16.04, 因此通过以下命令进行安装：
+
+"""
+sudo apt-get install mysql-server
+
+sudo apt isntall mysql-client
+
+sudo apt install libmysqlclient-dev
+"""
+
+安装成功后可以通过下面的命令测试是否安装成功：
+
+"""
+sudo netstat -tap | grep mysql
+"""
+
+## 其他依赖
+
+python 版本是 python2.7
+
+BeautifulSoup4
+scrapy==1.5.1
+pymysql
+
 ## Mysql建库
 
 库内包含 演员、电影、电影类型、演员->电影、电影->类型 五张表：
@@ -35,12 +61,11 @@ tags:
 * 演员->电影： 演员ID， 电影ID；    
 * 电影-> 类型： 电影ID， 类型ID；    
 
-与其相对应的建表语句即要求请参考craw_without_spider/mysql/creat_sql.txt文件。 在修改目标库的名称后即可通过```sehll
-mysql -uroot -pnlp < creat_sql.txt``` 命令创建数据库。
+与其相对应的建表语句即要求请参考 ie/craw/movie_baidu_baike/creat_sql.txt文件。 在修改目标库的名称后即可通过```mysql -uroot -pnlp < creat_sql.txt``` 命令创建数据库，其中 root 是我数据库的用户名， 密码是 nlp。
 
-## 百度百科爬虫
+# 百度百科爬虫
 
-该爬虫对应与crawl 下的baidu_baike 文件夹。该爬虫基于scrapy框架，爬取电影类数据，包含电影22219部，演员13967人，演员电影间联系1942个，电影与类别间联系23238,其中类别为‘其他’的电影有10个。对应数据集可在[坚果云下载](https://www.jianguoyun.com/p/Dfga9AgQq_6CBxiw8Go)
+该爬虫对应与crawl 下的 movie_baidu_baike 文件夹。该爬虫基于scrapy框架，爬取电影类数据，包含电影22219部，演员13967人，演员电影间联系1942个，电影与类别间联系23238,其中类别为‘其他’的电影有10个。对应数据集可在[百度网盘下载](https://pan.baidu.com/s/1v4FjpmYOhXHl62rMyAWvbg)，提取码 524j 。
 
 ### 修改item.py
 
@@ -54,7 +79,7 @@ __init__.pyc  items.pyc  middlewares.pyc  pipelines.pyc  settings.pyc
 ./baidu_baike/spiders:    
 baidu_baike.py  baidu_baike.pyc  __init__.py  __init__.pyc    
 
-baidu_baike/目录下的文件是需要我们手动修改的。其中 items.py 对需要爬取的内容进行管理，便于把抓取的内容传递进pipelines进行后期处理。现在我们对 ```baidu_baike/baidu_baike/item.py```进行修改，添加要爬取的项。
+movie_baidu_baike/目录下的文件是需要我们手动修改的。其中 items.py 对需要爬取的内容进行管理，便于把抓取的内容传递进pipelines进行后期处理。现在我们对 ```movie_baidu_baike/baidu_baike/item.py```进行修改，添加要爬取的项。
 
 ```python
 import scrapy
@@ -334,11 +359,23 @@ class BaiduBaikeSpider(scrapy.Spider, object):
             yield scrapy.Request(new_full_url, callback=self.parse)
 ```
 
+## 运行爬虫
+
+scrapy crawl baidu
+
+有人反映说爬虫现在用不了了。。。然后一看现在百度百科词条没有词条标签这个东西了。。。。目前没有想到破解的办法。。。大家先跑起来然后直接用我之前爬好的 SQL 文件吧 = =。
+
+更新。。。互动百科也变了。。。
+
 # 互动百科爬虫
 
-该爬虫对应与crawl 下的hudong_baike 文件夹。该爬虫基于scrapy框架，爬取电影类数据，包含电影13866部，演员5931人，演员电影间联系800个，电影与类别间联系14558,其中类别为‘其他’的电影有0个。对应数据集可在[坚果云下载](https://www.jianguoyun.com/p/Db3wsKQQq_6CBxi7tGs)
+该爬虫对应与crawl 下的 movie_hudong_baike 文件夹。该爬虫基于scrapy框架，爬取电影类数据，包含电影13866部，演员5931人，演员电影间联系800个，电影与类别间联系14558,其中类别为‘其他’的电影有0个。对应数据集可在[百度网盘下载](https://pan.baidu.com/s/16o1LEzk8L29BXmN65MvDsA)，提取码 2o3v 。
 
 互动百科爬虫的结构和百度百科相同。二者的主要不同之处在于二者的 info box 的格式不一致，因此采用了不同的方法进行提取。此处不再赘述。
+
+# SQL 文件的导入
+
+从上述链接下载好 SQL 文件后，通过 mysql -uroot -pnlp < baidu_baike.sql; 命令导入 SQL 数据库，若报错提示 ERROR 1046 (3D000) at line 22: No database selected，则需要在 sql 文件的第 21 行添加  USE movie_baidu_baike; (互动百科的就是 movie_baidu_baike)。
 
 # 总结
 

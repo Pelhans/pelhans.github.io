@@ -59,7 +59,7 @@ tags:
 
 word embedding 用的是 Glove,在 60 亿 Wikipedia 和 网络文本上训练得到的 100 维词向量. char 的 embedding 采用的是在 $$ \left(-\sqrt{\frac{3.0}{wordDim}}, \sqrt{\frac{3.0}{wordDim}}  \right)$$ 范围内的随机初始化. 其中 wordDim 论文里用的是 30.
 
-对于正向 LSTM, 它从前向后读取每个时间步的输入, 我们取得每个时间步的输出 $H^{正} = ( h_{1}^{正}, h_{2}^{正}, \dots, h_{n}^{正} )$ 作为正向 LSTM 的输出. 方向 LSTM 以相反的时间步获取文本输入而后得到每个时间步的输出 $H^{反} = ( h_{1}^{反}, h_{2}^{反}, \dots, h_{n}^{反}  )$. 最终我们把对应时间步的正向和反向的 LSTM 输出拼接得到 BLSTM 层的输出. $H = \{(H_{1}^{正}, H_{1}^{反}), (H_{2}^{正}, H_{2}^{反}), \dots, (H_{n}^{正}, H_{n}^{反}) \} $.
+对于正向 LSTM, 它从前向后读取每个时间步的输入, 我们取得每个时间步的输出 $H^{正} = ( h_{1}^{正}, h_{2}^{正}, \dots, h_{n}^{正} )$ 作为正向 LSTM 的输出. 方向 LSTM 以相反的时间步获取文本输入而后得到每个时间步的输出 $H^{反} = ( h_{1}^{反}, h_{2}^{反}, \dots, h_{n}^{反}  )$. 最终我们把对应时间步的正向和反向的 LSTM 输出拼接得到 BLSTM 层的输出. $H = {(H_{1}^{正}, H_{1}^{反}), (H_{2}^{正}, H_{2}^{反}), \dots, (H_{n}^{正}, H_{n}^{反}) } $.
 
 CRF 可以利用全局信息进行标记. 充分考虑当前标记受前面标记的影响. 下面介绍 CRF 在 BLSTM 后是怎么坐的.
 
@@ -114,19 +114,27 @@ $$ y^{*} = arg\max_{\tilde{y}\in Y_{X}} s(X, \tilde{y}) $$
 
 中文词内是包含大量的信息的，直接用基于词的方法会受到分词效果的影响，因此目前很多模型都是基于字的， 词级别信息则想办法通过好的向量嵌入和模型的上下文依赖来补充。改论文提出通过  Lattice LSTM 方法将词信息加入到基于字的 LSTM+CRF 模型中，减轻模型受到分词错误的影响，以此提升模型的效果。
 
-![](/img/in-post/kg_paper/ner_lattice_arc.JPG)yy
+![](/img/in-post/kg_paper/ner_lattice_arc.JPG)
 
-模型输入是一个一个的字，词信息通过词典获得。输入的字符用 $c_{i}^{c}$ 表示，通过字符嵌入得到向量为 $ x_{i}^{c} = e^{c}(c_{i})$，LSTM 的输出为 $h_{i}^{C}$，词用 $ w_{be}^{w}$ 表示，嵌入后的向量为 $ x_{be}^{w}$，经过隐层后的输出时 $ c_{be}^{w}$。
+模型输入是一个一个的字，词信息通过词典获得。输入的字符用 $c_{j}$ 表示，通过字符嵌入得到向量为 $ x_{j}^{c} = e^{c}(c_{j})$，经过隐层的输出为 $h_{j}^{c}$。正常情况下，用基于 char 的模型，LSTM 的计算公式如下所示：
 
-词向量和字的隐层输出连接起来进入 LSTM 得到对应的输出 $ c_{be}^{w}$ ，LSTM 的内部计算公式如下所示
+![](/img/in-post/kg_paper/ner_lattice_lstm.png)
+
+比较经典的做法，有三个门：输入、输出、遗忘。黑体的 $$ c_{j}^{c}$$ 表示 cell 状态。隐层输出时结合了上一时间步的 cell 状态和当前的输入。但对于 Lattice LSTM 来说，情况发生了变化，因为我们多了来自 gazetteers 的信心，词用 $ w_{be}^{w}$ 表示，嵌入后的向量为 $ x_{be}^{w}$。为此我们先让词向量经过一个没有输出门的 LSTM(因为模型只允许在字符节点进行预测)，公式如下所示：
 
 ![](/img/in-post/kg_paper/ner_lattice_form1.JPG)
 
+需要注意的是，此时的输入是词向量 $$x_{b,e}^{w}$$ 和开始字符的隐层输出 $$ h_{b}^{c}$$。经过计算我们得到词的 cell 输出 $$ c_{b,e}^{w}$$。
+
+因为一个结束字符可能对应多个匹配到的词，因此采用 sigmoid 函数作为一个门来控制每个词的贡献。
+
 ![](/img/in-post/kg_paper/ner_lattice_form2.JPG)
+
+最终利用所有词的贡献和当前输入的贡献进行加权求和得到得到当前的 cell 状态。(这个公式里没有看到上一时刻的 cell 状态？？)：
 
 ![](/img/in-post/kg_paper/ner_lattice_form3.JPG)
 
-后面两个是控制词级信息流入的门，论文中对这两个门做了特殊处理使得他们的和加起来为 1.
+后面两个是控制词级信息流入的门，论文中对这两个门做了归一化处理.
 
 ![](/img/in-post/kg_paper/ner_lattice_form4.JPG)
 
@@ -134,11 +142,225 @@ $$ y^{*} = arg\max_{\tilde{y}\in Y_{X}} s(X, \tilde{y}) $$
 
 ![](/img/in-post/kg_paper/ner_lattice_result.JPG)
 
-看完有几个问题，1. 单个字的怎么办？比如 “是” 这种字；2. 词汇表太大的话怎么办？效率会不会很低。论文中没看到答案，但这个模型很有趣，有时间用的话好好研究。
+上图结果一个比较有意思的点是 bichar + softword 竟然这么强，有机会用一下可以。
+
+char bigram embedding：$$ e(c_{i}, c_{i+1})$$
+
+
+## An Encoding Strategy BasedWord-Character LSTM for Chinese NER
+
+在论文 Lattice LSTM 中，单词信息被集成到单词的开始字符和结束字符之间的一个快捷路径中。然而，捷径的存在可能导致模型退化为部分基于词的模型，从而产生分词错误。此外，由于格点模型的 DAG结构，它不能进行批量训练，速度很慢。
+
+下图是 Lattice LSTM 退化成基于词模型的极端情况，此时词的信息会主导模型，导致边界错误的情况。
+
+![](/img/in-post/kg_paper/wc-lstm_bad.PNG)
+
+另外，由于字长可变，整个路径的长度不固定。此外，每个字符都有一个可变大小的候选词集，这意味着输入和输出路径的数量也不是固定的。在这种情况下，Lattice LSTM模型被剥夺了批量训练的能力，因而效率很低。
+
+为了防止模型退化为部分基于单词的模型，论文将单词信息分配给单个字符，并确保字符之间没有快捷路径。具体地说，在前向WCLSTM和后向WCLSTM中，单词信息分别分配给其结束字符和开始字符。同时引入四种策略从不同的单词中提取固定大小的有用信息，保证了模型能够在不丢失单词信息的情况下进行批量训练。 
+
+这其实是一个很好的思路，后面很多论文对 Lattice LSTM 的改进也都是这样，即尽可能的将外挂词信息加到字符信息上，简化输入，实现并行。
+
+模型结构如下图所示
+
+![](/img/in-post/kg_paper/wc-lstm_arc.PNG)
+
+假设输入序列为 $${c_{1}, c_{2}, \dots, c_{n} } $$，通过与 gazetteers 匹配可以得到一系列的词，用 $$ w_{s_{i}}$$ 表示以第 i 个字符结尾对应的实体集合，则我们得到模型的正向输入：
+
+$$ \overrightarrow{rs} = {(c_{1}, \overrightarrow{ws_{1}}), (c_{2},\overrightarrow{ws_{2}}), \dots, (c_{n},\overrightarrow{ws_{n}})}$$
+
+将字符进行 embedding 得到 $$x_{i}^{c}$$，词 embed 得到 $$ x_{il}^{\overrightarrow{w}} $$，其中 l 表示 字符 i 对应的第 l 个匹配到的词。
+
+那么问题来了，每个字符有好多个匹配到的词，用哪一个呢？为此论文提出四个策略：
+
+* 用最长的    
+* 用最短的    
+* 取集合内词的平均作为表示    
+* 用 attention 加权表示，query 是随机初始化的矩阵
+
+最终得到每个字符对应的词级表示 $$ x_{i}^{\overrightarrow{ws}} $$，反向的也同理。论文将字符级表示和词级表示通过 concat 的方式进行连接，而后通过 双向 WC-LSTM 得到每个时间步的输出。最后通过 CRF 进行序列标注。
+
+WC-LSTM 的计算公式如下所示：
+
+![](/img/in-post/kg_paper/wc-lstm_for.PNG)
+
+论文在 OntoNotes 、MSRA、Weibo 数据集上的表现如下图所示：
+
+![](/img/in-post/kg_paper/wc-lstm_res1.PNG)
+
+![](/img/in-post/kg_paper/wc-lstm_res2.PNG)
+
+![](/img/in-post/kg_paper/wc-lstm_res3.PNG)
+
+可以看到，最长和最短的效果比较稳定，都还可以。具体用最长还是最短的策略还是要根据自身的需要长的实体还是短的去决定，比如嵌套NER 就喜欢短的。平均的和 attention 的在 Weibo 数据集上表现不好，论文认为这是数据集小，模型参数多(attention)，导致泛化能力差。
+
+下图是各方案的 case study，可以看到各策略的效果对比：
+
+![](/img/in-post/kg_paper/wc-lstm_case.PNG)
+
+为了检验模型的速度，论文将其与 Lattice LSTM 、char-BbiLSTM 做了对比，结果如下图所示：
+
+![](/img/in-post/kg_paper/wc-lstm_speed.PNG)
+
+下图展示了模型的收敛速度，显示收敛速度和 Lattice LSTM 一致：
+
+![](/img/in-post/kg_paper/wc-lstm_shoulian.PNG)
+
+## Simplify the Usage of Lexicon in Chinese NER
+
+同样是针对 Lattice LSTM 的，也是嫌弃它慢，但 Lattice LSTM 能充分利用已被证明有用的实体信息这个优点又不能抛弃，为此论文提出使用 BMES 标签的 ExSoftword 技术，来保存 Lattice LSTM 的优点，并提高速度。
+
+传统的 softword 方法是先通过分词等工具，得到每个字符对应的 BMES 标记，而后通过 embedding 进行输入。对应到 gazetteers 的情况，对于每个字符，往往会存在多个标签，因此 ExSoftword 允许多个分割标签的存在。
+
+举例来说，假设输入为 $$ s = {c_{1}, c_{2},\dots, c_{5} }$$，匹配 gazetteers 得到实体 $$ {c_{1}, c_{2}, c_{3}, c_{4} }$$ 和 $${c_{3}, c_{4} }$$ ，则每个字符对应的分词标记为：$$ seg(s) ={ {B}, {M}, {B,M}, {E}, {O} } $$。每个字符都用一个 5 维的二值表示，有哪个标记记为 1，否则为0.
+
+这么做虽然引入单词的边界信息了，但它有两个致命缺点：
+
+* 没有引入词向量信息，只用了边界信息    
+* 尽管它试图通过允许一个字符有多个分割标签来保持所有的词典匹配结果，但仍然丢失了大量的信息。在很多情况下，我们无法从分割标签序列中恢复匹配结果
+
+句子 s 的每个字符c对应于由四个分段标签“BMES”标记的四个单词集。词集B（c）由在句子s上以c开头的所有词库匹配词组成。同样，M（c）由c出现在句子s中间的所有词库匹配词组成，E（c）由以c结尾的所有词库匹配词组成，S（c）是由c组成的单个字符词。如果一个词集是空的，我们将在其中添加一个特殊单词“None”来表示这种情况。
+
+对于每个词集，都压缩成一个固定维度的向量，最后将四个词集的表示(BMES)连接起来表示成一个整体，并将其添加到字符表示中。词集的压缩用加权求和解决，权值是词频。基本思想是，字符序列在数据中出现的次数越多，它就越可能是一个单词。注意，单词的频率是静态值，可以脱机获取。这可以大大加快计算每个单词的权重（例如，使用查找表）。这个其实和上面的四个策略想法是一致的。
+
+为了防止稀有词出现 0 的问题，论文对每个词的权重做了平滑处理(加一个常数)。至此，模型整体流程比较明确：首先，我们用词库扫描每个输入句子，得到句子中每个字符的四个“BMES”词组。其次，我们在统计数据集上查找每个单词的频率。第三，我们得到每个字符的四个词集的矢量表示，并根将其添加到字符表示中。最后，在增广字符表示的基础上，我们使用任何合适的神经序列标记模型来进行序列标记，如基于LSTM的序列建模层+CRF标记推理层。
+
+最终模型的效果如下图所示：
+
+![](/img/in-post/kg_paper/sner_res1.PNG)
+
+![](/img/in-post/kg_paper/sner_res2.PNG)
+
+![](/img/in-post/kg_paper/sner_res3.PNG)
+
+![](/img/in-post/kg_paper/sner_res4.PNG)
+
+为了验证模型的速度，论文做了对比试验，发现要比 Lattice 快 7 倍。
+
+![](/img/in-post/kg_paper/sner_speed.PNG)
+
+为了验证论文提出方法的通用性，论文在不同模型结构上使用该方法：CNN/LSTM/Transformer ，实验结果如下图所示，在各种架构上都可以提升效果。
+
+![](/img/in-post/kg_paper/sner_qianyi.PNG)
+
+论文还对比了不同压缩词集的方法，包含：直接取平均、频率加权平均、加平滑的加权平均。实验结果如下图所示，看起来没平滑的加权平均效果最好。
+
+![](/img/in-post/kg_paper/sner_jiaquan.PNG)
+
+## Leverage Lexical Knowledge for Chinese Named Entity Recognition via Collaborative Graph Network
+
+依旧是针对 Lattice LSTM 的。。。论文认为 Lattice LSTM 有两个缺点：
+
+* Lattice LSTM 只能利用部分匹配结果，如 “机”这个字在 LATTICE LSTM 里只能匹配到 “机场”，但其实 “北京机场”也是有帮助的。    
+* 没有用到语义相关词特征(语义相关词是指有语义关联的其他词)
+
+为此论文提出了用图神经网络来利用这些特征的想法。模型的网络结构为四层：编码层、图神经网络层、融合层、解码层。网络结构如下图所示：
+
+![](/img/in-post/kg_paper/threegat_arc.PNG)
+
+编码层是用 预训练的 词向量 对 char 和 word 进行编码。图神经网络层分为三部分：
+
+* 包含图(C-graph)，为了是用自匹配词典的词而设计，它提供了 char 和 自匹配词典词的连接。它先将字符进行连接，而后将匹配词与每个相关字符添加连接。    
+* 转移图(T-graph)：表示 char 和最近语义相关词间的连接，和 word cutting graph 一样    
+* 移除 LSTM 的格点图(L-graph)
+
+将三种图用 GAT 处理，而后通过映射矩阵映射后加和进行融合。得到融合的字符级表示，最终用 CRF 进行解码。
+
+
+## A Neural Multi-digraph Model for Chinese NER with Gazetteers 
+
+还是针对 Lattice LSTM 的，主要为了解决在使用 gazetteers 时，由于匹配策略导致出现多个匹配结果的情况，如 “张三在吃饭”，可能匹配出“张三”和“张三在”两个人名。论文延续前面的思路，将 DAG 转化为字符的链式信息。论文提出 有向图 + GGNN + BiLSTM + CRF 的模型来尝试解决该问题。
+
+虽然这些背景知识可能会有所帮助，但在实践中，gazetteers 也可能包含不相关甚至错误的信息，这些信息会损害系统的性能。中文 NER 里情况更严重，因为错误匹配的实体可能导致巨大的错误。汉语本身就是模棱两可的，因为单词的粒度/边界比其他语言（如英语）定义得不太清楚。因此，大量错误匹配的实体可以通过使用 gazetteers 生成。从下图所示的例子可以看出，将一个简单的9个字符的句子与4个地名索引匹配可能会导致6个匹配的实体，其中2个是不正确的：
+
+![](/img/in-post/kg_paper/ggnn_exam.PNG)
+
+为了消除错误，现有的方法通常依赖手工制作的末班或预定义的选择策略。可以参考之前的论文提出几种解决冲突匹配的方法，如最大化匹配。这些规则都有一些倾向性，没有充分利用词的语义信息。该论文提出我们也许可以通过数据驱动的方法来做。为此论文提出 Gated Graph Sequence Neural Networks(GGNN) + LSTM + CRF 的方法。其中改进的 GGNN 是一个新的多重有向图结构，可以显式的模拟文字和 gazetteers 的交互。
+
+这里先介绍一下 GGNN，这里引用[图网络学习算法之——GGNN (Gated Graph Neural Network)](https://zhuanlan.zhihu.com/p/83410937) 的介绍。首先构建一个图 $$ G = （V， E） $$，V 是节点， E 是边的集合，通过利用 GGNN 来多次迭代的学习节点 V 的 embedding，并最终由所有节点的 embedding 得到全图的表达。 GGNN 是一种基于 GRU 的空间域信息传递模型。 message passing 的通用框架共包含三部分操作：信息传递(M)、更新操作(U)、读取操作(R)。节点的更新公式如下所示：
+
+首先用节点的输入表示 $$ x_{v}$$ 初始化节点 v 的表示，维度不够的用 0 填充，最终每个节点的维度为 D。
+
+$$ h_{v}^{(1)} = [x_{v}^{T}, 0]^{T} $$
+
+而后构建邻接矩阵 A， A 包含两部分: 入度和出度，每部分维度都是 D，因此一个节点的邻接矩阵维度是 D * 2D。通过邻接矩阵 A，当前节点通过边与周围节点进行相互作用：
+
+$$ a_{v}^{(t)} = A_{v}^{T}[h_{1}^{(t-1)}, \dots, h_{|V|}^{(t-1)T}]^{T} + b $$
+
+得到当前节点的交互表示后，通过 GRU 对节点的状态进行更新，如下公式所示，其中 z 是遗忘门， r 是更新门：
+
+$$ z_{v}^{t} = \sigma(W^{z}a_{v}^{(t)} + U^{z}h_{v}^{(t-1)}) $$
+
+$$ r_{v}^{t} = \sigma(W^{r}a_{v}^{(t)} + U^{r}h_{v}^{(t-1)}) $$
+
+$$ \tilde{h}_{v}^{(t)} = tanh(Wa_{v}^{(t)} + U(r_{v}^{t} \odot h_{v}^{(t-1)})) $$
+
+$$ h_{v}^{(t)} = (1-z_{v}^{t})\odot h_{v}^{(t-1)} + z_{v}^{t} \odot h_{v}^{t}  $$
+
+最终，模型可以输出两种粒度的信息：节点级别的，可以解决节点的分类问题，图级别的，可以做图的分类或嵌入，由节点级别到图级别的可以通过  self-attention 来做。
+
+介绍完 GGNN 后，来看看怎么用在 NER 中的。首先网络结构如下图所示：
+
+![](/img/in-post/kg_paper/ggnn_arc.JPG)
+
+假如输入是 “张三在北京人民公园”，经过和 gazetteers 匹配我们得到 “PER1”、“PER2”、“LOC1”、“LOC2” 4 个词。为了构建图，首先我们对应每个输入字符建立对应的节点，这里是 9 个。然后再为匹配到的每个词建立 2 个节点--开始 s 和结束e。节点构建完了，构建有向边。首先添加输入系列字符间的有向连接，而后构建每个匹配词到对应的开始和结束字符间的有向连接。
+
+作者认为，原始的 GGNN 不能直接用，因为不能区分带不同标签权重的边。为此提出两个扩展：
+
+* 使得邻接矩阵 A 包含不同标签的边，包含相同标签的边共享权重    
+* 为每个边定义了一系列的可训练贡献系数，它代表每个结构信息类型(gazetteers 和  character sequence)的贡献。
+
+模型细节上，节点的初始化中，字符节点采用 char 和 bigram embedding concat 的方式做，开始和结束节点用 gazetteers embedding 得到。
+
+![](/img/in-post/kg_paper/ggnn_init.JPG)
+
+因为 邻接矩阵 A 要包含不同的边标签，因此：
+
+$$ A [A_{1}, \dots, A_{||L||}] $$
+
+贡献系数被定义为：
+
+$$ [w_{c}, w_{g1}, \dots, w_{gm}] = \sigma ([\alpha_{c}, \alpha_{g1}, \dots, \alpha_{gm}]) $$
+
+相同标签的边共享权重。接下来就利用 GRU 进行更新，其实除了上面那俩，剩下的和 GGNN 差不多：
+
+![](/img/in-post/kg_paper/ggnn_gru.JPG)
+
+最终论文除了在 OntoNotes 4.0 、MSRA、Weibo-NER 数据集上做了实验，还构建了一个电商领域的 NER数据集，最终结果如下图所示：
+
+![](/img/in-post/kg_paper/ggnn_res.JPG)
+
+可以看出，论文提出的方法在在加上 gazetteers 后表现达到了最优，并且比之前的 Lattice LSTM 要好不少。其实 Lattice LSTM 就是一个 DAG，用图来解决这件事很自然，感觉是个很好的探索。
+
+
+## Neural Chinese Named Entity Recognition via CNN-LSTM-CRF and Joint Training withWord Segmentation
+
+论文思想比较简单，就是一个联合 NER + CWS联合训练模型和通过实体替换的数据扩增方法。模型结构如下图所示：
+
+![](/img/in-post/kg_paper/ncner_arc.PNG)
+
+先 embedding 而后利用 CNN 提取局部特征，得到结合前后文的字符集表示。用该字符级表示做 CWS 任务。除此之外，该字符集表示还被输入到 BiLSTM + CRF 中做 NER 任务。 整体模型还是很简单的。最后损失函数由 NER 和 CWS 任务的损失联合得到，具体的贡献比例通过超参 $$\lambda$$ 控制，一般 0.4 - 0.5 之间效果较好：
+
+$$ \lambda = (1-\lambda)L_{NER} + \lambda L_{CWS} $$
+
+至于数据增广方法是指将原数据中的实体替换为相同类型的其他实体，该增广方法可有效提升模型效果, 6% 左右，如下图所示：
+
+![](/img/in-post/kg_paper/ncner_pesdo.PNG)
+
 
 ## New Research on Transfer Learning Model of Named Entity Recognition
 
 文章基于 BERT 模型，在后面加上了 BiLSTM + CRF 层，进行命名实体识别。在人民日报等语料库上进行训练和测试，最终表明，基于 BERT 强大的性能，该模型超过了以往的模型，同时相比于 BERT + MLP 做 NER ，也提升了一个点。算是意料之中的改进，就不详细介绍了。
+
+## Multilingual Named Entity Recognition Using Pretrained Embeddings, Attention Mechanism and NCRF
+
+基于 BERT + BiRNN + attention + NCRF ++ 模型，其中在 BiRNN 后加了 attention 来弥补 BiRNN 的长序列问题。解码层用神经CRF++层而不是普通CRF。它通过在相邻标签之间添加转换分数来捕获标签依赖项。NCRF++支持用句子级最大似然损失训练的CRF。在解码过程中，采用Viterbi算法搜索概率最大的标签序列。此外，NCRF++在n-best输出的支持下扩展了解码算法。最终选择 nbest 参数等于11，因为有11个有意义的标签。
+
+除了上述改动外，论文是在多任务上做的尝试，因此还引入了一个辅助任务--输入语言种类判定。它通过获取 BiLSTM token 级别输出的 max 和 avg 进行分类，看看是输入是  保加利亚语、捷克语、波兰语和俄语 中的哪一个。
+
+最终模型结构如下图所示：
+
+![](/img/in-post/kg_paper/mner_arc.PNG)
 
 ## Tuning Multilingual Transformers for Named Entity Recognition on Slavic Languages
 
@@ -316,6 +538,94 @@ $$ r_{i} = \frac{1}{T}\sum_{j=1}^{T}\sigma(W_{x}[x_{i}; x_{j}] + b_{x}) * x_{j} 
 总结下来，文章通过在 CNN 后面加上 关系层，对词与词之间的关系建模，可以更好地捕捉长程语义依赖信息。模型效果比 CNN +BiLSTM + CRF 和  CNN +BiLSTM + Att + CRF 要好。
 
 ** 这里不懂的地方是， 为什么它这种做法比 attention 要好，毕竟 attention 也对每个其他的词计算了。 论文里没有给解释。**
+
+
+## Fast and Accurate Entity Recognition with Iterated Dilated Convolutions
+
+传说中的IDCNN，通过膨胀的方式，使得CNN用较浅的网络快速获得全局的感受野。它比传统CNNs具有更好的大上下文和结构化预测能力。与LSTMs的长度N的句子的顺序处理需要O（N）时间（即使面对并行性）不同，IDCNNs允许固定深度卷积在整个文档中并行运行，在保持与BiLSTMCRF相当的精度的同时，显著提高了14-20倍的速度。
+
+传统的 CNN 想要大感受野就要堆层数， 第 l 层可见的文本范围是 $$ r = l(w-1) + 1 $$。像 NLP 中文本输入几百的话，这层数就太深了。也可以用池化，但序列标注任务中做池化的话，就要丢失序列中某些输入的信息。
+
+为此，论文提出膨胀 CNN，对于膨胀卷积，有效输入宽度可以随着深度呈指数增长，为 $$ 2^{l+1} - 1 $$，在每一层上没有token损失，并且需要估计的参数数量适中。与典型的CNN层一样，扩张卷积在序列上的上下文滑动窗口上操作，但与传统卷积不同，上下文不需要连续；扩张窗口跳过每个扩张宽度d输入。通过对扩张宽度指数增加的扩张卷积层进行叠加，我们可以仅使用几层来扩展有效输入宽度的大小，以覆盖大多数序列的整个长度。 IDCNN 结构如下图所示：
+
+![](/img/in-post/kg_paper/idcnn_arc.PNG)
+
+应用到 NER 中时，每个 token 的输出可以加上 CRF 或者直接用线性输出做序列标注。最终模型在 CoNLL2003 上的表现如下图所示，看起来和基于 BiLSTM 的精度差不多(误差范围内)，强一点点：
+
+![](/img/in-post/kg_paper/idcnn_res.PNG)
+
+论文还测试 IDCNN 的速度，如下图所示，基本上稳定快 1.3 - 1.5 倍之间。
+
+![](/img/in-post/kg_paper/idcnn_speed.PNG)
+
+论文还尝试了带 linear dropout 和不带的情况对比，如下图所示：
+
+![](/img/in-post/kg_paper/idcnn_dr.PNG)
+
+## CNN-Based Chinese NER with Lexicon Rethinking
+
+前面像 Lattice LSTM 模型都想办法利用 Gazetteer 信息，但是这些方法仍然存在两个问题：
+
+* RNN 这种不能并行    
+* 他们很难处理潜在词汇之间的冲突：一个字符可能对应于词汇中的潜在词汇对，这种冲突可能误导模型，使其预测不同的标签
+
+针对第一个问题，论文使用CNN处理整个句子以及所有潜在单词的并行处理。直觉是，当卷积运算的窗口大小设置为2时，所有潜在的单词都可以很容易地融合到相应的位置。
+
+针对第二个问题，通过使用反思(rethinking)机制来解决，通过添加反馈层并反馈高层次特征，这种重新思考机制可以利用高层次语义来细化嵌入单词的权重，并解决潜在单词之间的冲突。在四个数据集上的实验结果表明，该方法比字级和字符级基线方法都能获得更好的性能。
+
+假设输入序列为 $$ C = {c_{1}, c_{2, \dots, c_{M}}} $$ ，其中 $$ c_{m} $$ 表示第 m 个字符。第 m 个字符匹配到的词为 $$ w_{m}^{l} = {c_{m}, \dots, w_{m+l-1}} $$ ，其中 l 表示词的长度为 l。
+
+接下来用 CNN 对 char 级别输入进行特征抽取，如窗口大小为 2， 则得到 2-gram 特征，窗口大小 l 则得到 l-gram 特征：
+
+$$ C_{m}^{l} = tanh(<C^{l-1} [ *, m:m+1], H_{l-1}> + b_{l-1}) $$
+
+其中 $$ C^{l}_{m}$$ 表示第 m 个字的 l-gram 特征。
+
+论文使用 vector-based 的 attention 来结合 l-gram 特征和词特征：
+
+$$ i_{1} = \sigma(W_{i}C_{m}^{l} + U_{i}w_{m}^{l} + b_{i}) $$
+
+$$ f_{1} = \sigma(W_{f}C_{m}^{l} + U_{f}w_{m}^{l} + b_{f}) $$
+
+$$ u_{1} = tanh(W_{u}C_{m}^{l} + U_{u}w_{m}^{l} + b_{u}) $$
+
+$$ i^{'}_{1}, f^{'}_{1} = softmax(i_{1}, f_{1}) $$ 
+
+$$ X_{m}^{l} = i^{'}_{1} \odot u_{1} + f^{'}_{1} \odot C_{m}^{l} $$
+
+接下来就是 Rethinking 机制了，通过我们刚刚得到的表示 $$ X_{m}^{l} $$，根据下面的公式重新计算一遍权重来对之前的权重进行调整。
+
+![](/img/in-post/kg_paper/rethink_for.PNG)
+
+最终得到修正之后的 token 表示后，加上 CRF 进行序列标注。最终实验结果如下图所示：
+
+![](/img/in-post/kg_paper/rethink_res.PNG)
+
+可以看出，比 Lattice LSTM 要强不少。
+
+消融实验如下图所示，可以看出，Lexicon 是最重要的， Rethink 提升貌似不是很大。。。。
+
+![](/img/in-post/kg_paper/rethink_xiaorong.PNG)
+
+## Joint Learning of Named Entity Recognition and Entity Linking
+
+NER 和 EL 相辅相成，是一个较为连续的任务流。现有任务经常分开做，这回造成错误的传递。为此论文提出一种联合 NER 和 EL 的模型方案，最终两个任务上的表现都和对应的  SOAT 差不多。
+
+这个论文我的思路比较陌生，近期也没有相关方向跟进的想法，因此这里只是简单介绍。
+
+模型的结构如下图所示，整体结构的基础时 stack-LSTM, stack - LSTM对应于一个基于 action 的系统，该系统由LSTMs和堆栈指针组成。与最常见的检测整个序列的实体 mention 的方法不同，使用堆栈LSTMs，实体 mention 是动态检测和分类的。这是我们模型的一个基本属性，因为我们在检测到提及时执行EL。此模型由四个堆栈组成：包含正在处理的单词的 Stack 、包含已完成块的 output 、包含当前文档处理过程中以前执行的操作的 Action 堆栈和包含要处理的单词的 Buffer。
+
+除此之外，还有三个 action：
+
+* SHIFT: 从缓冲区弹出一个单词并将其推入堆栈。这意味着缓冲区的最后一个字是命名实体的一部分。    
+* OUT: 从缓冲区弹出一个单词并将其插入输出。这意味着缓冲区的最后一个字不是命名实体的一部分。    
+* REDUCE: 将堆栈中的所有单词弹出并将其 push 到 OUTPUT。对于每种可能的命名实体类型，都有一个action Reduce，例如Reduce PER和Reduce LOC。
+
+此外，可以在每个步骤执行的操作都是受控制的：只有堆栈为空时，才能执行操作Out；只有堆栈不为空时，才能使用操作Reduce。
+
+![](/img/in-post/kg_paper/joint_arc.PNG)
+
+剩下的部分再说吧。。。。
 
 ## Star-Transformer
 
