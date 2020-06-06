@@ -64,7 +64,13 @@ sudo apt-get update && sudo apt-get install yarn;
 
 # 运行 Silk Workbench
 
-首先运行 ```sbt "project workbench" run```命令，然后程序会开始编译，这一步会比较慢，等提示Server started 后，就可以在浏览器端打开 localhost:9000 进行访问了。
+首先去 github 上将 silk 库 clone 下来：
+
+"""
+git clone https://github.com/silk-framework/silk.git
+"""
+
+进入该目录，而后运行 ```./sbt "project workbench" run```命令，然后程序会开始编译，这一步会比较慢，等提示Server started 后，就可以在浏览器端打开 localhost:9000 进行访问了。
 
 # Silk 的使用说明
 
