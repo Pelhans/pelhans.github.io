@@ -8,7 +8,7 @@ header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 > 本部分将介绍手工构建本体、本体复用和使用半自动化方法等技术。其实原计划后面还应有一个逻辑与推理：规则部分，但是我自己也没太理解，因此等以后再补。

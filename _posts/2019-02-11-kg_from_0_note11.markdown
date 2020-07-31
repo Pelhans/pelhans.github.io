@@ -1,14 +1,14 @@
 ---
 layout:     post
-title:      "从零开始构建知识图谱（十一）"
-subtitle:   "百科知识图谱构建（五）Jena的使用及简单SPARQL查询"
+title:      "百科知识图谱构建（三）"
+subtitle:   "Jena的使用及简单SPARQL查询"
 date:       2019-02-11 00:15:18
 author:     "Pelhans"
 header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 
@@ -29,7 +29,7 @@ Fuseki是Jena提供的SPARQL服务器，也就是SPARQL endpoint。其提供了�
 
 Jena 3.0.0后的版本需要 Java8，之后下载Jena 包和 Fuseki包：
 
-```
+```python
 wget http://mirrors.hust.edu.cn/apache/jena/binaries/apache-jena-3.10.0.tar.gz && tar -xvzf apache-jena-3.10.0.tar.gz;
 wget http://mirrors.hust.edu.cn/apache/jena/binaries/apache-jena-fuseki-3.10.0.tar.gz && tar -xvzf apache-jena-fuseki-3.10.0.tar.gz;
 ```
@@ -42,7 +42,7 @@ wget http://mirrors.hust.edu.cn/apache/jena/binaries/apache-jena-fuseki-3.10.0.t
 
 TDB 是Jena用于存储RDF的组件，是属于存储层面的技术。在单机情况下，它能够提供非常高的RDF存储性能。在下载完apache-jena后，进入 Jena 文件夹的 bin/，运行：
 
-```
+```python
 ./tdbloader --loc="../tdb/" "path/to/NTriples"
 ```
 

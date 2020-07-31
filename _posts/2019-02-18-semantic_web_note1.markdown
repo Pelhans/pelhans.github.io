@@ -8,7 +8,7 @@ header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 > 看书不记笔记的下场就是还得看一遍。。。 RDF 是一种勇于表达有关对象(资源) 的生命的语言；它是一个标准的数据模型以提供机器可处理的语义。RDF模式提供了一组用于将RDF词汇表组织成带类型的层次结构的建模原语。

@@ -8,7 +8,7 @@ header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 

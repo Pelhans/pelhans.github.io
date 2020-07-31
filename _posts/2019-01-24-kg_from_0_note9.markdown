@@ -8,7 +8,7 @@ header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 
@@ -21,8 +21,9 @@ tags:
 
 在数据爬取过程中，想尝试复现一个经典的神经网络关系抽取模型。经过看论文筛选最终确定清华的[Neural Relation Extraction with Selective Attention over Instances](http://www.aclweb.org/anthology/P16-1200)。但在看了开源的代码后感觉自己现在造一遍轮子也不如人家的...因此就按照NYT的论文描述做了一个远程监督数据集，并在OpenNRE上跑了一遍。
 
-[项目链接](https://github.com/Pelhans/Z_knowledge_graph)    
-[数据集下载](106.13.45.76:8080/baidu_6w.tar.gz)    
+[制作好的数据集下载 百度网盘下载 提取码 97sp](https://pan.baidu.com/s/1mEps1ThlqOKcEnDy5AEysA)
+
+[OpenNER 项目](https://github.com/thunlp/OpenNRE)
 
 # 远程监督数据集的获取
 

@@ -1,14 +1,14 @@
 ---
 layout:     post
-title:      "命名实体识别（一）"
+title:      "命名实体识别"
 subtitle:   "[笔记] 综述 A Survey on Deep Learning for Named Entity Recognition"
 date:       2019-09-23 00:15:18
 author:     "Pelhans"
-header-img: "img/tensorflow.jpg"
+header-img: "img/ner_survey.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - Knowledge Graph
+    - NLP
 ---
 
 

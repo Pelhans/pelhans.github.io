@@ -8,7 +8,7 @@ header-img: "img/python_cookbook.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - python
+    - Python
 ---
 
 

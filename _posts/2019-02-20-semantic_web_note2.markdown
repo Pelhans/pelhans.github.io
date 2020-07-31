@@ -8,7 +8,7 @@ header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 > 本章将介绍SPARQL 查询得以执行的基础设施，之后讨论SPARQL的基础知识并逐步介绍其更复杂的部分。

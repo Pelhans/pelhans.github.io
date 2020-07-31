@@ -8,8 +8,7 @@ header-img: "img/post_deepspeech_ch1_ch2.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - ASR
-    - NLP
+    -  speech process
 ---
 
 

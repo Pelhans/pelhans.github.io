@@ -8,7 +8,7 @@ header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 
@@ -22,9 +22,8 @@ tags:
 前面我们爬取了百度百科的数据，获取400W的数据大概需要10天左右。接下来我们需要把它存到图数据库里来，这里我还是使用neo4j，没选Jena的原因是我个人认为在没有本体模型的情况下，在neo4j上好好的建立上下位关系也许更好。 现有百度百科部分，包含词条4,190,390条，存入 neo4j 后得到节点 10,416,647个，关系 37,317,167 条，属性 45,049,533个。下面我们对其进行介绍。
 
 [项目链接](https://github.com/Pelhans/Z_knowledge_graph)    
-[图谱演示链接](http://106.13.45.76:7474/browser/)    
-[图谱文件下载](http://106.13.45.76:8080/)    
-[KBQA机器人演示地址](http://106.13.45.76/)
+[图谱演示链接, 如果需要密码试试 nlp](neo4j.pelhans.top/)    
+[百度百科 Neo4j 知识图谱文件下载 z6fj](https://pan.baidu.com/s/1kUQLIb1TbHsWaIvYp-ncHQ)    
 
 
 图谱演示链接上的图谱我虽然有备份，但为了大家的利益，还请不要执行删除等操作。。。
@@ -47,7 +46,7 @@ tags:
 
 其中 get_csv.txt 包含如下 sql语句：
 
-```
+```sql
 use baidu_duplicate;                                                                        
 SELECT distinct title  from lemmas   into outfile '/var/lib/mysql-files/410_title.csv'      fields terminated by ',' optionally enclosed by '"' lines terminated by '\r\n';
 SELECT disambi, title, abstract, curLink, exterLink from lemmas  into outfile '/var/lib/    mysql-files/410_disambi.csv' fields terminated by ',' optionally enclosed by '"' lines      terminated by '\r\n';

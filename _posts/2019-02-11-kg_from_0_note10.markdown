@@ -1,14 +1,14 @@
 ---
 layout:     post
-title:      "从零开始构建知识图谱（十）"
-subtitle:   "百科知识图谱构建（四）数据库到RDF"
+title:      "百科知识图谱构建（二）"
+subtitle:   "数据库到RDF"
 date:       2019-02-11 00:15:18
 author:     "Pelhans"
 header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 
@@ -37,7 +37,7 @@ D2RQ 的框架如下图所示：
 
 之后就是安装 D2RQ，首先下载D2RQ 安装包，放到合适的位置：
 
-```
+```python
 wget https://github.com/downloads/d2rq/d2rq/d2rq-0.8.1.tar.gz;
 tar -xvzf d2rq-0.8.1.tar.gz;
 ```
@@ -46,19 +46,27 @@ tar -xvzf d2rq-0.8.1.tar.gz;
 
 # D2RQ 的使用
 
+由于 D2RQ 是将数据库中的数据映射到 RDF，因此在进行下面的步骤之前，请确保自己有百度百科/ 互动百科 的SQL 数据。如果没有的话，请通过下面的链接进行下载并导入进 Mysql。
+
+[互动百科 SQL 数据 rza6](https://pan.baidu.com/s/1WqDW_trdIXxNBxqT1j733Q)
+
+[百度百科 SQL 数据 gcwa](https://pan.baidu.com/s/1LHfYn4bktms-zIBzXt0Fog)
+
+下面以 互动百科数据为例进行展示。
+
 ## 生成 mapping 文件
 
 使用 D2RQ 自带的 generate-mapping 工具， 根据数据库自动生成mapping文件。
 
-```
-./generate-mapping -u root -p nlp -o kg_demo_mapping_baidu_baike.ttl jdbc:mysql:///hudong_fenlei
+```python
+./generate-mapping -u root -p nlp -o kg_demo_mapping_hudong_duplicate.ttl jdbc:mysql:///hudong_duplicate
 ```
 
 其中 -u root 是数据库的用户名，-p nlp 是数据库的密码。 -o 指定生成 mapping 文件的名字。jdbc:mysql: /// 后面跟着的数据库的名字。
 
 通过上述命令，我们将得到如下的 mapping 文件：
 
-```
+```python
 @prefix map: <#> .
 @prefix db: <> .
 @prefix vocab: <vocab/> .
@@ -70,7 +78,7 @@ tar -xvzf d2rq-0.8.1.tar.gz;
 
 map:database a d2rq:Database;
 	d2rq:jdbcDriver "com.mysql.jdbc.Driver";
-	d2rq:jdbcDSN "jdbc:mysql:///hudong_fenlei";
+	d2rq:jdbcDSN "jdbc:mysql:///hudong_duplicate";
 	d2rq:username "root";
 	d2rq:password "nlp";
 	jdbc:autoReconnect "true";
@@ -184,7 +192,7 @@ map:lemmas_all_text a d2rq:PropertyBridge;
 修改后，得到如下 mapping 文件：
 
 
-```
+```python
 @prefix map: <#> .
 @prefix db: <> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -196,7 +204,7 @@ map:lemmas_all_text a d2rq:PropertyBridge;
 
 map:database a d2rq:Database;
 	d2rq:jdbcDriver "com.mysql.jdbc.Driver";
-	d2rq:jdbcDSN "jdbc:mysql:///hudong_fenlei?useUnicode=true&characterEncoding=utf8";
+	d2rq:jdbcDSN "jdbc:mysql:///hudong_duplicate?useUnicode=true&characterEncoding=utf8";
 	d2rq:username "root";
 	d2rq:password "nlp";
 	jdbc:autoReconnect "true";
@@ -302,12 +310,11 @@ map:lemmas_all_text a d2rq:PropertyBridge;
 
 首先进入到 d2rq文件夹内，运行 
 
-```
-./d2r-server kg_demo_mapping_hudong_fenlei.ttl
+```python
+./d2r-server kg_demo_mapping_hudong_duplicate.ttl
 ```
 
 命令开启服务器，然后通过网页端进行访问 http://localhost:2020/，顺利的话，你应该看到如下界面
-
 
 ![](/img/in-post/kg_from_0/d2rq_web_view.png)
 
@@ -319,8 +326,8 @@ map:lemmas_all_text a d2rq:PropertyBridge;
 
 在生成 mapping 文件后，通过 
 
-```
-./dump-rdf -o hudong_baike.nt kg_demo_mapping_hudong_fenlei.ttl
+```python
+./dump-rdf -o hudong_baike.nt kg_demo_mapping_hudong_duplicate.ttl
 ```
 
 命令将数据转换为Ntriples。这一步比较慢，生成的文件也比较大，像互动百科有 430W 词条，得到的nt文件大概59个G，因此要做好预留空间。

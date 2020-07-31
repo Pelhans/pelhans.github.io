@@ -8,7 +8,7 @@ header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 > 首先描述 OWL2 的动机以及它与 RDF 和 RDFS 的关系。接下来将介绍 OWL2 的各种语言元素及 OWL2 概要。

@@ -4,7 +4,7 @@ title:      "Numpy 笔记"
 subtitle:   "Numpy 常用操作"
 date:       2019-04-02 00:15:18
 author:     "Pelhans"
-header-img: "img/kg_bg.jpg"
+header-img: "img/python_background.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:

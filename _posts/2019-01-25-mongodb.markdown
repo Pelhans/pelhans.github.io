@@ -4,11 +4,11 @@ title:      "MongoDB 入门笔记"
 subtitle:   ""
 date:       2019-01-25 00:15:18
 author:     "Pelhans"
-header-img: "img/kg_bg.jpg"
+header-img: "img/database_background.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - database
+    - Database
 ---
 
 

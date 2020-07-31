@@ -1,14 +1,14 @@
 ---
 layout:     post
 title:      "关系抽取笔记"
-subtitle:   "综述（一）"
+subtitle:   "综述翻译 Relation Extraction: A Survey"
 date:       2019-05-05 00:15:18
 author:     "Pelhans"
 header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - Knowledge Graph
 ---
 
 

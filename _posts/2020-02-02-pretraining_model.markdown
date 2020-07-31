@@ -8,7 +8,7 @@ header-img: "img/kg_bg.jpg"
 header-mask: 0.3 
 catalog:    true
 tags:
-    - knowledge graph
+    - NLP
 ---
 
 
@@ -171,7 +171,7 @@ $$ L_{3}(C) = L_{2}(C) + \lambda * L_{1}(C) $$
 
 ![](/img/in-post/pretrain_model/gpt_layers.JPG)
 
-潜在的生成模型学习执行我们评估的许多任务，以提高其语言建模能力，并且与LSTMs相比，变压器更结构化的注意记忆有助于转移
+潜在的生成模型学习执行我们评估的许多任务，以提高其语言建模能力，并且与LSTMs相比，Transformer 更结构化的注意记忆有助于迁移
 
 论文还研究了为什么 Transformer 的预训练语言模型会有效。论文给出的假设是，生成类语言模型任务隐式的执行了下游迁移的任务，来提高它的语言建模能力。这个观点也被后面的模型所接受。同时，与LSTMs相比， Transformer 更加结构化的 attention memory 对迁移任务更有效。下图中可视化了这些启发式解决方案在生成性预训练过程中的有效性。我们观察到这些启发式方法的性能在训练期间是稳定地增加的，这表明生成性预训练支持学习各种与任务相关的功能。我们还观察到LSTM在其 zero-shot 性能方面表现出更高的方差，这表明 Transformer 结构的  inductive bias 有助于迁移。
 
@@ -224,7 +224,7 @@ GPT2.0 相比于 GPT1.0，主要改动如下：
 
 例子：
 
-```
+```C++
 输入：
 
 {'l o w </w>': 5, 'l o w e r </w>': 2, 'n e w e s t </w>': 6, 'w i d e s t </w>': 3}
