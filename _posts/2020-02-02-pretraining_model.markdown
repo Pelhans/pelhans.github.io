@@ -681,6 +681,15 @@ SBO 在训练时取 Span 前后边界的两个词(mask 外的)，而后用这两
 大 batch 训练：论文比较了 BERTBASE 在增大 batch size 时的复杂性和最终任务性能，控制了通过训练数据的次数。发现large batches 训练提高了 masked language modeling 目标的困惑度，以及最终任务的准确性。最终 batch 定位 8k(真有钱)。
 
 # 模型压缩
+
+模型压缩大体上可以分为 4 种：
+
+* 模型剪枝：即移除对结果作用较小的组件，如减少 head 的数量和去除作用较少的层，共享参数等，ALBERT属于这种    
+* 量化：比如将 float32 讲到 int8    
+* 蒸馏：将 teacher 的能力蒸馏到 student上，一般 student 会比 teacher 小。我们可以把一个大而深得网络蒸馏到一个小的网络，也可以把集成的网络蒸馏到一个网络上。
+
+这里主要关注模型的蒸馏。
+
 ## ALBERT: A LITE BERT FOR SELF-SUPERVISED LEARNING OF LANGUAGE REPRESENTATIONS
 
 虽然 BERT 模型本身是很有效的，但参数太多了。本论文引入一种瘦身版的 BERT 模型 ALBERT，提出2中降低内存消耗和提高训练速度的参数减少策略。
@@ -754,6 +763,24 @@ MultiHead-Attention 是 Transformer 的基石，通过令不同的头关注不�
 * 压缩阶段：与输入的互信息最小化
 
 嗯。。。没看懂，作者说给未来研究。。。
+
+## Understanding the Behaviors of BERT in Ranking
+
+利用 BERT 模型做了一些排序任务的实验，探索如何在 BERT 上进行文本匹配任务，基于两个数据集：MS MARCO 和 ClueWeb，前者是 QA 数据集，后者是检索类数据集。
+
+论文基于 BERT 设计了四种排序模型：
+
+* BERT(Rep)：用 BERT 对 q 和 d 进行独立编码，取CLS 输出并用 cos 衡量两个文本的相似度：$$BERT(Reo)(q,d) = cos(\overrightarrow{q}^{last}_{cls}, \overrightarrow{d}^{last}_{cls}) $$ ,可以看出，这是一个基于表示的模型。    
+* BERT(Last-Int)：用 BERT 推荐的方法将 q 和 d 进行连接，然后利用 CLS 位置得到的向量，利用一个参数矩阵w ，计算相似度： $$BERT(Last-Int)(q,d) = w^{T}\overrightarrow{q}d^{last}_{cls} $$，这是一个基于交互的模型。    
+* BERT(Mult-Int)：基于交互模型，只不过不只利用最后一层，而是将每一层的 cls 位置的 Embedding 进行加权求和：$$ BERT(Mult-Int)(q,d) = \sum_{1 \le k \le 24}(w^{k}_{Mult})^{T}\overrightarrow{q}d^{k}_{cls} $$    
+* BERT(Term-Trans)：在每一层中，将query中各个词与document中的各个词计算一个cosine距离，然后再针对这些组合进行平均，再将各个层的这些token级别的匹配分数进行加权求和。
+
+实验结果如下图所示：
+
+![](/img/in-post/pretrain_model/bert_rank_res.JPG)
+
+在MS MARCO上，bert cls位置进行打分的效果最好，而把bert当做一个representation使用的效果不仅不好，效果接近于随机。这充分说明了BERT不适宜作为一个representation model，尤其是在这种排序问题当中。稍复杂的模型会比简单只用cls的模型效果会稍差一些。而在ClueWeb数据集上的效果，则全然不同。BERT 模型的效果比几个base版模型都要差，尤其是在Bing click数据上进行了pretrain的Conv-KNRM模型效果是最好的。这个论文给的解释是相比于上下文语义信息，ClueWeb数据集 更加需要 user click 的预训练信息。
+
 
 # Ref
 

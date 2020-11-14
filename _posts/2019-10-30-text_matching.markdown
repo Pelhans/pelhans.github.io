@@ -338,6 +338,23 @@ $$ s = u^{T}f(q^{T}M^{[1:r]}d + V[q;d] + b) $$
 
 最后一个变化是训练优化目标变成了交叉熵损失函数， L2 正则化。
 
+### Understanding the Behaviors of BERT in Ranking
+
+利用 BERT 模型做了一些排序任务的实验，探索如何在 BERT 上进行文本匹配任务，基于两个数据集：MS MARCO 和 ClueWeb，前者是 QA 数据集，后者是检索类数据集。
+
+论文基于 BERT 设计了四种排序模型：
+
+* BERT(Rep)：用 BERT 对 q 和 d 进行独立编码，取CLS 输出并用 cos 衡量两个文本的相似度：$$BERT(Reo)(q,d) = cos(\overrightarrow{q}^{last}_{cls}, \overrightarrow{d}^{last}_{cls}) $$ ,可以看出，这是一个基于表示的模型。    
+* BERT(Last-Int)：用 BERT 推荐的方法将 q 和 d 进行连接，然后利用 CLS 位置得到的向量，利用一个参数矩阵w ，计算相似度： $$BERT(Last-Int)(q,d) = w^{T}\overrightarrow{q}d^{last}_{cls} $$，这是一个基于交互的模型。    
+* BERT(Mult-Int)：基于交互模型，只不过不只利用最后一层，而是将每一层的 cls 位置的 Embedding 进行加权求和：$$ BERT(Mult-Int)(q,d) = \sum_{1 \le k \le 24}(w^{k}_{Mult})^{T}\overrightarrow{q}d^{k}_{cls} $$    
+* BERT(Term-Trans)：在每一层中，将query中各个词与document中的各个词计算一个cosine距离，然后再针对这些组合进行平均，再将各个层的这些token级别的匹配分数进行加权求和。
+
+实验结果如下图所示：
+
+![](/img/in-post/kg_paper/bert_rank_res.png)
+
+在MS MARCO上，bert cls位置进行打分的效果最好，而把bert当做一个representation使用的效果不仅不好，效果接近于随机。这充分说明了BERT不适宜作为一个representation model，尤其是在这种排序问题当中。稍复杂的模型会比简单只用cls的模型效果会稍差一些。而在ClueWeb数据集上的效果，则全然不同。BERT 模型的效果比几个base版模型都要差，尤其是在Bing click数据上进行了pretrain的Conv-KNRM模型效果是最好的。这个论文给的解释是相比于上下文语义信息，ClueWeb数据集 更加需要 user click 的预训练信息。
+
 ## 基于交互的模型
 
 除了考虑输入的表示外， 还利用各种 Q 和 D 间的交互匹配特征，尽可能的匹配二者间的不同粒度信息。
