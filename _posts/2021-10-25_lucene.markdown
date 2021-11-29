@@ -1,0 +1,93 @@
+---
+layout:     post
+title:      "Lucene 学习笔记"
+subtitle:   "原理 与 源码"
+date:       2021-10-25 00:15:18
+author:     "Pelhans"
+header-img: "img/attention.jpg"
+header-mask: 0.3 
+catalog:    true
+tags:
+    - NLP
+---
+
+
+* TOC
+{:toc}
+
+> 边学边整理中，还不成体系，比较乱
+
+# Lucene 的格式
+Lucene 保存了从 Index 到 Segment 到 Document 到 Field 一直到 Term 的正向信息，也包括了从 Term 到 Document 映射的反向信息以及其他一些 Lucene 特有的信息。
+
+![](/img/in-post/lucene/all_file_exam.jpg)
+
+## 正向信息
+顺序是 Index（索引） -- Segments(段，包含 segments.gen, segments_N) -- Document(文档) -- Field(域，包含 fnm, fdx, fdt) -- Term(词，tvx, tvd, tvf)，大体上来看就是一个索引包含了哪些段，每个段包含了哪些文档，每个文档包含了哪些域，每个域包含了哪些词。更具体一点：    
+* segments_N 保存了此索引包含多少个段，每个段包含多少篇文档    
+* XXX.fnm 保存了此段包含了多少个域，每个域的名称及索引方式    
+* XXX.fdx，XXX.fdt 保存了此段包含的所有文档，每篇文档包含了多少域，每个域保存了那些信息    
+* XXX.tvx，XXX.tvd，XXX.tvf 保存了此段包含多少文档，每篇文档包含了多少域，每个域包含了多少词，每个词的字符串，位置等信息    
+
+## 反向信息
+保存了词典到倒排表的映射：词(Term) –- 文档(Document) 的信息，包含反向信息的文件有：    
+* XX.tis，XXX.tii 保存了词典(Term Dictionary)，也即此段包含的所有的词按字典顺序的排序    
+* XXX.frq 保存了倒排表，也即包含每个词的文档ID 列表    
+* XXX.prx 保存了倒排表中每个词在包含此词的文档中的位置
+
+
+## 细节
+### segments_N
+索引目录中可能存在多个Segments_N文件，每个Segment_N文件代表某次commit()时的索引状态，其中N值最大的Segments_N文件代表最新的一次提交，它包含当前索引目录中所有的索引信息
+
+segment_N 的文件数据结构如下图所示，这里简要介绍一下
+
+![](/img/in-post/lucene/segment_format.png)
+
+拆开来讲：    
+* LuceneVersion： Lucene 的运行版本，比如 8.11.0    
+* IndexCreatedVersionMajor：版本的第一个数    
+* Version：段的信息集合 segmentInfos对象发生更改的次数    
+* NameCounter：给新的 segmentInfos 提供的前缀值，上图中最新的是 _1    
+* MinSegmentLuceneVersion：记录各 segmentInfos 中版本最小的
+* SegCount：当前索引目录中有效的段信息文件(.si)（啥意思）    
+* SegmentCommitInfo：    
+    * 一个合集字段，描述了一个 .si 文件的信息     
+    * SegName：描述了 .si 文件及对应的其他索引文件的名字前缀，比如 _1    
+    * SegID： 该字段描述了segmentInfo文件的一个唯一标示    
+    * SegCodec： .si 文件编码值    
+    * DelGen：每当 indexwriter 向索引文件中提交删除操作的时候，加 1，并生成新的 .del 文件    
+    * DeletionCount：segmentInfo文件中被删除文档的个数    
+    * FieldInfosGen：.fnm 文件的迭代编号，用来命名下一次生成 .fnm 文件    
+    * DocValuesGen：用来命名下一次生成的索引文件.dvd、.dvm    
+    * SoftDelCount：记录软删除的文档个数（软删除简单描述就是先标记，后操作）     
+    * FieldInfosFiles：记录最新生成的 .fnm 文件    
+    * UpdatesFiles：记录发生变化的索引文件    
+* CommitUserData：Lucene会保留每一次commit()时的索引文件信息作为检查点，可以通过CommitUserData跟Segment_N来回退到任意的检查点
+
+# 文档的增删改
+在 Lucene 中，可以对文档进行添加、删除、更新 操作。对应接口为：    
+添加/更新一篇文档操作：    
+* 添加一篇文档：addDocument()    
+* 更新一篇文档：updateDocument()    
+* 软删除中的添加一篇文档：softUpdateDocument()
+
+添加/更新多篇文档操作：    
+* 添加多篇文档：addDocuments()    
+* 更新多篇文档：updateDocuments()    
+* 软删除中的添加多篇文档：softUpdateDocuments()
+
+删除文档操作：    
+* 按照Term进行删除：deleteDocuments(Terms)    
+* 按照Query进行删除：deleteDocuments(Querys)    
+* 删除所有文档：deleteAll()    
+
+更新DocValues域操作：    
+* 更新BinaryDocValues：updateBinaryDocValue()    
+* 更新NumericDocValues：updateNumericDocValue()    
+* 更新多个DocValues：updateDocValues()    
+
+
+
+# Ref
+* https://www.amazingkoala.com.cn/Lucene/2019/1205/115.html
