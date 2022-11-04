@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "Lucene 学习笔记"
-subtitle:   "原理 与 源码"
+subtitle:   "原理与源码"
 date:       2021-10-25 00:15:18
 author:     "Pelhans"
 header-img: "img/attention.jpg"
@@ -64,6 +64,28 @@ segment_N 的文件数据结构如下图所示，这里简要介绍一下
     * FieldInfosFiles：记录最新生成的 .fnm 文件    
     * UpdatesFiles：记录发生变化的索引文件    
 * CommitUserData：Lucene会保留每一次commit()时的索引文件信息作为检查点，可以通过CommitUserData跟Segment_N来回退到任意的检查点
+
+### .si 文件
+用于存储 segmentinfo ，它是一个描述段文件信息的索引文件(与 segmen_N 的关系？)。
+
+文件结构如下图所示：
+
+![](/img/in-post/lucene/si.png)
+
+* SegVersion：描述 segment 的版本信息，包含创建 segment 的 lucene 版本以及多个 segment 中的最小创建版本信息    
+* SegSize：segment 中的文档个数    
+* IsCompoundFile：描述了 Segment 对应的索引文件是否使用组合文件。所谓组合文件是指将多种索引信息组合成几个数量更少的文件，如 fdx, fnm 等简化为 cfe/cfs     
+* Diagnostics：诊断信息，包含运行系统，java版本，lucene版本， segmentinfo 是由什么操作生成的（flush、commit 还是啥）、时间戳    
+* Files：索引文件对应的名字    
+* Attributes：存储 fdx 和 fdt 的索引模式名称，即 BEST_SPEED（该模式下maxDocsPerChunk的值为128，chunkSize的值为1 << 14，即16384，这种模式有较快的检索索引速度，较低的压缩率，即生成的索引文件较大，是一种 压缩率换检索速度 的方式） 或 BEST_COMPRESSION（该模式下maxDocsPerChunk的值为512，chunkSize的值为 61440，这种模式有较高的压缩率，即生成的索引文件较小，但较慢的索引速度，是一种 检索速度换压缩率 的方式）    
+* IndexSort：用来对 segment 内的文档进行排序，存储了排序规则。其下包含了如下字段（有点看不懂了，后续补充）    
+    * NumSortFields：排序规则的个数    
+    * FieldName：SortField的域名    
+    * SortTypeID：排序类型对应 id。0：STRING ；1：LONG ； 2：INT ；3：DOUBLE； 4：FLOAT；5：SortedSetSortField ；6：SortedNumericSortField    
+    * Selector：当 排序 id 为 5 时有这个字段，值为 0（min）， 1（max），2（中间小）， 3（中间大）    
+    * NumericType、Selector：id 为 6 时用的，0 long， 1 int， 2 double， 3 float    
+    * Reverse： 0 正序， 1 倒序    
+    * 缺失值标志位：无排序规则为 1    
 
 # 文档的增删改
 在 Lucene 中，可以对文档进行添加、删除、更新 操作。对应接口为：    
