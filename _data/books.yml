@@ -9,43 +9,54 @@
 # 子目录（children）需使用与父节点不同的 tag，这样新建文档选择子目录时会写入该
 # 子目录的 tag，文章即可正确挂载到对应子目录。
 
-# ===== 旧博客（语雀同步前的原创文章）=====
-- slug: machine-learning
-  title: 机器学习
-  icon: "📘"
-  desc: 机器学习经典算法与 PRML 读书笔记
+# ===== 深度学习库（原深度学习、机器学习、强化学习、计算机库合并）=====
+- slug: deep-learning
+  title: 计算机
+  icon: "🧠"
+  desc: 深度学习、机器学习经典算法、强化学习与计算机相关
   groups:
+    - title: 深度学习基础知识
+      prefix: [deep_learning-note]
     - title: 机器学习笔记
       prefix: [ml_note]
     - title: PRML 读书笔记
       prefix: [prml_note]
       tag: [PRML]
-    - title: 其它
-      prefix: [ml_note]
-
-- slug: deep-learning
-  title: 深度学习基础、优化、网络结构与预训练模型
-  icon: "🧠"
-  desc: 
-  groups:
-    - title: 深度学习笔记
-      prefix: [deep_learning-note]
-    - title: 专题总结
-      tag: [Deep Learning]
-
-- slug: nlp
-  title: 自然语言处理
-  icon: "💬"
-  desc: NLP 任务、预训练模型、检索与匹配
-  groups:
+    - title: David Silver 强化学习
+      prefix: [deepRL-ch, deepRL]
+      tag: [Reinforment Learning]
+    - title: Agent Harness 技术调研
+      tag: [Agent Harness 技术调研]
+      children:
+        - title: Agent Harness 论文解读
+          tag: [Agent Harness 论文解读]
+    - title: 大模型
+      tag: [大模型]
+      children:
+        - title: 模型调研
+          tag: [模型调研]
+        - title: 模型微调
+          tag: [模型微调]
+        - title: RAG
+          tag: [RAG]
+    - title: 深度学习
+      tag: [深度学习]
     - title: 预训练与模型压缩
       prefix: [pretraining_model, various_attention, duibixuexi]
     - title: 检索与匹配
       prefix: [lucene, es_score, recall, text_matching]
     - title: 源码与实践
       prefix: [crf_in_tensorflow, meta_graph_embedding]
-    - title: 其它笔记
+    - title: NLP 其它笔记
       tag: [NLP]
+    - title: 知识图谱
+      tag: [知识图谱]
+    - title: 编程
+      tag: [编程]
+    - title: 杂项
+      tag: [杂项]
+    - title: 其它
+      tag: [计算机]
 
 - slug: knowledge-graph
   title: 知识图谱
@@ -65,50 +76,7 @@
     - title: 其它
       tag: [Knowledge Graph]
 
-- slug: reinforcement-learning
-  title: 强化学习
-  icon: "🎮"
-  desc: David Silver 强化学习课程笔记
-  groups:
-    - title: David Silver 强化学习
-      prefix: [deepRL-ch, deepRL]
-      tag: [Reinforment Learning]
-
 # ===== 语雀备份导入（来自 /Users/pelhans/Downloads/语雀备份）=====
-- slug: yuque-computer
-  title: 计算机
-  icon: "💻"
-  desc: 来自语雀备份：计算机相关知识与笔记
-  groups:
-    - title: Agent Harness 技术调研
-      tag: [Agent Harness 技术调研]
-    - title: 大模型
-      tag: [大模型]
-      children:
-        - title: 模型调研
-          tag: [模型调研]
-        - title: 模型微调
-          tag: [模型微调]
-        - title: RAG
-          tag: [RAG]
-    - title: 深度学习
-      tag: [深度学习]
-    - title: 传统机器学习
-      tag: [传统机器学习]
-      children:
-        - title: PRML
-          tag: [PRML]
-        - title: 条件随机场
-          tag: [条件随机场]
-    - title: 知识图谱
-      tag: [知识图谱]
-    - title: 编程
-      tag: [编程]
-    - title: 杂项
-      tag: [杂项]
-    - title: 其它
-      tag: [计算机]
-
 - slug: yuque-physics
   title: 物理
   icon: "🔭"
