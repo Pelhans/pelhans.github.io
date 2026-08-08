@@ -7,6 +7,45 @@ layout: yuque
   {% if b.slug == page.slug %}{% assign cur_book = b %}{% break %}{% endif %}
 {% endfor %}
 
+{% comment %}收集当前知识库下所有文章路径（供"删除知识库"功能使用）{% endcomment %}
+{% assign cur_book_paths = "" %}
+{% assign cb_used = "|" %}
+{% for group in cur_book.groups %}
+  {% for post in site.posts %}
+    {% assign key = post.path | append: "|" %}
+    {% assign probe = "|" | append: key %}
+    {% if cb_used contains probe %}{% continue %}{% endif %}
+    {% assign hit = false %}
+    {% if group.prefix %}
+      {% assign base = post.path | split: "/" | last | split: "." | first %}
+      {% assign stem = base | slice: 11, 200 %}
+      {% for p in group.prefix %}
+        {% assign plen = p | size %}
+        {% assign head = stem | slice: 0, plen %}
+        {% if head == p %}{% assign hit = true %}{% break %}{% endif %}
+      {% endfor %}
+    {% endif %}
+    {% if hit == false and group.tag %}
+      {% for t in post.tags %}
+        {% assign tn = t | strip | downcase %}
+        {% for gt in group.tag %}
+          {% assign gtn = gt | strip | downcase %}
+          {% if tn == gtn %}{% assign hit = true %}{% break %}{% endif %}
+        {% endfor %}
+        {% if hit %}{% break %}{% endif %}
+      {% endfor %}
+    {% endif %}
+    {% if hit %}
+      {% assign cur_book_paths = cur_book_paths | append: post.path | append: "," %}
+      {% assign cb_used = cb_used | append: key %}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+
+<meta name="yq-book-slug" content="{{ cur_book.slug }}">
+<meta name="yq-book-title" content="{{ cur_book.title | strip }}">
+<meta name="yq-book-paths" content="{{ cur_book_paths }}">
+
 <div class="yq-shell">
   <aside class="yq-sidebar">
     <div class="yq-sidebar-head">
@@ -30,7 +69,11 @@ layout: yuque
 
       <h1 class="yq-doc-title">{{ cur_book.icon }} {{ cur_book.title }}</h1>
       <p class="yq-doc-subtitle">{{ cur_book.desc }}</p>
-      <div class="yq-doc-meta"></div>
+      <div class="yq-doc-meta">
+        {% if site.edit.enabled %}
+        <button class="yq-edit-iconbtn yq-book-del" id="yqBookDelBtn" hidden title="删除整个知识库">删除知识库</button>
+        {% endif %}
+      </div>
 
       {% assign used = "|" %}
       {% for group in cur_book.groups %}

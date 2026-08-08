@@ -692,6 +692,17 @@ a:hover { color: var(--yq-primary); }
 }
 .yq-edit-iconbtn:hover { background: var(--yq-bg-hover); color: var(--yq-text); }
 
+.yq-doc-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.yq-book-del {
+  border: 1px solid #ffccc7;
+  color: #cf1322;
+  background: transparent;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+.yq-book-del:hover { background: #fff1f0; border-color: #d4380d; }
+
 .yq-edit-body {
   flex: 1;
   display: flex;

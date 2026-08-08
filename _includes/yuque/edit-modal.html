@@ -117,4 +117,27 @@
     </div>
   </div>
 </div>
+
+<!-- 删除知识库弹窗 -->
+<div class="yq-edit-modal" id="yqBookDelModal" hidden>
+  <div class="yq-edit-backdrop" data-bookdel-close></div>
+  <div class="yq-edit-panel yq-token-panel" role="dialog" aria-modal="true">
+    <div class="yq-edit-head">
+      <span class="yq-edit-title">删除知识库</span>
+      <button class="yq-edit-iconbtn" data-bookdel-close title="关闭">✕</button>
+    </div>
+    <div class="yq-edit-token-body">
+      <p>即将删除知识库 <code id="yqBookDelName"></code> 及其全部 <b id="yqBookDelCount">0</b> 篇文章文件，并从目录配置与导航中移除。该操作会直接修改 GitHub 仓库，<b>不可恢复</b>。</p>
+      <p class="yq-edit-tip">为防止误删，请在下框输入知识库名称 <code id="yqBookDelConfirmName"></code> 以确认：</p>
+      <input type="text" class="yq-edit-token-input" id="yqBookDelInput" placeholder="输入知识库名称" autocomplete="off">
+      <div class="yq-edit-status" id="yqBookDelStatus"></div>
+    </div>
+    <div class="yq-edit-foot">
+      <div class="yq-edit-foot-right">
+        <button class="yq-edit-btn2 ghost" data-bookdel-close>取消</button>
+        <button class="yq-edit-btn2 danger" id="yqBookDelOk" disabled>确认删除知识库</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endif %}

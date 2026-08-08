@@ -582,6 +582,189 @@
     });
   }
 
+  /* ---------------- 删除知识库（一键删除父目录及全部文章） ---------------- */
+  function initBookDelete() {
+    var cfgEl = document.getElementById('yqEditConfig');
+    if (!cfgEl) return;
+    var cfg;
+    try { cfg = JSON.parse(cfgEl.textContent); } catch (e) { return; }
+    if (!cfg || !cfg.enabled) return;
+
+    var TOKEN_KEY = 'yq-github-token';
+    var USER_KEY = 'yq-github-user';
+
+    var btn = document.getElementById('yqBookDelBtn');
+    var modal = document.getElementById('yqBookDelModal');
+    if (!btn || !modal) return;
+
+    var slugMeta = document.querySelector('meta[name="yq-book-slug"]');
+    var titleMeta = document.querySelector('meta[name="yq-book-title"]');
+    var pathsMeta = document.querySelector('meta[name="yq-book-paths"]');
+    if (!slugMeta || !titleMeta || !pathsMeta) return;
+
+    var slug = slugMeta.content;
+    var bookTitle = titleMeta.content;
+    var postPaths = pathsMeta.content.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+
+    function api(path, opts) {
+      opts = opts || {};
+      var token = localStorage.getItem(TOKEN_KEY);
+      var headers = { 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      return fetch('https://api.github.com' + path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+    }
+    function setStatus(el, msg, type) {
+      el.textContent = msg || '';
+      el.className = 'yq-edit-status' + (type ? ' is-' + type : '');
+    }
+    function verifyToken() {
+      var token = localStorage.getItem(TOKEN_KEY);
+      if (!token) return Promise.resolve(false);
+      return api('/user').then(function (r) {
+        if (!r.ok) throw new Error('token');
+        return r.json();
+      }).then(function (u) {
+        localStorage.setItem(USER_KEY, u.login);
+        return (cfg.allowed_users || []).map(function (x) { return String(x).toLowerCase(); })
+          .indexOf(String(u.login).toLowerCase()) !== -1 ? u.login : false;
+      }).catch(function () { return false; });
+    }
+
+    var okBtn = document.getElementById('yqBookDelOk');
+    var inputEl = document.getElementById('yqBookDelInput');
+    var statusEl = document.getElementById('yqBookDelStatus');
+
+    // 启动时若已有有效 token，直接显示删除按钮
+    verifyToken().then(function (ok) {
+      if (ok) btn.hidden = false;
+    });
+
+    function openModal() {
+      document.getElementById('yqBookDelName').textContent = bookTitle;
+      document.getElementById('yqBookDelConfirmName').textContent = bookTitle;
+      document.getElementById('yqBookDelCount').textContent = postPaths.length;
+      inputEl.value = '';
+      okBtn.disabled = true;
+      setStatus(statusEl, '');
+      modal.hidden = false;
+      setTimeout(function () { inputEl.focus(); }, 50);
+    }
+    function closeModal() { modal.hidden = true; }
+
+    inputEl.addEventListener('input', function () {
+      okBtn.disabled = (inputEl.value.trim() !== bookTitle);
+    });
+
+    btn.addEventListener('click', function () {
+      verifyToken().then(function (ok) {
+        if (!ok) {
+          // 复用编辑的 token 弹窗机制：无 token 时提示
+          setStatus(statusEl, '请先在任一篇文章点"编辑"并验证 Token 后再删除知识库', 'err');
+          return;
+        }
+        openModal();
+      });
+    });
+    okBtn.addEventListener('click', function () {
+      if (okBtn.disabled) return;
+      okBtn.disabled = true;
+      setStatus(statusEl, '准备删除…');
+
+      // 1) 逐个删除文章文件（先取 sha 再 DELETE）
+      var delOne = function (path) {
+        return api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encodeURIComponent(path) + '?ref=' + cfg.branch)
+          .then(function (r) { if (!r.ok) throw new Error('get ' + path); return r.json(); })
+          .then(function (data) {
+            return api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encodeURIComponent(path), {
+              method: 'DELETE',
+              body: { message: 'docs: delete book ' + slug + ' -> ' + path, sha: data.sha, branch: cfg.branch }
+            });
+          })
+          .then(function (r) { if (!r.ok) throw new Error('del ' + path); return r; });
+      };
+
+      var chain = Promise.resolve();
+      postPaths.forEach(function (p) {
+        chain = chain.then(function () { return delOne(p); });
+      });
+
+      // 2) 读取 books.yml，删除该 book 块后写回
+      chain = chain.then(function () {
+        setStatus(statusEl, '正在更新目录配置…');
+        return api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/_data/books.yml?ref=' + cfg.branch)
+          .then(function (r) { if (!r.ok) throw new Error('get yml'); return r.json(); })
+          .then(function (data) {
+            var yml = decodeURIComponent(escape(window.atob(data.content.replace(/\s/g, ''))));
+            var newYml = removeBookBlock(yml, slug);
+            return api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/_data/books.yml', {
+              method: 'PUT',
+              body: {
+                message: 'docs: remove book ' + slug + ' from books.yml',
+                content: window.btoa(unescape(encodeURIComponent(newYml))),
+                sha: data.sha,
+                branch: cfg.branch
+              }
+            }).then(function (r) { if (!r.ok) throw new Error('put yml'); return r; });
+          });
+      });
+
+      // 3) 删除 book/<slug>.html
+      chain = chain.then(function () {
+        setStatus(statusEl, '正在移除知识库页面…');
+        var bp = 'book/' + slug + '.html';
+        return api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encodeURIComponent(bp) + '?ref=' + cfg.branch)
+          .then(function (r) { if (!r.ok) return; return r.json(); })
+          .then(function (data) {
+            if (!data || !data.sha) return;
+            return api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encodeURIComponent(bp), {
+              method: 'DELETE',
+              body: { message: 'docs: remove book page ' + slug, sha: data.sha, branch: cfg.branch }
+            }).then(function (r) { if (!r.ok) throw new Error('del page'); return r; });
+          });
+      });
+
+      chain.then(function () {
+        setStatus(statusEl, '知识库已删除 ✓ 即将返回首页', 'ok');
+        setTimeout(function () { window.location.href = '/'; }, 1200);
+      }).catch(function (err) {
+        setStatus(statusEl, '删除中断：' + (err && err.message ? err.message : '未知错误') + '（部分文件可能已删除，请检查仓库）', 'err');
+        okBtn.disabled = false;
+      });
+    });
+
+    Array.prototype.forEach.call(modal.querySelectorAll('[data-bookdel-close]'), function (el) {
+      el.addEventListener('click', closeModal);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeModal();
+    });
+  }
+
+  // 按 slug 从 books.yml 中删除整个 book 块（每个块以 "- slug:" 起始）
+  function removeBookBlock(yml, slug) {
+    var lines = yml.split(/\n/);
+    var keep = [], i = 0, skip = false;
+    var target = '- slug: ' + slug;
+    while (i < lines.length) {
+      var line = lines[i];
+      if (/^\s*-\s*slug\s*:\s*\S/.test(line)) {
+        // 新块开始
+        if (line.replace(/^\s*-\s*slug\s*:\s*/, '').trim() === slug) {
+          skip = true; // 跳过此块
+        } else {
+          skip = false;
+        }
+      }
+      if (!skip) keep.push(line);
+      i++;
+    }
+    return keep.join('\n');
+  }
+
   /* ---------------- 划线评论（匿名，存 GitHub Issues） ---------------- */
   function initComments() {
     var cfgEl = document.getElementById('yqEditConfig');
@@ -863,6 +1046,7 @@
     initOutline();
     initSearch();
     initEditor();
+    initBookDelete();
     initComments();
   });
 })();
