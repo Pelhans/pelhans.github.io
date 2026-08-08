@@ -96,3 +96,10 @@ edit:
   allowed_users:
     - pelhans
 
+# 划线评论（匿名，存到 GitHub Issues，复用 edit 的 PAT）
+comments:
+  enabled: true
+  # Issue 标题前缀 / 绑定文章的 label 前缀
+  label_prefix: "post:"
+  # 每篇文章的 Issue 用 label = post:<文章相对路径> 唯一绑定
+

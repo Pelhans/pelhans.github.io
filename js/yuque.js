@@ -582,11 +582,287 @@
     });
   }
 
+  /* ---------------- 划线评论（匿名，存 GitHub Issues） ---------------- */
+  function initComments() {
+    var cfgEl = document.getElementById('yqEditConfig');
+    if (!cfgEl) return;
+    var cfg;
+    try { cfg = JSON.parse(cfgEl.textContent); } catch (e) { return; }
+    if (!cfg || !cfg.enabled) return;
+
+    var content = document.getElementById('yqContent');
+    var listEl = document.getElementById('yqCommentList');
+    var countEl = document.getElementById('yqCommentCount');
+    var selPop = document.getElementById('yqSelPop');
+    var cmtModal = document.getElementById('yqCmtModal');
+    if (!content || !listEl || !cmtModal) return;
+
+    var TOKEN_KEY = 'yq-github-token';
+    var LABEL_PREFIX = (cfg.comments && cfg.comments.label_prefix) || 'post:';
+    var pm = document.querySelector('meta[name="yq-post-path"]');
+    var postPath = pm ? pm.content : location.pathname;
+    var label = LABEL_PREFIX + postPath;
+
+    /* 匿名昵称 */
+    var ANON_KEY = 'yq-anon-name';
+    function anonName() {
+      var n = localStorage.getItem(ANON_KEY);
+      if (!n) {
+        var pool = '甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未';
+        n = '匿名' + pool[Math.floor(Math.random() * pool.length)] +
+            (Math.floor(Math.random() * 90) + 10);
+        localStorage.setItem(ANON_KEY, n);
+      }
+      return n;
+    }
+
+    /* GitHub API */
+    function api(path, opts) {
+      opts = opts || {};
+      var token = localStorage.getItem(TOKEN_KEY);
+      var headers = { 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      return fetch('https://api.github.com' + path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+    }
+
+    /* ---- 文本偏移工具 ---- */
+    // 计算 (node, offset) 在 content 纯文本中的全局偏移
+    function getOffset(node, offset) {
+      var walk = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null);
+      var total = 0, n;
+      while ((n = walk.nextNode())) {
+        if (n === node) return total + offset;
+        total += n.nodeValue.length;
+      }
+      return total + offset;
+    }
+    function getText() {
+      return content.innerText;
+    }
+
+    /* 解析评论 body 中的 yq-comment JSON */
+    function parseComment(body) {
+      var m = body.match(/<!--\s*yq-comment\s*([\s\S]*?)\s*-->/);
+      if (!m) return null;
+      try { return JSON.parse(m[1]); } catch (e) { return null; }
+    }
+
+    /* ---- Issue 管理 ---- */
+    function findIssue() {
+      return api('/repos/' + cfg.owner + '/' + cfg.repo + '/issues?labels=' +
+        encodeURIComponent(label) + '&state=all&per_page=1')
+        .then(function (r) { return r.json(); })
+        .then(function (arr) { return (arr && arr.length) ? arr[0] : null; });
+    }
+    function createIssue() {
+      var title = document.title.split(' - ')[0] || 'comment';
+      return api('/repos/' + cfg.owner + '/' + cfg.repo + '/issues', {
+        method: 'POST',
+        body: {
+          title: '[评论] ' + title,
+          body: '文章：' + location.href + '\n路径：' + postPath,
+          labels: [label]
+        }
+      }).then(function (r) { return r.json(); });
+    }
+
+    /* ---- 高亮渲染 ---- */
+    function renderHighlights(comments) {
+      // 清除旧高亮
+      var old = content.querySelectorAll('mark.yq-hl');
+      Array.prototype.forEach.call(old, function (m) {
+        var p = m.parentNode;
+        p.replaceChild(document.createTextNode(m.textContent), m);
+        p.normalize();
+      });
+      var ranges = comments
+        .filter(function (c) { return typeof c.start === 'number' && typeof c.end === 'number'; })
+        .sort(function (a, b) { return a.start - b.start; });
+      if (!ranges.length) return;
+
+      var text = getText();
+      var walk = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null);
+      var nodes = [], n, total = 0;
+      while ((n = walk.nextNode())) { nodes.push({ node: n, start: total, len: n.nodeValue.length }); total += n.nodeValue.length; }
+
+      ranges.forEach(function (c) {
+        if (c.end > total) c.end = total;
+        nodes.forEach(function (nd) {
+          var ns = nd.start, ne = nd.start + nd.len;
+          // 该文本节点与评论区间的交集
+          var a = Math.max(ns, c.start), b = Math.min(ne, c.end);
+          if (a >= b) return;
+          var node = nd.node;
+          var frag = document.createDocumentFragment();
+          if (a > ns) frag.appendChild(document.createTextNode(node.nodeValue.slice(0, a - ns)));
+          var mark = document.createElement('mark');
+          mark.className = 'yq-hl' + (c.mine ? ' is-mine' : '');
+          mark.dataset.cid = c.id || '';
+          mark.textContent = node.nodeValue.slice(a - ns, b - ns);
+          frag.appendChild(mark);
+          if (b < ne) frag.appendChild(document.createTextNode(node.nodeValue.slice(b - ns)));
+          node.parentNode.replaceChild(frag, node);
+          // 节点已替换，更新后续引用
+          nd.node = frag.childNodes[0] ? null : nd.node;
+        });
+      });
+    }
+
+    /* ---- 评论列表渲染 ---- */
+    function renderList(comments) {
+      listEl.innerHTML = '';
+      countEl.textContent = comments.length;
+      if (!comments.length) {
+        listEl.innerHTML = '<div class="yq-comment-empty">还没有评论，选中正文文字即可划线评论。</div>';
+        return;
+      }
+      comments.forEach(function (c) {
+        var item = document.createElement('div');
+        item.className = 'yq-comment-item' + (c.mine ? ' is-mine' : '');
+        var d = c.ts ? new Date(c.ts) : null;
+        var date = d ? d.toLocaleString('zh-CN', { hour12: false }) : '';
+        item.innerHTML =
+          '<div class="yq-comment-meta"><span class="yq-comment-author"></span>' +
+          '<span>' + date + '</span></div>' +
+          (c.quote ? '<blockquote class="yq-comment-quote"></blockquote>' : '') +
+          '<div class="yq-comment-text"></div>';
+        item.querySelector('.yq-comment-author').textContent = c.author || '匿名';
+        if (c.quote) item.querySelector('.yq-comment-quote').textContent = c.quote;
+        item.querySelector('.yq-comment-text').textContent = c.text || '';
+        item.addEventListener('mouseenter', function () {
+          var m = content.querySelector('mark.yq-hl[data-cid="' + (c.id || '') + '"]');
+          if (m) m.classList.add('is-active');
+        });
+        item.addEventListener('mouseleave', function () {
+          var m = content.querySelector('mark.yq-hl[data-cid="' + (c.id || '') + '"]');
+          if (m) m.classList.remove('is-active');
+        });
+        listEl.appendChild(item);
+      });
+    }
+
+    /* ---- 加载评论 ---- */
+    var issueNumber = null;
+    function loadComments() {
+      return findIssue().then(function (issue) {
+        if (!issue) { renderList([]); renderHighlights([]); return []; }
+        issueNumber = issue.number;
+        return api('/repos/' + cfg.owner + '/' + cfg.repo + '/issues/' + issue.number + '/comments')
+          .then(function (r) { return r.json(); })
+          .then(function (arr) {
+            var me = anonName();
+            var comments = (arr || []).map(function (c, i) {
+              var p = parseComment(c.body);
+              if (!p) return null;
+              p.id = 'c' + issue.number + '_' + i;
+              p.mine = (p.author === me);
+              return p;
+            }).filter(Boolean);
+            renderList(comments);
+            renderHighlights(comments);
+            return comments;
+          });
+      });
+    }
+
+    /* ---- 选区 → 弹钮 ---- */
+    var pendingSel = null;
+    function onSelection() {
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) { selPop.hidden = true; return; }
+      var range = sel.getRangeAt(0);
+      if (!content.contains(range.commonAncestorContainer)) { selPop.hidden = true; return; }
+      var start = getOffset(range.startContainer, range.startOffset);
+      var end = getOffset(range.endContainer, range.endOffset);
+      if (end < start) { var t = start; start = end; end = t; }
+      if (end === start) { selPop.hidden = true; return; }
+      pendingSel = { start: start, end: end, quote: sel.toString() };
+      var rect = range.getBoundingClientRect();
+      selPop.hidden = false;
+      selPop.style.left = (rect.left + rect.width / 2 + window.scrollX) + 'px';
+      selPop.style.top = (rect.top + window.scrollY - 8) + 'px';
+    }
+    document.addEventListener('mouseup', function () { setTimeout(onSelection, 10); });
+    document.addEventListener('selectionchange', function () {
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed) selPop.hidden = true;
+    });
+
+    document.getElementById('yqSelComment').addEventListener('click', function () {
+      if (!pendingSel) return;
+      selPop.hidden = true;
+      window.getSelection().removeAllRanges();
+      document.getElementById('yqCmtQuote').textContent = pendingSel.quote;
+      document.getElementById('yqCmtText').value = '';
+      setCmtStatus('');
+      cmtModal.hidden = false;
+      setTimeout(function () { document.getElementById('yqCmtText').focus(); }, 50);
+    });
+
+    function setCmtStatus(msg, type) {
+      var el = document.getElementById('yqCmtStatus');
+      el.textContent = msg || '';
+      el.className = 'yq-edit-status' + (type ? ' is-' + type : '');
+    }
+
+    document.getElementById('yqCmtSave').addEventListener('click', function () {
+      var text = document.getElementById('yqCmtText').value.trim();
+      if (!text) { setCmtStatus('请填写评论内容', 'err'); return; }
+      if (!localStorage.getItem(TOKEN_KEY)) {
+        setCmtStatus('需要填写 GitHub Token 才能发表（评论匿名，仅用于写入 Issues）', 'err');
+        return;
+      }
+      setCmtStatus('发表中…');
+      this.disabled = true;
+      var payload = {
+        quote: pendingSel.quote,
+        text: text,
+        start: pendingSel.start,
+        end: pendingSel.end,
+        author: anonName(),
+        ts: Date.now()
+      };
+      var body = '<!--yq-comment\n' + JSON.stringify(payload) + '\n-->\n';
+
+      function post() {
+        return api('/repos/' + cfg.owner + '/' + cfg.repo + '/issues/' + issueNumber + '/comments', {
+          method: 'POST', body: { body: body }
+        });
+      }
+      var chain = issueNumber
+        ? Promise.resolve()
+        : createIssue().then(function (iss) { issueNumber = iss.number; });
+
+      chain.then(post)
+        .then(function (r) { if (!r.ok) throw new Error('post'); return r; })
+        .then(function () { return loadComments(); })
+        .then(function () {
+          setCmtStatus('已发表 ✓', 'ok');
+          setTimeout(function () { cmtModal.hidden = true; }, 800);
+        })
+        .catch(function () {
+          setCmtStatus('发表失败（Token 无权限或网络问题）', 'err');
+          this.disabled = false;
+        }.bind(this));
+    });
+
+    Array.prototype.forEach.call(cmtModal.querySelectorAll('[data-cmt-close]'), function (el) {
+      el.addEventListener('click', function () { cmtModal.hidden = true; });
+    });
+
+    loadComments();
+  }
+
   ready(function () {
     initTree();
     initSidebarToggle();
     initOutline();
     initSearch();
     initEditor();
+    initComments();
   });
 })();

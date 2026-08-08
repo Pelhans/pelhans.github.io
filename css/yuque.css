@@ -850,4 +850,132 @@ a:hover { color: var(--yq-primary); }
   line-height: 1.7;
 }
 
+/* ==========================================================================
+   划线评论（匿名，存 GitHub Issues）
+   ========================================================================== */
+.yq-content mark.yq-hl {
+  background: #fff3a3;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.yq-content mark.yq-hl.is-active { background: #ffd666; }
+.yq-content mark.yq-hl.is-mine { background: #b7eb8f; }
+
+/* 选中后浮现的小按钮 */
+.yq-sel-pop {
+  position: absolute;
+  z-index: 950;
+  transform: translate(-50%, -100%);
+  background: #262626;
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+}
+.yq-sel-pop[hidden] { display: none; }
+.yq-sel-pop::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #262626;
+}
+.yq-sel-pop button {
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.yq-sel-pop button:hover { background: rgba(255, 255, 255, .15); }
+
+/* 评论列表 */
+.yq-comments {
+  margin-top: 48px;
+  border-top: 1px solid var(--yq-border);
+  padding-top: 24px;
+}
+.yq-comments-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.yq-comments-title { font-weight: 600; font-size: 16px; }
+.yq-comments-count {
+  font-size: 12px;
+  color: var(--yq-text-tertiary);
+  background: var(--yq-bg-sub);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+.yq-comments-list { display: flex; flex-direction: column; gap: 14px; }
+.yq-comment-item {
+  border: 1px solid var(--yq-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--yq-bg);
+}
+.yq-comment-item.is-mine { border-color: #b7eb8f; background: #f6ffed; }
+.yq-comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--yq-text-tertiary);
+  margin-bottom: 6px;
+}
+.yq-comment-author {
+  font-weight: 600;
+  color: var(--yq-text-secondary);
+}
+.yq-comment-quote {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--yq-primary);
+  background: var(--yq-bg-sub);
+  color: var(--yq-text-secondary);
+  font-size: 13px;
+  border-radius: 0 4px 4px 0;
+  max-height: 64px;
+  overflow: auto;
+}
+.yq-comment-text { font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.yq-comment-empty { color: var(--yq-text-tertiary); font-size: 13px; }
+
+/* 写评论弹窗 */
+.yq-cmt-body { padding: 16px 18px; }
+.yq-cmt-quote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--yq-primary);
+  background: var(--yq-bg-sub);
+  color: var(--yq-text-secondary);
+  font-size: 13px;
+  border-radius: 0 4px 4px 0;
+  max-height: 90px;
+  overflow: auto;
+}
+.yq-cmt-body textarea {
+  width: 100%;
+  min-height: 110px;
+  border: 1px solid var(--yq-border);
+  border-radius: var(--yq-radius);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  line-height: 1.7;
+}
+.yq-cmt-body textarea:focus { border-color: var(--yq-primary); }
+.yq-cmt-body .yq-edit-status { margin-top: 8px; }
+
+
 

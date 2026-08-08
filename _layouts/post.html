@@ -57,9 +57,47 @@ layout: yuque
         {% endfor %}
       </div>
 
-      <div class="yq-content">
+      <div class="yq-content" id="yqContent">
         {{ content }}
       </div>
+      <meta name="yq-post-path" content="{{ page.path }}">
+
+      {% if site.comments.enabled %}
+      <div class="yq-comments" id="yqComments">
+        <div class="yq-comments-head">
+          <span class="yq-comments-title">划线评论</span>
+          <span class="yq-comments-count" id="yqCommentCount">0</span>
+        </div>
+        <div class="yq-comments-list" id="yqCommentList"></div>
+      </div>
+
+      <!-- 选中文字后浮现的“评论”按钮 -->
+      <div class="yq-sel-pop" id="yqSelPop" hidden>
+        <button id="yqSelComment">💬 评论</button>
+      </div>
+
+      <!-- 写评论弹窗 -->
+      <div class="yq-edit-modal" id="yqCmtModal" hidden>
+        <div class="yq-edit-backdrop" data-cmt-close></div>
+        <div class="yq-edit-panel yq-token-panel" role="dialog" aria-modal="true">
+          <div class="yq-edit-head">
+            <span class="yq-edit-title">添加评论</span>
+            <button class="yq-edit-iconbtn" data-cmt-close title="关闭">✕</button>
+          </div>
+          <div class="yq-cmt-body">
+            <blockquote class="yq-cmt-quote" id="yqCmtQuote"></blockquote>
+            <textarea id="yqCmtText" placeholder="写下你的评论（匿名，无需登录）…"></textarea>
+            <div class="yq-edit-status" id="yqCmtStatus"></div>
+          </div>
+          <div class="yq-edit-foot">
+            <div class="yq-edit-foot-right">
+              <button class="yq-edit-btn2 ghost" data-cmt-close>取消</button>
+              <button class="yq-edit-btn2 primary" id="yqCmtSave">发表评论</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
 
       <nav class="yq-pager">
         {% if page.previous.url %}
