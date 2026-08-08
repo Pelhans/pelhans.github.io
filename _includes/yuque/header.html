@@ -18,6 +18,13 @@
 
     <div class="yq-header-spacer"></div>
 
+    {% if site.edit.enabled %}
+    <button class="yq-new-btn" id="yqNewBtn" hidden>
+      <svg viewBox="0 0 1024 1024" width="14" height="14"><path d="M474 150h76v324h324v76H550v324h-76V550H150v-76h324z" fill="currentColor"/></svg>
+      新建
+    </button>
+    {% endif %}
+
     <div class="yq-search">
       <span class="yq-search-icon">
         <svg viewBox="0 0 1024 1024" width="14" height="14"><path d="M448 128a320 320 0 1 1 0 640 320 320 0 0 1 0-640z m0 72a248 248 0 1 0 0 496 248 248 0 0 0 0-496z m235 427l53-53 176 176-53 53z" fill="currentColor"/></svg>

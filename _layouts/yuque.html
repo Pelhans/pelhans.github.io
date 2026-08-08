@@ -8,6 +8,11 @@
   </div>
   {% include yuque/footer.html %}
   {% include yuque/search-data.html %}
+  {% if site.edit.enabled %}
+  {% include yuque/edit-modal.html %}
+  <script type="application/json" id="yqEditConfig">{{ site.edit | jsonify }}</script>
+  <script type="application/json" id="yqBooksData">{{ site.data.books | jsonify }}</script>
+  {% endif %}
   <script src="{{ '/js/yuque.js' | prepend: site.baseurl }}"></script>
 </body>
 </html>

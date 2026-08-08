@@ -84,3 +84,15 @@ featured-condition-size: 1              # A tag will be featured if the size of 
 chrome-tab-theme-color: "#ffffff"
 service-worker: false
 
+
+# Online editing (语雀式在线编辑 + 同步到 GitHub)
+# 仅对 allowed_users 中的 GitHub 账号开放。Token 由用户在前端输入并存入 localStorage。
+edit:
+  enabled: true
+  owner: Pelhans
+  repo: pelhans.github.io
+  branch: master
+  # 只有这些 GitHub 用户名登录后才能看到“编辑”按钮并保存
+  allowed_users:
+    - pelhans
+

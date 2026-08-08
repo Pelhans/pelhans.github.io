@@ -39,6 +39,12 @@ layout: yuque
       </div>
 
       <h1 class="yq-doc-title">{{ page.title | strip }}</h1>
+      {% if site.edit.enabled %}
+      <button class="yq-edit-btn" id="yqEditBtn" data-post-path="{{ page.path }}" hidden>
+        <svg viewBox="0 0 1024 1024" width="14" height="14"><path d="M742 320L448 614l-106-106 294-294 106 106zM864 192l-46-46a64 64 0 0 0-90 0L256 624 160 864l240-96 478-478a64 64 0 0 0 0-90z" fill="currentColor"/></svg>
+        编辑
+      </button>
+      {% endif %}
       {% if page.subtitle and page.subtitle != "" %}
       <p class="yq-doc-subtitle">{{ page.subtitle | strip }}</p>
       {% endif %}

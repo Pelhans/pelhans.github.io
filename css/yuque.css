@@ -607,3 +607,247 @@ a:hover { color: var(--yq-primary); }
 
 /* MathJax overflow */
 .yq-content .MathJax_Display { overflow-x: auto; overflow-y: hidden; }
+
+/* ==========================================================================
+   Online editing (语雀式在线编辑)
+   ========================================================================== */
+.yq-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 12px;
+  padding: 4px 12px;
+  height: 30px;
+  border: 1px solid var(--yq-border);
+  border-radius: 16px;
+  background: var(--yq-bg);
+  color: var(--yq-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all .15s;
+}
+.yq-edit-btn:hover {
+  color: var(--yq-primary);
+  border-color: var(--yq-primary);
+  background: var(--yq-bg-active);
+}
+
+.yq-edit-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.yq-edit-modal[hidden] { display: none; }
+
+.yq-edit-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  backdrop-filter: blur(1px);
+}
+
+.yq-edit-panel {
+  position: relative;
+  width: min(1080px, 94vw);
+  height: min(82vh, 760px);
+  background: var(--yq-bg);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.yq-token-panel { width: min(460px, 92vw); height: auto; }
+
+.yq-edit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--yq-border);
+  flex-shrink: 0;
+}
+.yq-edit-title { font-weight: 600; font-size: 15px; }
+.yq-edit-head-right { display: flex; align-items: center; gap: 10px; }
+.yq-edit-user {
+  font-size: 12px;
+  color: var(--yq-primary);
+  background: var(--yq-bg-active);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.yq-edit-iconbtn {
+  border: none;
+  background: transparent;
+  color: var(--yq-text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.yq-edit-iconbtn:hover { background: var(--yq-bg-hover); color: var(--yq-text); }
+
+.yq-edit-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.yq-edit-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid var(--yq-border);
+}
+.yq-edit-pane:last-child { border-right: none; }
+.yq-edit-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--yq-text-tertiary);
+  background: var(--yq-bg-sub);
+  border-bottom: 1px solid var(--yq-border);
+}
+.yq-edit-file { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.yq-edit-textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 16px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--yq-text);
+  background: var(--yq-bg);
+  tab-size: 2;
+}
+.yq-edit-preview {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px;
+}
+.yq-edit-preview .yq-preview-empty { color: var(--yq-text-tertiary); font-size: 13px; }
+
+.yq-edit-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-top: 1px solid var(--yq-border);
+  flex-shrink: 0;
+}
+.yq-edit-foot-right { display: flex; gap: 10px; }
+.yq-edit-status { font-size: 12px; color: var(--yq-text-tertiary); }
+.yq-edit-status.is-ok { color: var(--yq-primary); }
+.yq-edit-status.is-err { color: #d4380d; }
+
+.yq-edit-btn2 {
+  border: 1px solid var(--yq-border);
+  background: var(--yq-bg);
+  color: var(--yq-text);
+  border-radius: var(--yq-radius);
+  padding: 7px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.yq-edit-btn2.ghost:hover { background: var(--yq-bg-hover); }
+.yq-edit-btn2.primary {
+  background: var(--yq-primary);
+  border-color: var(--yq-primary);
+  color: #fff;
+}
+.yq-edit-btn2.primary:hover { background: #009457; }
+.yq-edit-btn2:disabled { opacity: .6; cursor: not-allowed; }
+
+.yq-edit-token-body { padding: 18px 20px; font-size: 13px; line-height: 1.7; color: var(--yq-text-secondary); }
+.yq-edit-token-body code {
+  background: var(--yq-bg-sub);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.yq-edit-tip { color: var(--yq-text-tertiary); font-size: 12px; }
+.yq-edit-token-input {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--yq-border);
+  border-radius: var(--yq-radius);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  outline: none;
+}
+.yq-edit-token-input:focus { border-color: var(--yq-primary); }
+
+@media (max-width: 720px) {
+  .yq-edit-body { flex-direction: column; }
+  .yq-edit-pane { border-right: none; border-bottom: 1px solid var(--yq-border); }
+  .yq-edit-pane:last-child { border-bottom: none; }
+  .yq-edit-btn { display: none; }
+}
+
+/* 新建按钮（顶部导航） */
+.yq-new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--yq-primary);
+  border-radius: 16px;
+  background: var(--yq-primary);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.yq-new-btn:hover { background: #009457; border-color: #009457; }
+
+.yq-edit-btn2.danger {
+  color: #d4380d;
+  border-color: #ffccc7;
+  background: #fff;
+}
+.yq-edit-btn2.danger:hover { background: #fff1f0; border-color: #d4380d; }
+.yq-edit-btn2.danger:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 新建文档弹窗 */
+.yq-new-panel { width: min(620px, 94vw); height: auto; }
+.yq-new-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.yq-new-row { display: flex; gap: 14px; }
+.yq-new-row .yq-new-field { flex: 1; }
+.yq-new-field { display: flex; flex-direction: column; gap: 6px; }
+.yq-new-field label { font-size: 12px; color: var(--yq-text-tertiary); }
+.yq-new-field input,
+.yq-new-field select,
+.yq-new-field textarea {
+  border: 1px solid var(--yq-border);
+  border-radius: var(--yq-radius);
+  padding: 9px 12px;
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+  background: var(--yq-bg);
+  color: var(--yq-text);
+}
+.yq-new-field input:focus,
+.yq-new-field select:focus,
+.yq-new-field textarea:focus { border-color: var(--yq-primary); }
+.yq-new-field textarea {
+  min-height: 200px;
+  resize: vertical;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+

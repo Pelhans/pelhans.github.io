@@ -1,0 +1,120 @@
+{% if site.edit.enabled %}
+<div class="yq-edit-modal" id="yqEditModal" hidden>
+  <div class="yq-edit-backdrop" data-close></div>
+  <div class="yq-edit-panel" role="dialog" aria-modal="true">
+    <div class="yq-edit-head">
+      <span class="yq-edit-title">编辑文档</span>
+      <div class="yq-edit-head-right">
+        <span class="yq-edit-user" id="yqEditUser"></span>
+        <button class="yq-edit-iconbtn" id="yqEditLogout" title="退出登录">登出</button>
+        <button class="yq-edit-iconbtn" data-close title="关闭">✕</button>
+      </div>
+    </div>
+
+    <div class="yq-edit-body">
+      <div class="yq-edit-pane">
+        <div class="yq-edit-pane-head">
+          <span>Markdown 源码</span>
+          <span class="yq-edit-file" id="yqEditFile"></span>
+        </div>
+        <textarea class="yq-edit-textarea" id="yqEditText" spellcheck="false"></textarea>
+      </div>
+      <div class="yq-edit-pane">
+        <div class="yq-edit-pane-head"><span>实时预览</span></div>
+        <div class="yq-edit-preview" id="yqEditPreview"></div>
+      </div>
+    </div>
+
+    <div class="yq-edit-foot">
+      <span class="yq-edit-status" id="yqEditStatus"></span>
+      <div class="yq-edit-foot-right">
+        <button class="yq-edit-btn2 danger" id="yqEditDelete">删除</button>
+        <button class="yq-edit-btn2 ghost" data-close>取消</button>
+        <button class="yq-edit-btn2 primary" id="yqEditSave">保存并同步到 GitHub</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Token 输入弹窗（首次编辑 / Token 失效时） -->
+<div class="yq-edit-modal" id="yqTokenModal" hidden>
+  <div class="yq-edit-backdrop" data-token-close></div>
+  <div class="yq-edit-panel yq-token-panel" role="dialog" aria-modal="true">
+    <div class="yq-edit-head">
+      <span class="yq-edit-title">GitHub 授权</span>
+      <button class="yq-edit-iconbtn" data-token-close title="关闭">✕</button>
+    </div>
+    <div class="yq-edit-token-body">
+      <p>请输入具有 <code>repo</code> 权限的 GitHub Personal Access Token（仅保存在本浏览器 localStorage，不会上传到任何服务器）。</p>
+      <p class="yq-edit-tip">获取地址：GitHub → Settings → Developer settings → Personal access tokens → <code>repo</code> 范围。</p>
+      <input type="password" class="yq-edit-token-input" id="yqTokenInput" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+      <div class="yq-edit-status" id="yqTokenStatus"></div>
+    </div>
+    <div class="yq-edit-foot">
+      <div class="yq-edit-foot-right">
+        <button class="yq-edit-btn2 ghost" data-token-close>取消</button>
+        <button class="yq-edit-btn2 primary" id="yqTokenOk">验证并继续</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 新建文档弹窗 -->
+<div class="yq-edit-modal" id="yqNewModal" hidden>
+  <div class="yq-edit-backdrop" data-new-close></div>
+  <div class="yq-edit-panel yq-new-panel" role="dialog" aria-modal="true">
+    <div class="yq-edit-head">
+      <span class="yq-edit-title">新建文档</span>
+      <button class="yq-edit-iconbtn" data-new-close title="关闭">✕</button>
+    </div>
+    <div class="yq-new-body">
+      <div class="yq-new-field">
+        <label>标题</label>
+        <input type="text" id="yqNewTitle" placeholder="文档标题">
+      </div>
+      <div class="yq-new-row">
+        <div class="yq-new-field">
+          <label>知识库</label>
+          <select id="yqNewBook"></select>
+        </div>
+        <div class="yq-new-field">
+          <label>目录</label>
+          <select id="yqNewGroup"></select>
+        </div>
+      </div>
+      <div class="yq-new-field">
+        <label>正文（Markdown）</label>
+        <textarea id="yqNewText" placeholder="支持 GitHub Flavored Markdown，可换行…"></textarea>
+      </div>
+    </div>
+    <div class="yq-edit-foot">
+      <span class="yq-edit-status" id="yqNewStatus"></span>
+      <div class="yq-edit-foot-right">
+        <button class="yq-edit-btn2 ghost" data-new-close>取消</button>
+        <button class="yq-edit-btn2 primary" id="yqNewSave">创建并同步到 GitHub</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 删除确认弹窗 -->
+<div class="yq-edit-modal" id="yqDelModal" hidden>
+  <div class="yq-edit-backdrop" data-del-close></div>
+  <div class="yq-edit-panel yq-token-panel" role="dialog" aria-modal="true">
+    <div class="yq-edit-head">
+      <span class="yq-edit-title">删除文档</span>
+      <button class="yq-edit-iconbtn" data-del-close title="关闭">✕</button>
+    </div>
+    <div class="yq-edit-token-body">
+      <p>确定要删除 <code id="yqDelName"></code> 吗？该操作会直接从 GitHub 仓库移除文件，<b>不可恢复</b>。</p>
+      <div class="yq-edit-status" id="yqDelStatus"></div>
+    </div>
+    <div class="yq-edit-foot">
+      <div class="yq-edit-foot-right">
+        <button class="yq-edit-btn2 ghost" data-del-close>取消</button>
+        <button class="yq-edit-btn2 danger" id="yqDelOk">确认删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
