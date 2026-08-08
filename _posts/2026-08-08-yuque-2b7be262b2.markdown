@@ -3,7 +3,7 @@ title: "5._个性化推荐语生成"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, NEXT, 5._大模型项目]
+tags: [语雀, NEXT, 大模型项目]
 categories: [NEXT]
 yuque: true
 ---

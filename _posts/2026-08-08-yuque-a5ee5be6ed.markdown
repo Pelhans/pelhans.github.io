@@ -3,7 +3,7 @@ title: "手工构建本体"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 知识图谱, _语义网基础教程_]
+tags: [语雀, 计算机, 知识图谱]
 categories: [计算机]
 yuque: true
 ---

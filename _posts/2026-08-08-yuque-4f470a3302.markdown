@@ -3,7 +3,7 @@ title: "概述"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 深度学习, 深度学习基础]
+tags: [语雀, 计算机, 深度学习]
 categories: [计算机]
 yuque: true
 ---

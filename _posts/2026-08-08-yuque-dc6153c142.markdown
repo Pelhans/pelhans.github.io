@@ -3,7 +3,7 @@ title: "概览"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 深度学习, 命名实体识别]
+tags: [语雀, 计算机, 深度学习, 知识图谱]
 categories: [计算机]
 yuque: true
 ---

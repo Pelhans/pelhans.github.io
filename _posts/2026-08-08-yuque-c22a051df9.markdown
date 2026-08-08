@@ -3,7 +3,7 @@ title: "L5_·_弦论基础(细读)"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 物理, 粒子物理导论, CERN_2026年1–7月_arXiv_产出深度拆解_粒子物理全景与超对称专题, 超对称与弦论·知识点细读索引(2023–2026_综述配套)]
+tags: [语雀, 物理, 粒子物理导论, 超对称与弦论]
 categories: [物理]
 yuque: true
 ---

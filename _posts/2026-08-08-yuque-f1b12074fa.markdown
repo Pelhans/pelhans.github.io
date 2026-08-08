@@ -3,7 +3,7 @@ title: "无标题文档"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 大模型, 5._RAG]
+tags: [语雀, 计算机, 大模型]
 categories: [计算机]
 yuque: true
 ---

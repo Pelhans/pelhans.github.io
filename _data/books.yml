@@ -6,6 +6,7 @@
 #   - prefix: 按文章文件名去掉日期后的前缀匹配（如 ml_note1 -> ml_note）
 # 一篇文章只会归入第一个命中的目录；未命中任何目录的文章进入 "其它" 目录。
 
+# ===== 旧博客（语雀同步前的原创文章）=====
 - slug: machine-learning
   title: 机器学习
   icon: "📘"
@@ -16,11 +17,13 @@
     - title: PRML 读书笔记
       prefix: [prml_note]
       tag: [PRML]
+    - title: 其它
+      prefix: [ml_note]
 
 - slug: deep-learning
-  title: 深度学习
+  title: 深度学习基础、优化、网络结构与预训练模型
   icon: "🧠"
-  desc: 深度学习基础、优化、网络结构与预训练模型
+  desc: 
   groups:
     - title: 深度学习笔记
       prefix: [deep_learning-note]
@@ -60,9 +63,9 @@
       tag: [Knowledge Graph]
 
 - slug: reinforcement-learning
-  title: David Silver 强化学习课程笔记
+  title: 强化学习
   icon: "🎮"
-  desc: 
+  desc: David Silver 强化学习课程笔记
   groups:
     - title: David Silver 强化学习
       prefix: [deepRL-ch, deepRL]
@@ -74,51 +77,49 @@
   icon: "💻"
   desc: 来自语雀备份：计算机相关知识与笔记
   groups:
-    - title: 传统机器学习
-      tag: [传统机器学习]
+    - title: Agent Harness 技术调研
+      tag: [Agent Harness 技术调研]
     - title: 大模型
       tag: [大模型]
-    - title: 技术调研
-      tag: [技术调研]
-    - title: 杂
-      tag: [杂]
     - title: 深度学习
       tag: [深度学习]
+    - title: 传统机器学习
+      tag: [传统机器学习]
     - title: 知识图谱
       tag: [知识图谱]
     - title: 编程
       tag: [编程]
-    - title: 未分类
-      tag: [语雀]
+    - title: 杂项
+      tag: [杂项]
+    - title: 其它
+      tag: [计算机]
 
 - slug: yuque-physics
   title: 物理
   icon: "🔭"
   desc: 来自语雀备份：物理学习笔记
   groups:
+    - title: 粒子物理导论
+      tag: [粒子物理导论]
+    - title: 超对称与弦论
+      tag: [超对称与弦论]
     - title: 数学物理方法
       tag: [数学物理方法]
     - title: 其它
       tag: [物理]
-    - title: 粒子物理导论
-      tag: [粒子物理导论]
-    - title: 未分类
-      tag: [语雀]
 
 - slug: yuque-next
   title: NEXT
   icon: "🚀"
   desc: 来自语雀备份：NEXT 工作笔记
   groups:
-    - title: 八股文
-      tag: [1._八股文]
     - title: 地标业务
-      tag: [3._地标业务]
+      tag: [地标业务]
     - title: 酒店业务
-      tag: [4._酒店业务]
+      tag: [酒店业务]
     - title: 大模型项目
-      tag: [5._大模型项目]
+      tag: [大模型项目]
+    - title: 八股文
+      tag: [八股文]
     - title: 其它
       tag: [NEXT]
-    - title: 未分类
-      tag: [语雀]

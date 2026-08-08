@@ -3,7 +3,7 @@ title: "一、LLM.in8 的量化方案"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 大模型, 3._模型压缩]
+tags: [语雀, 计算机, 大模型]
 categories: [计算机]
 yuque: true
 ---

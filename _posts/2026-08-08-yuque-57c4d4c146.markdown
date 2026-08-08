@@ -3,7 +3,7 @@ title: "1.2_向量化召回"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, NEXT, 4._酒店业务, 1._酒店召回优化]
+tags: [语雀, NEXT, 酒店业务]
 categories: [NEXT]
 yuque: true
 ---

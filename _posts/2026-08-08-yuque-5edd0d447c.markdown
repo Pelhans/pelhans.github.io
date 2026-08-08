@@ -3,7 +3,7 @@ title: "6.核方法"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 传统机器学习, PRML_学习笔记]
+tags: [语雀, 计算机, 传统机器学习]
 categories: [计算机]
 yuque: true
 ---

@@ -3,7 +3,7 @@ title: "SUSY 理论进展综述（2023–2026）"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 物理, 粒子物理导论, CERN_2026年1–7月_arXiv_产出深度拆解_粒子物理全景与超对称专题]
+tags: [语雀, 物理, 粒子物理导论, 超对称与弦论]
 categories: [物理]
 yuque: true
 ---

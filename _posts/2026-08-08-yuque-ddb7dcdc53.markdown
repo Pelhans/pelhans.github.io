@@ -3,7 +3,7 @@ title: "11._评估与自我验证_让_agent_自己证明_我改对了_"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版), Codex_Agent_Harness_深度解剖_·_系列索引]
+tags: [语雀, 计算机, Agent Harness 技术调研]
 categories: [计算机]
 yuque: true
 ---

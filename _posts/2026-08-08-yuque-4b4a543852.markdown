@@ -3,7 +3,7 @@ title: "知识挖掘"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 知识图谱, 知识图谱入门笔记系列]
+tags: [语雀, 计算机, 知识图谱]
 categories: [计算机]
 yuque: true
 ---

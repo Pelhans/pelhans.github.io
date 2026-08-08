@@ -3,7 +3,7 @@ title: "传统"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, NEXT, 3._地标业务, 1._地标信号识别, 1.4_相关性模型优化]
+tags: [语雀, NEXT, 地标业务, 大模型]
 categories: [NEXT]
 yuque: true
 ---

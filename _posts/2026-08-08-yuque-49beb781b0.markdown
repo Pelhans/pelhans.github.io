@@ -3,7 +3,7 @@ title: "数学框架"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 深度学习, 实体连接, 候选召回]
+tags: [语雀, 计算机, 深度学习, 知识图谱]
 categories: [计算机]
 yuque: true
 ---

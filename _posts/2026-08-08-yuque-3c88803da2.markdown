@@ -3,7 +3,7 @@ title: "美团_BERT_蒸馏"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, NEXT, 3._地标业务, 1._地标信号识别, 1.2_where-what_识别]
+tags: [语雀, NEXT, 地标业务, 酒店业务]
 categories: [NEXT]
 yuque: true
 ---

@@ -3,7 +3,7 @@ title: "1.2_非大模型笔记"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, NEXT, 1._八股文]
+tags: [语雀, NEXT, 大模型]
 categories: [NEXT]
 yuque: true
 ---

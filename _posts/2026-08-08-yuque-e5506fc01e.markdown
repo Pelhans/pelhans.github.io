@@ -3,7 +3,7 @@ title: "大模型如何融入领域知识综述"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, 大模型, 2._模型微调及使用方式调研]
+tags: [语雀, 计算机, 大模型]
 categories: [计算机]
 yuque: true
 ---
