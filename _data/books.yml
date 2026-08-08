@@ -1,10 +1,13 @@
 # 知识库（语雀式层级结构）定义
 #
 # 每个 book 是一个知识库，slug 决定 URL：/book/<slug>/
-# groups 为知识库下的目录（层级二），match 用于把文章自动归入该目录：
+# groups 为知识库下的目录，支持多级嵌套（group 可含 children: [...]）。
+# 每个节点用以下字段把文章自动归入该节点：
 #   - tag:    按文章 tags 精确匹配（去空格、忽略大小写）
 #   - prefix: 按文章文件名去掉日期后的前缀匹配（如 ml_note1 -> ml_note）
-# 一篇文章只会归入第一个命中的目录；未命中任何目录的文章进入 "其它" 目录。
+# 一篇文章只会归入第一个命中的节点；未命中任何节点的文章进入 "其它" 节点。
+# 子目录（children）需使用与父节点不同的 tag，这样新建文档选择子目录时会写入该
+# 子目录的 tag，文章即可正确挂载到对应子目录。
 
 # ===== 旧博客（语雀同步前的原创文章）=====
 - slug: machine-learning
@@ -81,10 +84,22 @@
       tag: [Agent Harness 技术调研]
     - title: 大模型
       tag: [大模型]
+      children:
+        - title: 模型调研
+          tag: [模型调研]
+        - title: 模型微调
+          tag: [模型微调]
+        - title: RAG
+          tag: [RAG]
     - title: 深度学习
       tag: [深度学习]
     - title: 传统机器学习
       tag: [传统机器学习]
+      children:
+        - title: PRML
+          tag: [PRML]
+        - title: 条件随机场
+          tag: [条件随机场]
     - title: 知识图谱
       tag: [知识图谱]
     - title: 编程

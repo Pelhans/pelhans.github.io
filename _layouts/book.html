@@ -71,9 +71,25 @@ layout: yuque
       <p class="yq-doc-subtitle">{{ cur_book.desc }}</p>
       <div class="yq-doc-meta">
         {% if site.edit.enabled %}
+        <button class="yq-edit-iconbtn" id="yqTreeMgrBtn" title="管理目录层级">管理目录</button>
         <button class="yq-edit-iconbtn yq-book-del" id="yqBookDelBtn" hidden title="删除整个知识库">删除知识库</button>
         {% endif %}
       </div>
+
+      {% if site.edit.enabled %}
+      <div id="yqTreeMgrPanel" class="yq-tree-mgr" hidden>
+        <div class="yq-tree-mgr-head">
+          <span>目录管理（可调整上下级、增删改目录）</span>
+          <span class="yq-tree-mgr-tip">修改后点「保存」写回 books.yml，站点重建后生效</span>
+        </div>
+        <div id="yqTreeMgrList" class="yq-tree-mgr-list"></div>
+        <div class="yq-tree-mgr-foot">
+          <button type="button" id="yqTreeMgrAddRoot" class="yq-btn">+ 新增顶级目录</button>
+          <button type="button" id="yqTreeMgrSave" class="yq-btn yq-btn-primary" hidden>保存</button>
+          <button type="button" id="yqTreeMgrReset" class="yq-btn" hidden>重置</button>
+        </div>
+      </div>
+      {% endif %}
 
       {% assign used = "|" %}
       {% for group in cur_book.groups %}

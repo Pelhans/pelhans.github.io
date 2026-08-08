@@ -454,18 +454,36 @@
       fillGroupOptions();
       sel.onchange = fillGroupOptions;
     }
+    // 当前知识库下所有节点（含 children）的平铺数组，value 即其索引
+    var flatNodes = [];
     function fillGroupOptions() {
       var sel = document.getElementById('yqNewBook');
       var gsel = document.getElementById('yqNewGroup');
       var b = booksData[sel.value];
       gsel.innerHTML = '';
+      flatNodes = [];
       if (!b) return;
-      (b.groups || []).forEach(function (g, i) {
+      // 递归平铺（多级 children），用缩进表示层级
+      (function walk(nodes, depth, parent) {
+        (nodes || []).forEach(function (g) {
+          g.__depth = depth;
+          g.__parent = parent || null;
+          flatNodes.push(g);
+          walk(g.children, depth + 1, g);
+        });
+      })(b.groups, 0, null);
+      flatNodes.forEach(function (g, i) {
         var o = document.createElement('option');
         o.value = i;
-        o.textContent = g.title;
+        var indent = '';
+        for (var k = 0; k < g.__depth; k++) indent += '　　'; // 全角空格缩进
+        o.textContent = indent + g.title;
         gsel.appendChild(o);
       });
+      // 默认选中第一个非纯容器节点（有 tag/prefix 的）
+      for (var i = 0; i < flatNodes.length; i++) {
+        if (flatNodes[i].tag || flatNodes[i].prefix) { gsel.value = i; break; }
+      }
     }
 
     function openNew() {
@@ -486,7 +504,9 @@
       if (!title) { setStatus(statusEl, '请填写标题', 'err'); return; }
 
       var b = booksData[document.getElementById('yqNewBook').value];
-      var g = (b.groups || [])[document.getElementById('yqNewGroup').value];
+      var g = flatNodes[document.getElementById('yqNewGroup').value];
+      // 若选中的是纯容器节点（无 tag/prefix），向上回退到最近的有 tag 的祖先
+      while (g && !g.tag && !g.prefix) { g = g.__parent; }
       var prefix = (g && g.prefix && g.prefix[0]) ? g.prefix[0] + '_' : '';
       var tag = (g && g.tag && g.tag[0]) ? g.tag[0] : b.title;
       var date = new Date();
@@ -1052,6 +1072,215 @@
     loadComments();
   }
 
+  /* ---------------- 目录树上下级调整（按钮操作，无拖拽） ---------------- */
+  function ymlFromBooks(tree) {
+    function quote(s) { return '"' + String(s).replace(/"/g, '\\"') + '"'; }
+    function list(arr, indent) {
+      var pad = new Array(indent + 1).join(' ');
+      return arr.map(function (x) { return pad + '- ' + quote(x); }).join('\n');
+    }
+    // node 是目录项（以 "- title:" 开头），keyIndent 是该项本身的对齐列（4、8、12...）
+    function nodeYml(n, keyIndent) {
+      var pad = new Array(keyIndent + 1).join(' ');
+      var s = pad + '- title: ' + quote(n.title) + '\n';
+      if (n.tag) { s += pad + '  tag:\n' + list(n.tag, keyIndent + 4) + '\n'; }
+      if (n.prefix) { s += pad + '  prefix:\n' + list(n.prefix, keyIndent + 4) + '\n'; }
+      if (n.children && n.children.length) {
+        s += pad + '  children:\n';
+        n.children.forEach(function (c) { s += nodeYml(c, keyIndent + 4); });
+      }
+      return s;
+    }
+    var out = '';
+    tree.forEach(function (b) {
+      out += '- slug: ' + b.slug + '\n';
+      if (b.icon) out += '  icon: ' + quote(b.icon) + '\n';
+      if (b.title) out += '  title: ' + quote(b.title) + '\n';
+      if (b.desc) out += '  desc: ' + quote(b.desc) + '\n';
+      out += '  groups:\n';
+      (b.groups || []).forEach(function (g) { out += nodeYml(g, 4); });
+    });
+    return out;
+  }
+
+  function initTreeManager() {
+    var cfgEl = document.getElementById('yqEditConfig');
+    if (!cfgEl) return;
+    var cfg;
+    try { cfg = JSON.parse(cfgEl.textContent); } catch (e) { return; }
+    if (!cfg || !cfg.enabled) return;
+    var bdEl = document.getElementById('yqBooksData');
+    if (!bdEl) return;
+    var tree;
+    try { tree = JSON.parse(bdEl.textContent); } catch (e) { return; }
+    var slugMeta = document.querySelector('meta[name="yq-book-slug"]');
+    if (!slugMeta) return;
+    var slug = slugMeta.content;
+    var book = (tree || []).filter(function (b) { return b.slug === slug; })[0];
+    if (!book) return;
+
+    var mgrBtn = document.getElementById('yqTreeMgrBtn');
+    var panel = document.getElementById('yqTreeMgrPanel');
+    if (!mgrBtn || !panel) return;
+    var listEl = document.getElementById('yqTreeMgrList');
+    var saveBtn = document.getElementById('yqTreeMgrSave');
+    var resetBtn = document.getElementById('yqTreeMgrReset');
+    var addRootBtn = document.getElementById('yqTreeMgrAddRoot');
+    var dirty = false;
+
+    function markDirty(d) {
+      dirty = d;
+      if (saveBtn) saveBtn.hidden = !d;
+      if (resetBtn) resetBtn.hidden = !d;
+    }
+
+    function findByTitle(nodes, title) {
+      return (nodes || []).filter(function (n) { return n.title === title; })[0] || null;
+    }
+    function findByPath(segs) {
+      var cur = book.groups, found = null;
+      for (var i = 0; i < segs.length; i++) {
+        found = findByTitle(cur, segs[i]);
+        if (!found) return null;
+        cur = found.children;
+      }
+      return found;
+    }
+    function parentOf(segs) {
+      if (segs.length === 1) return { children: book.groups };
+      return findByPath(segs.slice(0, -1));
+    }
+    function siblingIndex(segs) {
+      var name = segs[segs.length - 1];
+      var parent = parentOf(segs);
+      if (!parent || !parent.children) return -1;
+      for (var i = 0; i < parent.children.length; i++) if (parent.children[i].title === name) return i;
+      return -1;
+    }
+
+    // 渲染统一管理面板（递归树）
+    function renderMgr() {
+      listEl.innerHTML = '';
+      function row(n, segs, isRoot) {
+        var li = document.createElement('li');
+        li.className = 'yq-mgr-row' + (isRoot ? ' is-root' : '');
+        li.style.paddingLeft = (segs.length * 22) + 'px';
+        var name = document.createElement('span');
+        name.className = 'yq-mgr-name';
+        name.textContent = (isRoot ? '▣ ' : '└ ') + n.title;
+        li.appendChild(name);
+        var acts = document.createElement('span');
+        acts.className = 'yq-mgr-acts';
+        var buttons = [
+          ['up', '↑'], ['down', '↓'], ['child', '设为子目录'],
+          ['promote', '提升'], ['rename', '重命名'], ['addchild', '＋子目录'], ['del', '删除']
+        ];
+        buttons.forEach(function (b) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'yq-mgr-btn';
+          btn.textContent = b[1];
+          btn.title = b[1];
+          btn.addEventListener('click', function () { act(n, segs.slice(), b[0]); });
+          acts.appendChild(btn);
+        });
+        li.appendChild(acts);
+        listEl.appendChild(li);
+        (n.children || []).forEach(function (c) { row(c, segs.concat(c.title), false); });
+      }
+      (book.groups || []).forEach(function (g) { row(g, [g.title], true); });
+    }
+
+    function act(node, segs, a) {
+      var idx = siblingIndex(segs);
+      var parent = parentOf(segs);
+      if (!parent) return;
+      var siblings = parent.children || (parent.children = []);
+      if (a === 'up') {
+        if (idx > 0) { siblings.splice(idx, 1); siblings.splice(idx - 1, 0, node); }
+      } else if (a === 'down') {
+        if (idx < siblings.length - 1) { siblings.splice(idx, 1); siblings.splice(idx + 1, 0, node); }
+      } else if (a === 'child') {
+        if (idx > 0) { var prev = siblings[idx - 1]; siblings.splice(idx, 1); (prev.children = prev.children || []).push(node); }
+      } else if (a === 'promote') {
+        if (segs.length > 1) {
+          var name = segs[segs.length - 1];
+          parent.children = (parent.children || []).filter(function (n) { return n.title !== name; });
+          var gp = segs.length === 2 ? { children: book.groups } : findByPath(segs.slice(0, -2));
+          if (!gp) gp = { children: book.groups };
+          var gpSib = gp.children || (gp.children = []);
+          var pname = segs[segs.length - 2];
+          var pidx = gpSib.findIndex(function (n) { return n.title === pname; });
+          gpSib.splice(pidx + 1, 0, node);
+        }
+      } else if (a === 'rename') {
+        var nn = prompt('重命名目录为：', node.title);
+        if (nn && nn.trim() && nn.trim() !== node.title) node.title = nn.trim();
+      } else if (a === 'addchild') {
+        var cc = prompt('新增子目录名称：', '');
+        if (cc && cc.trim()) {
+          var key = 'tag';
+          (node.children = node.children || []).push({ title: cc.trim(), tag: [cc.trim()] });
+        }
+      } else if (a === 'del') {
+        if (confirm('删除目录「' + node.title + '」？（其下文章不会被删除）')) {
+          parent.children = (parent.children || []).filter(function (n) { return n !== node; });
+        }
+      } else { return; }
+      markDirty(true);
+      renderMgr();
+    }
+
+    function saveTree(msg) {
+      var token = localStorage.getItem('yq-github-token');
+      if (!token) { alert('请先在任意文章页点"编辑"并验证 GitHub Token。'); return; }
+      var yml = ymlFromBooks(tree);
+      var p = '_data/books.yml';
+      function api(path, opts) {
+        opts = opts || {};
+        var headers = { 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
+        headers['Authorization'] = 'Bearer ' + token;
+        return fetch('https://api.github.com' + path, {
+          method: opts.method || 'GET', headers: headers,
+          body: opts.body ? JSON.stringify(opts.body) : undefined
+        });
+      }
+      saveBtn.disabled = true; saveBtn.textContent = '保存中…';
+      api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encodeURIComponent(p) + '?ref=' + cfg.branch)
+        .then(function (r) { if (!r.ok) throw new Error('读取失败'); return r.json(); })
+        .then(function (d) {
+          return api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encodeURIComponent(p), {
+            method: 'PUT',
+            body: {
+              message: msg,
+              content: window.btoa(unescape(encodeURIComponent(yml))),
+              sha: d.sha,
+              branch: cfg.branch
+            }
+          });
+        })
+        .then(function (r) { if (!r.ok) throw new Error('写入失败'); alert('已保存，等待站点重建后刷新生效。'); })
+        .catch(function (err) { alert('保存失败：' + (err && err.message ? err.message : '未知错误')); })
+        .finally(function () { saveBtn.disabled = false; saveBtn.textContent = '保存'; });
+    }
+
+    mgrBtn.addEventListener('click', function () {
+      renderMgr();
+      panel.hidden = !panel.hidden;
+      mgrBtn.textContent = panel.hidden ? '管理目录' : '收起';
+    });
+    saveBtn.addEventListener('click', function () { saveTree('docs: update book "' + book.title + '" directory tree'); });
+    resetBtn.addEventListener('click', function () { location.reload(); });
+    addRootBtn.addEventListener('click', function () {
+      var nn = prompt('新增顶级目录名称：', '');
+      if (nn && nn.trim()) {
+        (book.groups = book.groups || []).push({ title: nn.trim(), tag: [nn.trim()] });
+        markDirty(true); renderMgr();
+      }
+    });
+    markDirty(false);
+  }
+
   ready(function () {
     initTree();
     initSidebarToggle();
@@ -1060,5 +1289,6 @@
     initEditor();
     initBookDelete();
     initComments();
+    initTreeManager();
   });
 })();

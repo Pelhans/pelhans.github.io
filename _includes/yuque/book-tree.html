@@ -1,5 +1,5 @@
 {% comment %}
-  构建某个知识库(book)的层级目录树。
+  构建某个知识库(book)的层级目录树，支持多级 children 嵌套（最多 3 层）。
   入参:
     include.book    : _data/books.yml 中的一项
     include.current : 当前文档的 url（可为空）
@@ -11,14 +11,11 @@
 <ul class="yq-tree">
   {% for group in book.groups %}
     {% assign picked = "|" %}
-
     {% for post in site.posts reversed %}
       {% assign key = post.url | append: "|" %}
       {% assign probe = "|" | append: key %}
       {% if used contains probe %}{% continue %}{% endif %}
-
       {% assign hit = false %}
-
       {% if group.prefix %}
         {% assign base = post.path | split: "/" | last | split: "." | first %}
         {% assign stem = base | slice: 11, 200 %}
@@ -28,7 +25,6 @@
           {% if head == p %}{% assign hit = true %}{% break %}{% endif %}
         {% endfor %}
       {% endif %}
-
       {% if hit == false and group.tag %}
         {% for t in post.tags %}
           {% assign tn = t | strip | downcase %}
@@ -39,47 +35,98 @@
           {% if hit %}{% break %}{% endif %}
         {% endfor %}
       {% endif %}
-
       {% if hit %}
         {% assign picked = picked | append: key %}
         {% assign used = used | append: key %}
       {% endif %}
     {% endfor %}
 
-    {% if picked != "|" %}
-      {% assign count = picked | split: "|" | size %}
-      {% assign open = false %}
-      {% if include.current %}
-        {% assign cprobe = "|" | append: include.current | append: "|" %}
-        {% if picked contains cprobe %}{% assign open = true %}{% endif %}
-      {% endif %}
-
-      <li class="yq-tree-group{% if open %} is-open{% endif %}">
-        <div class="yq-tree-group-title" role="button" tabindex="0">
-          <svg class="yq-caret" viewBox="0 0 1024 1024" width="12" height="12" aria-hidden="true">
-            <path d="M384 256l320 256-320 256z" fill="currentColor"></path>
-          </svg>
-          <span class="yq-tree-group-name">{{ group.title }}</span>
-          <span class="yq-tree-count">{{ count }}</span>
-        </div>
-        <ul class="yq-tree-children">
-          {% for p in site.posts reversed %}
-            {% assign pk = "|" | append: p.url | append: "|" %}
-            {% if picked contains pk %}
-          <li>
-            <a class="yq-tree-doc{% if p.url == include.current %} is-active{% endif %}"
-               href="{{ p.url | prepend: site.baseurl }}"
-               title="{{ p.title | strip }}{% if p.subtitle %} · {{ p.subtitle | strip }}{% endif %}">
-              <svg class="yq-doc-icon" viewBox="0 0 1024 1024" width="13" height="13" aria-hidden="true">
-                <path d="M608 96H224a64 64 0 0 0-64 64v704a64 64 0 0 0 64 64h576a64 64 0 0 0 64-64V352L608 96z m-16 288V168l208 216H592z" fill="currentColor"></path>
-              </svg>
-              <span class="yq-doc-name">{% if p.subtitle and p.subtitle != "" %}{{ p.subtitle | strip }}{% else %}{{ p.title | strip }}{% endif %}</span>
-            </a>
-          </li>
-            {% endif %}
-          {% endfor %}
-        </ul>
-      </li>
+    {% assign count = picked | split: "|" | size %}
+    {% assign open = false %}
+    {% if include.current %}
+      {% assign cprobe = "|" | append: include.current | append: "|" %}
+      {% if picked contains cprobe %}{% assign open = true %}{% endif %}
     {% endif %}
+
+    <li class="yq-tree-group{% if open %} is-open{% endif %}">
+      <div class="yq-tree-group-title" role="button" tabindex="0">
+        <svg class="yq-caret" viewBox="0 0 1024 1024" width="12" height="12" aria-hidden="true">
+          <path d="M384 256l320 256-320 256z" fill="currentColor"></path>
+        </svg>
+        <span class="yq-tree-group-name">{{ group.title }}</span>
+        {% if group.children %}<span class="yq-tree-badge">目录</span>{% endif %}
+        <span class="yq-tree-count">{{ count }}</span>
+      </div>
+      <ul class="yq-tree-children">
+        {% for p in site.posts reversed %}
+          {% assign pk = "|" | append: p.url | append: "|" %}
+          {% if picked contains pk %}
+        <li>
+          <a class="yq-tree-doc{% if p.url == include.current %} is-active{% endif %}"
+             href="{{ p.url | prepend: site.baseurl }}"
+             title="{{ p.title | strip }}{% if p.subtitle %} · {{ p.subtitle | strip }}{% endif %}">
+            <svg class="yq-doc-icon" viewBox="0 0 1024 1024" width="13" height="13" aria-hidden="true">
+              <path d="M608 96H224a64 64 0 0 0-64 64v704a64 64 0 0 0 64 64h576a64 64 0 0 0 64-64V352L608 96z m-16 288V168l208 216H592z" fill="currentColor"></path>
+            </svg>
+            <span class="yq-doc-name">{% if p.subtitle and p.subtitle != "" %}{{ p.subtitle | strip }}{% else %}{{ p.title | strip }}{% endif %}</span>
+          </a>
+        </li>
+          {% endif %}
+        {% endfor %}
+
+        {% if group.children %}
+          {% for child in group.children %}
+            {% assign cpicked = "|" %}
+            {% for post in site.posts reversed %}
+              {% assign key = post.url | append: "|" %}
+              {% assign probe = "|" | append: key %}
+              {% if used contains probe %}{% continue %}{% endif %}
+              {% assign chit = false %}
+              {% if child.tag %}
+                {% for t in post.tags %}
+                  {% assign tn = t | strip | downcase %}
+                  {% for gt in child.tag %}
+                    {% assign gtn = gt | strip | downcase %}
+                    {% if tn == gtn %}{% assign chit = true %}{% break %}{% endif %}
+                  {% endfor %}
+                  {% if chit %}{% break %}{% endif %}
+                {% endfor %}
+              {% endif %}
+              {% if chit %}
+                {% assign cpicked = cpicked | append: key %}
+                {% assign used = used | append: key %}
+              {% endif %}
+            {% endfor %}
+            {% assign ccount = cpicked | split: "|" | size %}
+            <li class="yq-tree-group yq-tree-sub">
+              <div class="yq-tree-group-title" role="button" tabindex="0">
+                <svg class="yq-caret" viewBox="0 0 1024 1024" width="12" height="12" aria-hidden="true">
+                  <path d="M384 256l320 256-320 256z" fill="currentColor"></path>
+                </svg>
+                <span class="yq-tree-group-name">{{ child.title }}</span>
+                <span class="yq-tree-count">{{ ccount }}</span>
+              </div>
+              <ul class="yq-tree-children">
+                {% for p in site.posts reversed %}
+                  {% assign pk = "|" | append: p.url | append: "|" %}
+                  {% if cpicked contains pk %}
+                <li>
+                  <a class="yq-tree-doc{% if p.url == include.current %} is-active{% endif %}"
+                     href="{{ p.url | prepend: site.baseurl }}"
+                     title="{{ p.title | strip }}{% if p.subtitle %} · {{ p.subtitle | strip }}{% endif %}">
+                    <svg class="yq-doc-icon" viewBox="0 0 1024 1024" width="13" height="13" aria-hidden="true">
+                      <path d="M608 96H224a64 64 0 0 0-64 64v704a64 64 0 0 0 64 64h576a64 64 0 0 0 64-64V352L608 96z m-16 288V168l208 216H592z" fill="currentColor"></path>
+                    </svg>
+                    <span class="yq-doc-name">{% if p.subtitle and p.subtitle != "" %}{{ p.subtitle | strip }}{% else %}{{ p.title | strip }}{% endif %}</span>
+                  </a>
+                </li>
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            </li>
+          {% endfor %}
+        {% endif %}
+      </ul>
+    </li>
   {% endfor %}
 </ul>

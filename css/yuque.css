@@ -256,6 +256,52 @@ a:hover { color: var(--yq-primary); }
 .yq-tree-children { display: none; padding-left: 10px; }
 .yq-tree-group.is-open > .yq-tree-children { display: block; }
 
+/* 目录统一管理面板 */
+.yq-tree-mgr {
+  border: 1px solid var(--yq-border, #e3e6e8);
+  border-radius: 8px;
+  margin: 12px 0 24px;
+  background: #fafbfc;
+  overflow: hidden;
+}
+.yq-tree-mgr-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f0f2f4;
+  font-weight: 600;
+  font-size: 13px;
+}
+.yq-tree-mgr-tip { font-weight: 400; color: var(--yq-text-secondary, #777); font-size: 12px; }
+.yq-tree-mgr-list { padding: 6px 0; }
+.yq-mgr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 14px 5px 14px;
+  border-bottom: 1px dashed #ececec;
+  font-size: 13px;
+}
+.yq-mgr-row:last-child { border-bottom: none; }
+.yq-mgr-row.is-root .yq-mgr-name { font-weight: 600; }
+.yq-mgr-name { flex: none; }
+.yq-mgr-acts { display: flex; gap: 4px; }
+.yq-mgr-btn {
+  border: 1px solid var(--yq-border, #e3e6e8);
+  background: #fff;
+  color: var(--yq-text-secondary, #555);
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 2px 6px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.yq-mgr-btn:hover { background: var(--yq-primary, #2f7d4f); color: #fff; border-color: transparent; }
+.yq-tree-mgr-foot { padding: 10px 14px; border-top: 1px solid var(--yq-border, #e3e6e8); display: flex; gap: 8px; }
+.yq-btn-primary { background: var(--yq-primary, #2f7d4f); color: #fff; border-color: transparent; }
+.yq-btn-primary:hover { filter: brightness(1.05); }
+
 .yq-tree-doc {
   display: flex;
   align-items: center;
