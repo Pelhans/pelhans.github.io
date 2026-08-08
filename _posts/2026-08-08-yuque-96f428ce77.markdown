@@ -1,0 +1,645 @@
+---
+title: "大模型微调技术分类"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 大模型, 2._模型微调及使用方式调研]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# 大模型微调技术分类
+
+-   指令微调： RLHF, SFT
+-   对齐微调：
+
+-   Large Language Model Alignment: A Survey
+
+-   **参数高效微调**
+
+1.  BitFit
+2.  Prefix Tuning
+3.  Prompt Tuning
+4.  P-Tuning、P-Tuning V2
+5.  Adapter Tuning
+6.  LoRA、AdaLoRA、QLoRA
+7.  UniPELT
+8.  ...
+
+# 参数高效微调
+
+将预训练好的语言模型（LM）在下游任务上进行微调已成为处理 NLP 任务的一种范式。与使用开箱即用的预训练 LLM (例如：零样本推理) 相比，在下游数据集上微调这些预训练 LLM 会带来巨大的性能提升。但是，**随着模型变得越来越大，在消费级硬件上对模型进行全部参数的微调变得不可行**。此外，为每个下游任务独立存储和部署微调模型变得非常昂贵，因为微调模型（调整模型的所有参数）与原始预训练模型的大小相同。
+
+下表展示了在一张A100 GPU（80G 显存）以及 CPU 内存 64GB以上的硬件上进行模型全量微调以及参数高效微调对于 CPU/GPU 内存的消耗情况。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-1.png)
+
+除此之外，**模型全量微调还会损失多样性，存在灾难性遗忘的问题**。因此，如何高效的进行模型微调就成了业界研究的重点。
+
+因此，近年来研究者们提出了各种各样的参数高效迁移学习方法（Parameter-efficient Transfer Learning），即固定住Pretrain Language model（PLM）的大部分参数，仅调整模型的一小部分参数来达到与全部参数的微调接近的效果（调整的可以是模型自有的参数，也可以是额外加入的一些参数）。
+
+常见的高效参数微调技术汇总如下图所示，我们将选取部分进行详解：
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-2.png)
+
+图源自[Scaling Down to Scale Up: A Guide to Parameter-Efficient Fine-Tuning](https://arxiv.org/pdf/2303.15647.pdf)
+
+知识重点：
+
+-   高效微调：固定住PLM的大部分参数，仅调整模型的一小部分参数来达到与全部参数的微调接近的效果
+-   高效微调的好处：
+
+-   降低显存消耗
+-   降低部署和存储成本
+-   减轻全量微调带来的灾难性遗忘问题
+
+## BitFit
+
+论文：BitFit: [Simple Parameter-efficient Fine-tuning or Transformer-based Masked Language-models](https://arxiv.org/pdf/2106.10199.pdf)
+
+BitFit 是一种稀疏的微调方法，**它训练时只更新bias的参数或者部分bias参数**。
+
+对于Transformer模型而言，冻结大部分 transformer-encoder 参数，只更新bias参数跟特定任务的分类层参数。**涉及到的bias参数有attention模块中计算query,key,value跟合并多个attention结果时涉及到的bias，MLP层中的bias，Layernormalization层的bias参数**。
+
+在Bert-Base/Bert-Large这种模型里，bias参数仅占模型全部参数量的0.08%～0.09%。但是通过在Bert-Large模型上基于GLUE数据集进行了 BitFit、Adapter和Diff-Pruning的效果对比发现，BitFit在参数量远小于Adapter、Diff-Pruning的情况下，效果与Adapter、Diff-Pruning相当，甚至在某些任务上略优于Adapter、Diff-Pruning。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-3.png)
+
+同时，通过对比BitFit训练前后的参数，发现很多bias参数并没有太多变化（例如：跟计算key所涉及到的bias参数）。**发现计算query和将特征维度从N放大到4N的FFN层（intermediate）的bias参数变化最为明显，只更新这两类bias参数也能达到不错的效果**，反之，固定其中任何一者，模型的效果都有较大损失。
+
+## **Prefix Tuning**
+
+Prefix-Tuning: [Optimizing Continuous Prompts for Generation](https://arxiv.org/pdf/2101.00190.pdf)
+
+传统的微调范式利用预训练模型去对不同的下游任务进行微调，对每个任务都要保存一份微调后的模型权重，一方面微调整个模型耗时长；另一方面也会占很多存储空间。为此Prefix Tuning提出固定预训练LM，**为LM添加可训练，任务特定的前缀，这样就可以为不同任务保存不同的前缀**，微调成本也小；同时，这种**Prefix实际就是连续可微的Virtual Token（Soft Prompt/Continuous Prompt），相比离散的Token，更好优化，效果更好。训练的时候只更新Prefix部分的参数，而PLM中的其他部分参数固定**。
+
+该方法其实和构造Prompt类似，只是Prompt是人为构造的“显式”的提示，并且无法更新参数，而Prefix则是可以学习的“隐式”的提示。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-4.png)
+
+**针对不同的模型结构，需要构造不同的Prefix：**
+
+-   针对自回归架构模型：在句子前面添加前缀，得到 z = [PREFIX; x; y]，合适的上文能够在固定 LM 的情况下去引导生成下文
+-   针对编码器-解码器架构模型：Encoder和Decoder都增加了前缀，得到 z = [PREFIX; x; PREFIX0; y]。Encoder端增加前缀是为了引导输入部分的编码，Decoder 端增加前缀是为了引导后续token的生成
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-5.png)
+
+同时，为了防止直接更新Prefix的参数导致训练不稳定和性能下降的情况，**在Prefix层前面加了MLP结构**（重参数化，这是因为PLM得到的 loss 比较小，不重参数化的话，小loss 优化不动），训练完成后，只保留MLP输出的参数进行推理即可。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-6.png)
+
+除此之外，通过消融实验证实，只调整embedding层的表现力不够，将导致性能显著下降，因此，**在每层都加了prompt的参数**，改动较大。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-7.png)
+
+可能疑问点：
+
+-   实际操作时输入是怎么拼接的？
+
+-   **将多个prompt vectors 放在每个multi-head attention的key矩阵和value矩阵之前**
+-   加入prefix的attention模块输出等于原本attention模型输出和一个与上下文无关的增量之间的加权平均
+
+-   Prefix 的序列长度设置为多少？
+
+-   prefix部分到底使用多少个虚拟token，直接影响模型微调的参数量级，以及处理长文本的能力。默认的prefix长度为10，作者在不同任务上进行了微调，整体上prompt部分的参数量都在原模型的~0.1%。
+
+## **Prompt Tuning**
+
+[The Power of Scale for Parameter-Efficient Prompt Tuning](https://arxiv.org/pdf/2104.08691.pdf)
+
+该方法可以**看作是Prefix Tuning的简化版本**，它给每个任务定义了自己的Prompt，然后拼接到数据上作为输入，但**只在输入层加入prompt tokens**，并且**不需要加入 MLP 进行调整来解决难训练的问题**。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-8.png)
+
+通过实验发现，随着预训练模型参数量的增加，**Prompt Tuning的方法会逼近全参数微调的结果**。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-9.png)
+
+同时，Prompt Tuning 还提出了 Prompt Ensembling，也就是在一个批次（Batch）里同时训练同一个任务的不同 prompt（即采用多种不同方式询问同一个问题），这样相当于训练了不同模型，比模型集成的成本小多了。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-10.png)
+
+除此之外，Prompt Tuning 论文中还探讨了 Prompt token 的初始化方法和长度对于模型性能的影响。通过消融实验结果发现，**与随机初始化和使用样本词汇表初始化相比，Prompt Tuning采用类标签初始化模型的效果更好。不过随着模型参数规模的提升，这种gap最终会消失**。
+
+**Prompt token 的长度在20左右时的表现已经不错（超过20之后，提升Prompt token长度，对模型的性能提升不明显了）**，同样的，这个gap也会随着模型参数规模的提升而减小（即对于超大规模模型而言，即使 Prompt token 长度很短，对性能也不会有太大的影响）。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-11.png)
+
+疑问点：
+
+-   和 prefix tuning 看着很像，二者的区别是啥？
+
+-   prompt tuning 更像 hard prompt 对应的 soft 方案，在加的位置上不限于开头，像 prompt 一样加在任意位置。
+-   移除了重参数化的 MLP
+-   其余都是结构上的区别，整体算是 prefix tuning 的简化版
+
+-   为啥 prompt tuning 不需要再每层都加？输入也不需要加 MLP？二者的结论存在冲突怎么理解？答：任务不同，P tuning 的论文证明，NLG 任务重参数还是需要的，NLU 任务不需要
+
+## P-Tuning、
+
+P-Tuning: [GPT Understands, Too](https://arxiv.org/abs/2103.10385)
+
+该方法将Prompt转换为可以学习的Embedding层，并用MLP+LSTM的方式来对Prompt Embedding进行一层处理。**相比Prefix Tuning，P-Tuning加入的可微的virtual token，但仅限于输入层，没有在每一层都加；另外，virtual token的位置也不一定是前缀，插入的位置是可选的。**
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-12.png)
+
+直觉上，**我们认为提示嵌入的值应该是相互依赖的，而不是独立的。我们需要一些机制将提示嵌入相互关联起来。因此在 P-tuning 中**，我们建议使用 prompt encoder 将 prompt 的嵌入向量建模为序列，该编码器由一个**非常精简的神经网络组成（LSTM + MLP）**，可以解决prompt 参数随机初始化的离散性问题和prompt 嵌入的前后关联问题。在实际使用时，直接缓存 LSTM 输出的 prompt 就可以了。
+
+从对比实验证实看出，P-Tuning获得了与全参数一致的效果。甚至在某些任务上优于全参数微调。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-13.png)
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-14.png)
+
+## P-Tuning V2
+
+P-Tuning V2:[Prompt Tuning Can Be Comparable to Fine-tuning Universally Across Scales and Tasks](https://arxiv.org/abs/2110.07602)
+
+该方法**在每一层都加入了Prompts tokens作为输入**，而不是仅仅加在输入层，这带来两个方面的好处：
+
+-   更多可学习的参数（从P-tuning和Prompt Tuning的0.01%增加到0.1%-3%），同时也足够参数高效。
+-   加入到更深层结构中的Prompt能给模型预测带来更直接的影响。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-15.png)
+
+具体做法基本同Prefix Tuning，**可以看作是将文本生成的Prefix Tuning技术适配到NLU任务中**，然后做了一些改进：
+
+-   **移除重参数化的编码器**。以前的方法利用重参数化功能来提高训练速度和鲁棒性（如：Prefix Tuning中的MLP、P-Tuning中的LSTM））。在 P-tuning v2 中，作者发现重参数化的改进很小，尤其是对于较小的模型，同时还会影响模型的表现。
+-   **针对不同任务采用不同的提示长度**。提示长度在提示优化方法的超参数搜索中起着核心作用。在实验中，我们发现不同的理解任务通常用不同的提示长度来实现其最佳性能，这与Prefix-Tuning中的发现一致，不同的文本生成任务可能有不同的最佳提示长度。
+-   **回归传统的分类标签范式，而不是映射器**。P-Tuning v2回归传统的CLS标签分类范式，采用随机初始化的分类头（Classification Head）应用于tokens之上，以增强通用性，可以适配到序列标注任务。比如对于RTE任务，加上一个问号变成[PRE][prompt tokens][HYP]?[prompt tokens][MASK]后效果会更好
+
+论文中展示了P-tuning v2在不同模型规模下的表现。对于简单的NLU任务，如SST-2（单句分类），Prompt Tuning和P-Tuning在较小的规模下没有显示出明显的劣势。但是当涉及到复杂的挑战时，如：自然语言推理（RTE）和多选题回答（BoolQ），它们的性能会非常差。相反，P-Tuning v2在较小规模的所有任务中都与微调的性能相匹配。并且，P-tuning v2在RTE中的表现明显优于微调，特别是在BERT中。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-16.png)
+
+为了评估P-Tuning v2在一些困难的NLU挑战中的能力，作者选择了三个典型的序列标注任务（名称实体识别、抽取式问答（QA）和语义角色标签（SRL）），共八个数据集。我们观察到P-Tuning v2在所有任务上都能与全量微调相媲美。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-17.png)  
+  
+  
+
+论文还通过消融实验研究了不同任务上Prompt Length的影响：
+
+-   针对简单任务：如情感分析，较短的Prompt（~20）即可取得不错的效果。
+-   针对复杂任务：如阅读理解，需要更长的Prompt（~100）。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-18.png)
+
+  
+总之，P-Tuning v2是一种在不同规模和任务中都可与微调相媲美的提示方法。P-Tuning v2对从330M到10B的模型显示出一致的改进，并在序列标注等困难的序列任务上以很大的幅度超过了Prompt Tuning和P-Tuning。P-Tuning v2可以成为微调的综合替代方案和未来工作的基线（Baseline）。
+
+P tuning V2 和 Prefix tuning 的区别与联系：
+
+-   在P-tuning v2文章中有说，它的思想并不是最新的，继承自 prefix-tuning。但Prefix-tuning主要设计用于NLG，而P-Tuning v2则是改进后也可以用于NLU了，例如文本分类，序列标注等。总的来说相较于Prefix-tuning，P-tuning v2主要是针对NLU任务做了两点修改：
+
+-   针对 NLU 任务，去除 LSTM 的重参数化部分
+-   在进行NLU任务的过程中，采用与BERT中一样的MLP分类头(就是基于CLS token预测分类那个)而不是verbalizers（标签映射），原因是因为verbalizers不适合序列标注问题。也就是说使用了分类头从而使其适配NLU任务。
+
+-   其实看 hugging face 的源码也可以发现，peft库中只有P-tuning，没有P-tuning v2。因为和PrefixEncoder合到一起了。在下面源码中，我们可以看到prefix\_projection变成了可选项。去掉这个prefix\_projection就跟P-Tuning v2一样了。[代码链接](https://github.com/huggingface/peft/blob/main/src/peft/tuners/prefix_tuning/model.py)
+-   ![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-19.png)
+
+## LoRA
+
+**LoRA: LOW-RANK ADAPTATION OF LARGE LANGUAGE MODELS**
+
+Prefix tuning 的 prompt 会占用输入有效文字长度。而且和之前的全参数微调感觉不是一个路的。沿着全参数微调的路是 LoRA（low rank adaptation）。首先正常我们对参数更新后可以看做是 , 就是权重的变化部分。那有没有办法，在冻结住模型参数的情况下，通过训练得到 呢？然后这个 最好参数量和维度还比 W 小很多。答案是可以的，**只需要用两个低秩矩阵 BA 来表示** **，第一个矩阵A负责降维，第二个矩阵B负责升维，中间层维度为r**。可训练层维度和预训练模型层维度一致为d，先将维度d通过全连接层降维至r，再从r通过全连接层映射回d维度，其中，r<<d，r是矩阵的秩，这样矩阵计算就从d x d变为d x r + r x d，参数量减少很多。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-20.png)
+
+在下游任务训练时，固定模型的其他参数，只优化新增的两个矩阵的权重参数，将PLM跟新增的通路两部分的结果加起来作为最终的结果（两边通路的输入跟输出维度是一致的），即h=Wx+BAx。在推理时，将左右两部分的结果加到一起即可，h=Wx+BAx=(W+BA)x，所以只要将训练完成的矩阵乘积BA跟原本的权重矩阵W加到一起作为新权重参数替换原本PLM的W即可，对于推理来说，不会增加额外的计算资源。
+
+第一个矩阵的A的权重参数会通过高斯函数初始化，而第二个矩阵的B的权重参数则会初始化为零矩阵，这样能保证训练开始时新增的通路BA=0从而对模型结果没有影响。
+
+此外，Transformer的权重矩阵包括Attention模块里用于计算query, key, value的Wq，Wk，Wv以及多头attention的Wo,以及MLP层的权重矩阵，LoRA只应用于Attention模块中的4种权重矩阵，而且通过消融实验发现同时调整 Wq 和 Wv 会产生最佳结果。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-21.png)
+
+实验还发现，保证权重矩阵的种类的数量比起增加隐藏层维度r更为重要，增加r并不一定能覆盖更加有意义的子空间。关于秩的选择，通常情况下，rank为4，8，16即可。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-22.png)
+
+通过实验也发现，在众多数据集上LoRA在只训练极少量参数的前提下，最终在性能上能和全量微调匹配，甚至在某些任务上优于全量微调。
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-23.png)
+
+可能得疑问：
+
+-   那我对 A 做零初始化，对 B 做高斯初始化行不行呢？反正看起来只要让 BA 初始化为0就行？作者在 github 上回答是可以的，效果上没差，任意一个为0 就行
+-   用低秩矩阵替代就没代价么？要是没代价的话，训练的时候，W 直接也低秩表示多好？很多全连接层的权重矩阵都是满秩的。当针对特定任务进行微调后，模型中权重矩阵其实具有很低的本征秩（intrinsic rank），因此，论文的作者认为权重更新的那部分参数矩阵尽管随机投影到较小的子空间，仍然可以有效的学习，可以理解为针对特定的下游任务这些权重矩阵就不要求满秩。
+
+## LoRA 源代码拆解
+
+以lora.MergedLinear为例，来看看实现低秩适配器的代码细节，见[LoRAlib](https://github.com/microsoft/LoRA/blob/main/loralib/layers.py#L155)
+
+```plain
+class LoRALayer():
+    def __init__(
+        self, 
+        r: int, 
+        lora_alpha: int, 
+        lora_dropout: float,
+        merge_weights: bool,
+    ):
+        # -----------------------------------------------------
+        # lora的秩
+        # -----------------------------------------------------
+        self.r = r 
+
+        # -----------------------------------------------------
+        # 用于计算缩放因子scaling = lora_alpha/r
+        # -----------------------------------------------------
+        self.lora_alpha = lora_alpha
+
+        # -----------------------------------------------------
+        # Optional dropout
+        # -----------------------------------------------------
+        if lora_dropout > 0.:
+            self.lora_dropout = nn.Dropout(p=lora_dropout)
+        else:
+            self.lora_dropout = lambda x: x
+        # -----------------------------------------------------
+        # 表示当前pretrain部分(self.weight)中是否已经融入了lora部分
+        # self.merged=True，pretrain部分已包含lora,
+        #                   则进行forward是可以直接用pretrain部分
+        # self.merged=False, pretrain部分未包含lora，
+        #                   则进行forward时需要用pretrain+lora的结果
+        # 【表示合不合这个状态】
+        # -----------------------------------------------------
+        self.merged = False
+
+        # -----------------------------------------------------
+        # self.merge_weights = True，遵从训练时拆分pretain与lora，
+        #                           推理时合并pretrain与lora
+        # self.merge_weights = False, 遵从无论是训练还是推理，
+        #                            都拆分pretrain与lora
+        # 【表示合不合这个意愿】
+        # -----------------------------------------------------
+        self.merge_weights = merge_weights
+
+class MergedLinear(nn.Linear, LoRALayer):
+    # LoRA implemented in a dense layer
+    def __init__(
+        self, 
+        in_features: int, 
+        out_features: int, 
+        r: int = 0, 
+        lora_alpha: int = 1, 
+        lora_dropout: float = 0.,
+        enable_lora: List[bool] = [False],
+        fan_in_fan_out: bool = False,
+        merge_weights: bool = True,
+        **kwargs
+    ):
+        # -------------------------------------------------------------------- 
+        # in_features: hidden_size
+        # out_features: hidden_size*3
+        # 将nn.linear和LoRALayer的属性继承过来
+        # -------------------------------------------------------------------- 
+        nn.Linear.__init__(self, in_features, out_features, **kwargs)
+        LoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=lora_dropout,
+                           merge_weights=merge_weights)
+
+        # -------------------------------------------------------------------- 
+        # 因为我们是把QKV三个矩阵的计算合成一个来计算的，
+        # 因此out_features要能被矩阵个数整除
+        # -------------------------------------------------------------------- 
+        assert out_features % len(enable_lora) == 0, \
+            'The length of enable_lora must divide out_features'
+        
+        # -------------------------------------------------------------------- 
+        # 表示哪一块矩阵是需要做lora的，例如[True, False, True]，
+        # 说明第一和第三块需要，第二块不要
+        # -------------------------------------------------------------------- 
+        self.enable_lora = enable_lora
+        
+        # -------------------------------------------------------------------- 
+        # bool值，表示是否需要对矩阵做转置，下文中会看到细节
+        # -------------------------------------------------------------------- 
+        self.fan_in_fan_out = fan_in_fan_out
+        
+        # -------------------------------------------------------------------- 
+        # Actual trainable parameters
+        # 如果秩>0，且其中有任意一矩阵需要做lora
+        # -------------------------------------------------------------------- 
+        if r > 0 and any(enable_lora):
+            # -------------------------------------------------------------------- 
+            # 初始化A矩阵
+            # self.weight继承自nn.linear下的属性，shape=(in_features, out_features)
+            #                                       =(hidden_size, hidden_size*3)
+            # lora_A的shape=(r*需要做lora的矩阵数量, hidden_size)
+            # 使用new_zeros，可以复制原来矩阵的数据类型和存储设备
+            # --------------------------------------------------------------------                                          
+            self.lora_A = nn.Parameter(
+                self.weight.new_zeros((r * sum(enable_lora), in_features)))
+
+            # -------------------------------------------------------------------- 
+            # 初始化B矩阵
+            # lora_B的shape=(hidden_size*需要做lora的矩阵数量, r)
+            # -------------------------------------------------------------------- 
+            self.lora_B = nn.Parameter(
+                self.weight.new_zeros((out_features // len(enable_lora) * sum(enable_lora), r))
+            ) # weights for Conv1D with groups=sum(enable_lora)
+
+            # --------------------------------------------------------------------  
+            # lora权重的缩放因子，
+            # 一方面决定预训练知识和lora学得的新知识间的比例，另一方面通过1/r因子使得
+            # 训练过程更加稳定（参考本文3.2部分的说明，以及lora原理篇中的讲解）
+            # 在gpt2做nlg的任务里，作者将lora_alpha设置为32，r设置为4
+            # --------------------------------------------------------------------  
+            self.scaling = self.lora_alpha / self.r
+            
+            # --------------------------------------------------------------------  
+            # Freezing the pre-trained weight matrix
+            # 原始的QKV矩阵需要冻结
+            # --------------------------------------------------------------------  
+            self.weight.requires_grad = False
+            
+            # -------------------------------------------------------------------- 
+            # Compute the indices
+            # 1. lora_ind的shape=(3, hidden_size)，默认值为False
+            # 2. 对lora_ind，只有需要做lora矩阵的那些行，才填充为True，例如hidden_size = 5,
+            # 第一和第三个矩阵需要做lora，则lora_ind变为：
+            # tensor([[ True,  True,  True,  True,  True],
+            #         [False, False, False, False, False],
+            #         [ True,  True,  True,  True,  True]])
+            # 最后，将lora_ind的形式转成shape=(3*hidden_size)
+            # -------------------------------------------------------------------- 
+            self.lora_ind = self.weight.new_zeros(
+                (out_features, ), dtype=torch.bool
+            ).view(len(enable_lora), -1)
+            self.lora_ind[enable_lora, :] = True
+            self.lora_ind = self.lora_ind.view(-1)
+        # 对lora_A和lora_B重新做参数初始化
+        self.reset_parameters()
+        # -------------------------------------------------------------------- 
+        # 若fan_in_fan_out = True,
+        # 则把weight的shape(hidden_size, 3*hidden_size) ->
+        # (3*hidden_size, hidden_size)
+        # 这样做的原因是，例如输入x=(b,s,h), w=(h, 3h)
+        # 调用F.linear(x, w)时，默认执行的是(b,s,h)*(3h,h)，
+        # 因此要通过这个方式，把w先做转置
+        # -------------------------------------------------------------------- 
+        if fan_in_fan_out:
+            self.weight.data = self.weight.data.transpose(0, 1)
+
+    def reset_parameters(self):
+        """
+        重新初始化参数
+        """
+        nn.Linear.reset_parameters(self)
+        if hasattr(self, 'lora_A'):
+            # -------------------------------------------------------------------- 
+            # initialize A the same way as the default for nn.Linear and B to zero
+            # 对lora_A，采用kaiming_uniform; 对lora_B，初始化为0
+            # -------------------------------------------------------------------- 
+            nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
+            nn.init.zeros_(self.lora_B)
+
+    def zero_pad(self, x):
+        """
+        x是数据过B矩阵后的结果，x.shape =(b, s, hidden_size*需要做lora的矩阵数量)
+        我们要将这个结果做zero padding，使得：
+        x.shape = (b, s, hidden_size*总矩阵数量)，在QKV的例子中，总矩阵数量=3，
+        其中不是我们要做lora矩阵的部分，都padding上0
+        """
+        result = x.new_zeros((*x.shape[:-1], self.out_features))
+        result = result.view(-1, self.out_features)
+        result[:, self.lora_ind] = x.reshape(
+            -1, self.out_features // len(self.enable_lora) * sum(self.enable_lora)
+        )
+        return result.view((*x.shape[:-1], self.out_features))
+
+    def train(self, mode: bool = True):
+        def T(w):
+            return w.transpose(0, 1) if self.fan_in_fan_out else w
+        nn.Linear.train(self, mode)
+        # --------------------------------------------------------------
+        # 如果是model.train()模式
+        # --------------------------------------------------------------
+        if mode:
+            if self.merge_weights and self.merged:
+                # Make sure that the weights are not merged
+                if self.r > 0 and any(self.enable_lora):
+                    # ---------------------------------------------------
+                    # delta_w: lora_A * lora_B矩阵后的结果
+                    #          输入x * delta_w是最终lora矩阵的输出
+                    # lora_A: shape=(r*需要做lora的矩阵数, h)
+                    # lora_B: shape=(h*需要做lora的矩阵数, r)
+                    # 过F.conv1d(lora_A当成输入，lora_B当成卷积)后的：
+                    # delta_w = (1, h*需要做lora的矩阵数, h)
+                    # squeeze之后delta_w = (h*需要做lora的矩阵数, h)
+                    # ---------------------------------------------------
+                    delta_w = F.conv1d(
+                        self.lora_A.data.unsqueeze(0), 
+                        self.lora_B.data.unsqueeze(-1), 
+                        groups=sum(self.enable_lora)
+                    ).squeeze(0)
+                    # 从pretrain矩阵中剔除lora部分
+                    self.weight.data -= self.zero_pad(T(delta_w * self.scaling))
+                # 当原来的lora剥离出来后，self.merge要设置成False，表示此时pretrain中不再有lora
+                self.merged = False
+        # --------------------------------------------------------------
+        # 如果是train.eval()模式: model.train(False) = train.eval()
+        # --------------------------------------------------------------
+        else:
+            if self.merge_weights and not self.merged:
+                # Merge the weights and mark it
+                if self.r > 0 and any(self.enable_lora):
+                    delta_w = F.conv1d(
+                        self.lora_A.data.unsqueeze(0), 
+                        self.lora_B.data.unsqueeze(-1), 
+                        groups=sum(self.enable_lora)
+                    ).squeeze(0)
+                    self.weight.data += self.zero_pad(T(delta_w * self.scaling))
+                # 既然已将lora合进pretrain，那么就要把self.merged设置为True
+                self.merged = True        
+
+    def forward(self, x: torch.Tensor):
+        """
+        Params:
+            x: 输入数据，形状为(b, s, h)
+        """
+        # -------------------------------------------------------------------- 
+        # 定义矩阵专置函数
+        # 例如原始矩阵是(hidden_size, 3*hidden_size),
+        # 转置之后为(3*hidden_size, hidden_size)
+        # -------------------------------------------------------------------- 
+        def T(w):
+            return w.transpose(0, 1) if self.fan_in_fan_out else w
+        # -------------------------------------------------------------------- 
+        # self.merged = True，如果lora和pretrain部分已经合起来
+        # 返回结果的shape = (b, s, 3*hidden_size)
+        # -------------------------------------------------------------------- 
+        if self.merged:
+            return F.linear(x, T(self.weight), bias=self.bias)
+        # -------------------------------------------------------------------- 
+        # self.merged = False，如果lora和pretrain部分没有合起来
+        # -------------------------------------------------------------------- 
+        else:
+            # 先用merged后的矩阵正常计算，result的shape = (b, s, 3*hidden_size)
+            result = F.linear(x, T(self.weight), bias=self.bias)
+            if self.r > 0:
+                # -------------------------------------------------------------------- 
+                # 数据过lora_A后的结果
+                # 结果shape = (b, s, h) * (h, r*需要做lora的矩阵的数量)
+                #          = (b, s, r*需要做lora的矩阵的数量)
+                # -------------------------------------------------------------------- 
+                after_A = F.linear(self.lora_dropout(x), self.lora_A)
+
+                # -------------------------------------------------------------------- 
+                # 数据过lora_A，再过lora_B后的结果
+                # F.conv1d(input=输入数据，weight=卷积核) 
+                # input = 输入数据过lora_A后的结果，shape = (b, r*需要做lora矩阵的数量, s)
+                # weight = (hidden_size*需要做lora的矩阵数量, r, 1)
+                # groups = 需要做lora的矩阵数量
+                # 通过F.conv1d计算出after_B的shape = (b, hidden_size*需要做lora的矩阵数量, s)
+                # 做transpose(-2, -1)转置后after_B的shape = (b, s, hidden_size*需要做lora的矩阵数量)
+                # -------------------------------------------------------------------- 
+                after_B = F.conv1d(
+                    after_A.transpose(-2, -1), 
+                    self.lora_B.unsqueeze(-1), 
+                    groups=sum(self.enable_lora)
+                ).transpose(-2, -1)
+
+                # -------------------------------------------------------------------- 
+                # 数据最终结果 = pretrain + lora
+                # zero_pad：将过B矩阵后的数据从shape=(b, s, hidden_size*需要做lora的矩阵数量)
+                #           变成(b, s, hidden_size*总矩阵数量)，
+                #           其中不属于需要做lora的部分就用0填重
+                # self.scaling = alpha/r，但暂时不知道scaling的作用
+                # -------------------------------------------------------------------- 
+                result += self.zero_pad(after_B) * self.scaling
+            return result
+```
+
+## LoRA 实战
+
+这里只列出核心部分，
+
+第一步，引进必要的库，如：LoRA 配置类 LoraConfig
+
+```plain
+from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, LoraConfig, TaskType
+```
+
+第二步，创建 LoRA 微调方法对应的配置。
+
+```plain
+peft_config = LoraConfig(
+    task_type=TaskType.CAUSAL_LM, 
+    inference_mode=False, 
+    r=8, 
+    lora_alpha=32, 
+    lora_dropout=0.1
+)
+```
+
+参数说明：
+
+-   task\_type：指定任务类型。如：条件生成任务（SEQ\_2\_SEQ\_LM），因果语言建模（CAUSAL\_LM）等。
+-   inference\_mode：是否在推理模式下使用Peft模型。
+-   r：LoRA低秩矩阵的维数。关于秩的选择，通常，使用4，8，16即可。
+-   lora\_alpha： LoRA低秩矩阵的缩放系数，为一个常数超参，调整alpha与调整学习率类似。
+-   lora\_dropout：LoRA 层的丢弃（dropout）率，取值范围为[0, 1)。
+-   target\_modules：要替换为 LoRA 的模块名称列表或模块名称的正则表达式。针对不同类型的模型，模块名称不一样，因此，我们需要根据具体的模型进行设置，比如，LLaMa的默认模块名为\[q\_proj, v\_proj]，我们也可以自行指定为：[q\_proj,k\_proj,v\_proj,o\_proj]。 在 PEFT 中支持的模型默认的模块名如下所示：
+
+```plain
+TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING = {
+    "t5": ["q", "v"],
+    "mt5": ["q", "v"],
+    "bart": ["q_proj", "v_proj"],
+    "gpt2": ["c_attn"],
+    "bloom": ["query_key_value"],
+    "blip-2": ["q", "v", "q_proj", "v_proj"],
+    "opt": ["q_proj", "v_proj"],
+    "gptj": ["q_proj", "v_proj"],
+    "gpt_neox": ["query_key_value"],
+    "gpt_neo": ["q_proj", "v_proj"],
+    "bert": ["query", "value"],
+    "roberta": ["query", "value"],
+    "xlm-roberta": ["query", "value"],
+    "electra": ["query", "value"],
+    "deberta-v2": ["query_proj", "value_proj"],
+    "deberta": ["in_proj"],
+    "layoutlm": ["query", "value"],
+    "llama": ["q_proj", "v_proj"],
+    "chatglm": ["query_key_value"],
+    "gpt_bigcode": ["c_attn"],
+    "mpt": ["Wqkv"],
+}
+```
+
+第三步，通过调用 get\_peft\_model 方法包装基础的 Transformer 模型。
+
+  
+
+```plain
+model = AutoModelForCausalLM.from_pretrained(model_name_or_path)
+model = get_peft_model(model, peft_config)
+model.print_trainable_parameters()
+model.train()
+```
+
+通过 print\_trainable\_parameters 方法可以查看到 LoRA 可训练参数的数量(仅为786,432)以及占比（仅为0.1404%）。
+
+```plain
+trainable params: 786,432 || all params: 560,001,024 || trainable%: 0.14043402892063284
+```
+
+第四步，模型训练的其余部分均无需更改，当模型训练完成之后，保存高效微调部分的模型权重以供模型推理即可。
+
+```plain
+peft_model_id = f"{model_name_or_path}_{peft_config.peft_type}_{peft_config.task_type}"
+model.save_pretrained(peft_model_id)
+```
+
+## LoRA 和 Prefix tuning 的联系
+
+[TOWARDS A UNIFIED VIEW OF PARAMETER-EFFICIENT TRANSFER LEARNING](https://arxiv.org/pdf/2110.04366.pdf)
+
+对于 prefix tuning，prompt 向量拼接后得到的 head 输出可以表示为：
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-24.png)
+
+公式1
+
+其中 的计算方式为
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-25.png)
+
+于是公式1的第二项 就是一个独立于原始序列的改动。再改变下形式，把第二项 Attn 展开
+
+$h \leftarrow (1-\lambda)h + \lambda softmax(xW_{q}P_{k}^{T})P_{v}$ 公式2
+
+如果我们定义些中间变量：
+
+$$
+W_{1} = W_{q}P_{k}^{T}
+$$
+
+$$
+W_{2} = P_{v}
+$$
+
+$$
+f = softmax
+$$
+
+就可以把公式2改写成 $h \leftarrow (1-\lambda)h + \lambda f(xW_{1})W_{2}$
+
+而 LoRA 的更新公式是
+
+$$
+h \leftarrow h + s * x W_{down}W_{up}
+$$
+
+可以看到俩都是 的形式。只是作用的位置不一样。其中 prefix tuning 是作用在 attention 输出， 而 LoRA 作用在 Q、K、V。虽然在计算 的方法不同，但都可以描述为 降维 -> 非线性 -> 升维 的形式。因此可以归结为下图的形式
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.1_大模型高效参数微调技术-26.png)
+
+# Ref
+
+1.  [大模型参数高效微调技术原理综述](https://zhuanlan.zhihu.com/p/635152813)
+2.  论文：[Scaling Down to Scale Up: A Guide to Parameter-Efficient Fine-Tuning](https://arxiv.org/pdf/2303.15647.pdf)
+{% endraw %}

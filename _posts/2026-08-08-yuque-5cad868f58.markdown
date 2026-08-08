@@ -1,0 +1,123 @@
+---
+title: "FlagEmbedding_代码梳理"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, NEXT, 3._地标业务, 1._地标信号识别, 1.4_相关性模型优化, 复现_BGE_和_大模型_embedding探索]
+categories: [NEXT]
+yuque: true
+---
+
+{% raw %}
+整体核心是 trainer - > EncoderOnlyEmbedderTrainer ，实际上就是 trainner
+
+-   trainer 的入参
+
+-   model： BiEncoderOnlyEmbedderModel -> AutoModel.from\_pretrained()
+
+-   BiEncoderOnlyEmbedderModel 集成自 AbsEmbedderModel
+
+-   model 就是从 AutoModel.from\_pretrained() 加载得到的模型
+-   forward 核心逻辑：
+
+-   编码 query 和 doc，得到表示 q\_reps 和 p\_reps
+-   计算 loss：self.\_compute\_cross\_device\_neg\_loss
+
+-   dataset: train\_dataset
+
+-   load\_train\_dataset -> AbsEmbedderTrainDataset 的核心代码
+
+-   加载数据，temp\_dataset\=datasets.load\_dataset('json', data\_files\=file\_path, split\='train', cache\_dir\=self.args.cache\_path)。
+
+-   如果数据条数大于1亿，就用 select 随机选取 1亿条
+-   可以设置将同一任务/数据集样本设置在一个 batch 内，有利于训练的稳定和处理的方便
+
+-   data\_collator: data\_collator
+
+-   AbsEmbedderCollator( tokenizer=self.tokenizer, query\_max\_len=self.data\_args.query\_max\_len, passage\_max\_len=self.data\_args.passage\_max\_len, sub\_batch\_size=self.training\_args.sub\_batch\_size, pad\_to\_multiple\_of=self.data\_args.pad\_to\_multiple\_of, padding=True, return\_tensors="pt" )
+
+-   对 DataCollatorWithPadding 进行包装，先拿到 query、passage、score，而后调用 tokenizer 进行编码和 pad
+
+-   tokenizer: tokenizer
+
+​  
+
+看一下forward 过程
+
+```python
+    def forward(
+        self, 
+        queries: Union[Dict[str, Tensor], List[Dict[str, Tensor]]] = None, 
+        passages: Union[Dict[str, Tensor], List[Dict[str, Tensor]]] = None,
+        teacher_scores: Union[None, List[float]] = None,
+        no_in_batch_neg_flag: bool = False,
+    ):
+        """The computation performed at every call.
+
+        Args:
+            queries (Union[Dict[str, Tensor], List[Dict[str, Tensor]]], optional): Input queries. Defaults to ``None``.
+            passages (Union[Dict[str, Tensor], List[Dict[str, Tensor]]], optional): Input passages. Defaults to ``None``.
+            teacher_scores (Union[None, List[float]], optional): Teacher scores for distillation. Defaults to ``None``.
+            no_in_batch_neg_flag (bool, optional): If True, use no in-batch negatives and no cross-device negatives. Defaults to ``False``.
+
+        Returns:
+            EmbedderOutput: Output of the forward call of model.
+        """
+        # query 编码  (batch_size, dim)
+        last_hidden_state = self.model(**queries, return_dict=True).last_hidden_state
+        q_reps = last_hidden_state[:, 0] # 取 cls 位置
+        q_reps = torch.nn.functional.normalize(q_reps, dim=-1)
+
+        # doc 编码   (batch_size * group_size, dim)
+        last_hidden_state = self.model(**passages, return_dict=True).last_hidden_state
+        p_reps = last_hidden_state[:, 0] # 取 cls 位置
+        p_reps = torch.nn.functional.normalize(p_reps, dim=-1)
+
+        # 计算 loss，见下面的拆解
+        if self.training:
+            group_size = p_reps.size(0) // q_reps.size(0)
+            cross_q_reps = self._dist_gather_tensor(q_reps) # (world_size * batch_size, dim)
+            cross_p_reps = self._dist_gather_tensor(p_reps) # (world_size * batch_size * group_size, dim)
+            cross_scores = torch.matmul(cross_q_reps, cross_p_reps.transpose(0, 1)) / self.temperature  # (world_size * batch_size, world_size * batch_size * group_size)
+            cross_idxs = torch.arange(cross_q_reps.size(0), device=cross_q_reps.device, dtype=torch.long)
+            cross_targets = cross_idxs * group_size # (world_size * batch_size)
+            loss = self.cross_entropy(cross_scores, cross_targets)
+        else:
+            loss = None
+
+        return EmbedderOutput(
+            loss=loss,
+        )
+```
+
+​  
+
+详细展开 \_compute\_cross\_device\_neg\_loss
+
+```python
+    def _compute_cross_device_neg_loss(self, q_reps, p_reps, teacher_targets=None, compute_score_func=None, **kwargs):
+        """
+        Compute loss when using both in-batch negatives and cross-device negatives
+        """
+        group_size = p_reps.size(0) // q_reps.size(0)
+
+        cross_q_reps = self._dist_gather_tensor(q_reps) # (world_size * batch_size, dim)
+        cross_p_reps = self._dist_gather_tensor(p_reps) # (world_size * batch_size * group_size, dim)
+
+        cross_scores = torch.matmul(cross_q_reps, cross_p_reps.transpose(0, 1)) / self.temperature  # (world_size * batch_size, world_size * batch_size * group_size)
+
+        cross_idxs = torch.arange(cross_q_reps.size(0), device=cross_q_reps.device, dtype=torch.long)
+        cross_targets = cross_idxs * group_size # (world_size * batch_size)
+        loss = self.cross_entropy(cross_scores, cross_targets)
+
+        return cross_scores, loss
+```
+
+-   line 5：首先计算出 group\_size ，它的含义我理解就是一条数据对应的正样本数量 + 负样本数量。比如有一条正样本，7条负样本， group\_size 就是8 。如果你这条数据的负样本只有 6 条，那会补上(随机选一条）
+-   line 7-8：从各个设备收集所有的表示向量
+-   line 10：计算 query 对 passage 的相关性分。实际上就是矩阵计算，比如 query 的 shape 是 [512, 312] , passage 的 shape 是 [1024, 312] ，那相关性分的 shape 就是 [512, 1024] 。里面的每个元素表示 对应 query 和 passage 的相关性分数
+-   line 12 - 13：每个 query 有一个正例，其余7个负例。所以代码里生成的 targets 的第一个元素 0 表示取第一行的第0个元素作为标签1。第二个元素8 表示取第二行的第8个元素作为正例作为标签1。
+-   line 14：用 targets 和 score 计算交叉熵，得到的就是 infoCSE loss 了
+
+​
+{% endraw %}

@@ -1,0 +1,514 @@
+---
+title: "精确翻译_50_Years_of_SUSY_and_SUGRA_(2603.04664)"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 物理, 粒子物理导论, CERN_2026年1–7月_arXiv_产出深度拆解_粒子物理全景与超对称专题]
+categories: [物理]
+yuque: true
+---
+
+{% raw %}
+> **原文信息**
+> 
+> -   **标题：** 50 Years of SUSY and SUGRA, circa 1974-2024, and Future Prospects（超对称与超引力五十年，约 1974–2024，及未来展望）
+> 
+> -   **作者：** Pran Nath（美国东北大学物理系）
+> 
+> -   **arXiv：** [2603.04664](https://arxiv.org/abs/2603.04664)（v2，2026-07-02）
+> 
+> -   **期刊：** International Journal of Modern Physics A (2026) 2630010
+> 
+> -   **许可：** **CC BY 4.0**（知识共享署名 4.0 国际许可协议）
+> 
+> **翻译说明：** 本译文为对原文逐句、忠实的精确翻译，保留全部 LaTeX 数学公式、引用与图表标注原貌（数学符号与命令未予改写）。译文仅供学习研究使用。根据 CC BY 4.0，使用时须注明原作者与出处；可自由复制、分发与演绎，但须署名且不附加额外限制。
+> 
+> **符号约定（标准记号，沿用原文）：** $\kappa = M_{Pl}^{-1}$（$M_{Pl}\equiv\kappa^{-1}\sim 2.4\times 10^{18}\,\text{GeV}$ 为约化普朗克质量）；$P_\mu$ 为四维动量；$Q_\alpha,\bar Q_{\dot\beta}$ 为超对称生成元；$\sigma^\mu_{\alpha\dot\beta}$ 为泡利矩阵；$\eta_{ab}$ 为闵氏度规。
+
+---
+
+## 摘要（Abstract）
+
+上世纪七十年代初超对称（SUSY）的发展、七十年代中期规范超对称与超引力（SUGRA）的发展，以及八十年代初引力介导的超对称破缺与超引力大统一的发展，推动了在追求粒子物理基本相互作用统一方面取得的显著进展。这些发展也使粒子物理、宇宙学与弦论相互交织。由于超对称与超引力在普朗克尺度之下作为超弦理论低能有效理论而显现，对它们的实验检验对于超弦理论本身的有效性而言具有重要意义。
+
+正因如此，在过去的几十年里，自超对称与 SUGRA 模型问世之后，人们在对撞机实验、精密实验以及天体物理与宇宙学数据中，对超对称进行了持续不断的实验搜寻。SUSY 与 SUGRA 模型也对与暴胀、暗物质和暗能量相关的理论产生了深远影响。本文旨在从"桥"上的视角，回顾 1974–2024 这五十年间上述诸方向的发展历程。
+
+**关键词：** SUSY（超对称），SUGRA（超引力），unification（统一），future（未来）
+
+---
+
+## 1\. SUSY 的早期历史（Early history of SUSY）
+
+超对称领域最早的一批论文出现于 1971–1974 年间。因此在 1971 年，Yu. A. Golfand 与 E. P. Lykhtman 将庞加莱代数扩展，纳入了旋量生成元 $Q_\alpha, \bar Q_{\dot \beta}$，在两分量记号下它们满足关系
+
+$$
+\{ Q_\alpha, \bar Q_{\dot\beta} \} = 2 \sigma^\mu_{\alpha\dot\beta} P_\mu,~~~
+\{Q_\alpha, Q_\beta\}=0,
+$$
+
+以及关系 $[P_\mu, Q_\alpha] = 0$、$[M_{\mu\nu}, Q_\alpha]= -\frac{i}{2} (\sigma_{\mu\nu})_\alpha{}^\beta Q_\beta$ 及其厄米共轭关系。
+
+大约在同一时期，Ramond 在世界面上发现了一种由费米模式 $F_r$ 生成的 graded 代数，它将 Virasoro 生成元 $L_n$ 的代数（其中 $c$ 为中心荷，满足 $[L_m, L_n] = (m-n) L_{m+n} + \frac{c}{12} m(m^2-1)\,\delta_{m+n,0}$）扩展为包含如下关系：
+
+$$
+\{ F_r , F_s \} =2 L_{r+s}+  \frac{c}{3}\left(m^2 - \frac{1}{4}\right)\delta_{m+n,0}, ~~[L_m, F_r]=(\frac{m}{2} -r) F_{m+r}.
+$$
+
+Ramond 的构造是在二维空间中，最终导向了弦论中的时空超对称。1973 年，Volkov 与 Akulov 构造了第一个自发超对称破缺的模型。1974 年，Wess 与 Zumino 发展了第一个在超对称场论变换下不变的、可重整化的四维拉格朗日量模型。在 Wess 与 Zumino 的工作之后，Salam 与 Strathdee 引入了超空间（superspace）来描述超对称。他们还用超空间构造了在超规范变换下不变的拉格朗日量。超空间由普通的玻色时空坐标 $x^\mu$ 出发，再加上费米坐标 $\theta_\alpha$（其为 Majorana 旋量）构成，满足反对易关系 $\{\theta_\alpha,\theta_\beta\}=0$。超对称一个引人注目的特征是它克服了 Coleman–Mandula 定理的限制——该定理在仅涉及对易子的常规李代数框架下，不允许将时空对称性与内禀对称性统一起来。而在 graded 李代数中这一定理被克服，使得超对称成为 S 矩阵所允许的对称性。
+
+---
+
+## 2\. 局域超对称的起源（Origin of Local Supersymmetry）
+
+局域超对称最早的表述是规范超对称（Gauge Supersymmetry），它建立在切空间超群 $\mathrm{OSp}(3,1|4N)$ 之上。该群的 $O(3,1)$ 部分指时空的洛伦兹对称性，而 $Sp(4N)$ 部分是一个作用在费米坐标上的对称群，"bar"表示该群是一个具有玻色与费米生成元的超群（其生成元构成群的代数）。这一群通常被称为正交辛群（orthosymplectic）。以切空间群 $\mathrm{OSp}(3,1|4N)$ 为规范群的规范理论，包含了爱因斯坦引力与局域超对称。规范超对称的自发破缺导致一个整体超对称的真空态，由超度规
+
+$$
+g_{AB} =\text{diag} (\eta_{ab},  k\eta_{\alpha\beta}\,\delta_{ij})
+$$
+
+给出，其中 $k$ 是一个与度规一起进入费米线元的常数。规范超对称的规范群是人们所能拥有的最大的超群，这意味着任何其他局域超对称理论必定是规范超对称的一个子块。因此，在 1975 年规范超对称提出之后，当前的"标准超引力"于 1976 年提出，其切空间群为 $O(3,1)\times O(N)$，它是 $OSp(3,1|4N)$ 的一个子块。
+
+上述情形使人预期，标准超引力理论的动力学也将从规范超对称的动力学在某些极限下产生。事实上，若干工作表明情况确实如此。从几何上看，规范超对称与超引力之间的联系如下：通过只保留自旋 2 与自旋 $3/2$ 的场，并令 $k\to 0$，将规范超对称的黎曼几何约化为标准超引力理论的非黎曼超空间几何，即可由切空间群为 $O(3,1)\times O(N)$ 的标准超引力从规范超对称中产生。这一收缩（contraction）产生了超空间表述超引力所需的挠率，而规范超对称的切空间群 $OSp(3,1|4N)$ 约化为超引力的切空间群 $O(3,1)\times O(N)$。进而，超引力的运动方程由规范超对称的动力学方程在仅含自旋 2 与自旋 $3/2$ 场的内容下浮现出来。因此，规范超对称几何的 $k\to 0$ 极限正确地在超空间中产生了超引力几何。规范超对称向超引力的几何收缩，可视为 Inonu–Wigner 群收缩的对应物。关于规范超对称在 $k\to 0$ 极限下趋于标准超引力的更详细讨论见附录 A。
+
+我们在此指出，在 Freedman、Deser 等人的工作之后，还出现了超引力的若干不同表述，其中包括 AHCThesis、Chamseddine、MacDowell、Siegel 等人的工作以及其他若干工作。
+
+---
+
+## 3\. 超引力大统一：SUGRA（Supergravity grand unification: SUGRA）
+
+超对称之所以在粒子物理中声名鹊起，是因为它解决了规范层级问题（gauge hierarchy problem）。在标准模型中，对希格斯玻色子质量平方的圈修正来自夸克/轻子圈，正比于 $\Lambda^2$，其中 $\Lambda$ 为截断尺度，可高达普朗克尺度 $M_{Pl}=(8\pi G_N)^{-1/2}$（$G_N$ 为牛顿常数），数值上 $M_{Pl}\equiv \kappa^{-1}\sim 2.4\times 10^{18}$ GeV。这就要求进行巨量的精细调节，才能将希格斯玻色子质量压低到电弱尺度。在超对称理论中，这一巨大修正被标量夸克/标量轻子（squark/slepton）圈所抵消。关于这一现象及其与无重整化定理关系的进一步讨论见附录 B。然而，精确的超对称并不可行，因为超对称粒子迄今未被观测到。因此，要得到一个可行的模型，就需要使 sparticle（超对称伴粒子）足够重以逃过探测。最简单的可能性是自发破缺超对称。然而，对整体（global）超对称而言，要实现一个可行的破缺是困难的。
+
+困难的原因之一在于，超对称模型的哈密顿量是半正定的，这意味着最低能态是未破缺超对称、能量 $E=0$ 的态，而由超对称破缺产生的态位于其上。与超对称自发破缺相关的另一个问题，是会出现一个无质量的 Goldstino 场，这与观测相矛盾。在唯象上，人们可以加入软项（soft terms），它不改变理论的紫外行为。软项的加入使得规范耦合 $SU(3)\times SU(2)\times U(1)$ 的大统一成为可能。这些分析进一步激励了在基础粒子物理框架内理论地产生软项。
+
+### 3.1 应用 N=1 超引力：与物质及规范多重态的耦合（Applied N=1 supergravity: couplings to matter and gauge multiplets）
+
+由于在整体 SUSY 模型中难以通过自发破缺得到可接受、并能产生软项的模型，自然地，人们转向在局域超对称框架内构造大统一模型。构造一个超引力统一模型首先需要的一件事，是得到超引力与物质多重态的耦合——物质多重态包括描述夸克、轻子与希格斯的手征超场（chiral superfields），以及描述规范群规范玻色子的矢量超场（vector superfields）。然而在 1981 年，当时仅通过 Cremmer 等人的工作（他们使用了超共形张量演算的规则）知道了超引力与单一手征场的耦合。因此，人们需要将耦合扩展到多个手征场，并纳入与规范场的耦合。这类构造后来被称为"应用超引力"（applied supergravity）。上述分析一个引人注目的方面是：超引力与物质的耦合由三个函数完全确定——超势 $W(Z_A)$、Kähler 势 $K(Z_A, Z_A^\dagger)$ 以及一个规范动力学函数 $f_{AB}(Z_A)$，其中 $Z_A$ 是手征多重态的玻色分量。由分析得到的标量势形式为
+
+$$
+V=-\frac{1}{\kappa^4}e^{-G}(3+(G^{-1})^A_BG_{,A}G,^{B})
++\frac{1}{2\kappa^4}
+Re(f^{-1})_{rs} D^r D^s
+$$
+
+其中 $G$ 定义为
+
+$$
+G=-\kappa^2 K(Z,Z^{\dagger}) -ln(\frac{\kappa^6}{4}|W|^2).
+$$
+
+在上面，$(G^{-1})^A_B$ 是 $G_{,A}^{~B}$ 的逆，而 $D^r = -g_r \kappa^{-2} (G_i(T^r)_{ij} Z_j)$，其中 $g_r$ 是具有生成元 $T^r$ 的规范群的规范耦合常数。完整的势包含所有手征场，而完整的拉格朗日量涉及规范动力学函数 $f_{AB}$，它在费米规范相互作用中占据显著地位。势的整体超对称极限可通过令 $M_{Pl} \rightarrow \infty$、相应地 $\kappa\to 0$ 得到。
+
+现在我们来讨论超引力标量势相对于整体 SUSY 情形标量势的一个重要区别特征。在整体 SUSY 下标量势是正定的，但在超引力标量势下并非如此。我们以 $SU(5)$ 大统一为例说明这一区别：其中 GUT 对称性由 24 重态希格斯 $\Sigma_x^{~y}$ 破缺，超势为 $W=\frac{1}{3} \Sigma^3+\frac{1}{2}M \Sigma^2$。在此情形下，势对以下三种情况之一取极小：(i) $\Sigma_y^{~x}=0$；(ii) $\Sigma_y^{~x}=\frac{1}{3} M[\delta_y^{~x}-5 \delta_5^{~x}\delta_y^{~5}]$；(iii) $\Sigma_y^{~x} =M[2 \delta_y^{~x} - 5(\delta_5^{~x}\delta_y^{~5}+ \delta_4^{~x}\delta_y^{~4})]$。这里的三种情况描述了场 $\Sigma$ 的对称性破缺模式。因此，(i) 对应无对称性破缺，(ii) 描述 $SU(5)$ 破缺到 $SU(4)\times U(1)$，(iii) 描述 $SU(5)$ 破缺到标准模型规范群 $SU(3)_C\times SU(2)\times U(1)$。对于整体超对称情形，所有这些真空都是简并的。然而，对于超引力势，简并被解除，且解除正比于 $\kappa^2 W(\Sigma_0)$。进而，如果选取解 (iii) 为物理真空，并通过在超势中加入一个常数将该情形的真空能调节为零，那么另外两个真空态具有更低的真空能。Weinberg 曾论证，尽管情形 (iii) 的平坦真空并非最低能态，但它在有限微扰下是稳定的。在迄今的分析中，虽然规范群的规范对称性被破缺，超对称却仍然完好。为了得到一个可行的模型，需要破缺超对称。
+
+### 3.2 超对称破缺（SUSY breaking）
+
+除了解除 GUT 对称性破缺中真空态的简并之外，超引力相互作用还通过超 Higgs 现象以可行的方式帮助自发破缺超对称。这之所以成为可能，是因为标量势 $V$ 不再是半正定的。超 Higgs 机制的一个简单演示是假设一个线性超势 $W = m^2(Z + B)$，其中 $Z$ 是一个单态超 Higgs 场。在超引力势 $V$ 中使用这一超势，会产生大小为普朗克质量的 $&lt;Z&gt;$ 的期望值（VEV），使得 $\kappa &lt;Z&gt; = O(1)$。此外，参数 $B$ 允许人们将宇宙学常数调节为零。更一般地，可以假设形如 $W = m^2f(\kappa Z)/\kappa$ 的 $W$，它同样会在 $\kappa &lt;Z&gt; = O(1)$ 时导致势的极小，并给出 $&lt;W&gt; =O(m^2/\kappa)$。破缺之后，引力微子（gravitino）获得大小为 $\kappa^2&lt;W&gt; = \kappa m^2$ 的质量。进一步，超 Higgs 破缺解决了整体超对称中"自发破缺超对称导致无质量 goldstino"的问题。在使用超引力势 $V$ 的超 Higgs 破缺中，goldstino 被无质量的自旋 $3/2$ 引力微子吸收，从而变得有质量。
+
+为了建立超引力大统一，我们需要确保不出现普朗克质量或 GUT 质量 $M_G$ 量级的软项。令 $Z_A$ 表示分析中进入的所有场，使得 $Z_A=(Z_a, Z)$，其中 $Z_a$ 是可见 Sector 中的所有场，$Z$ 是超 Higgs 场。在此情形下，超势中形如 $Z_a Z_b Z$ 的耦合会为可见 Sector 的场产生普朗克质量量级的的质量。为了避免这一不希望出现的结果，我们必须有另一个 Sector，即隐藏 Sector（hidden sector），其中 $Z$ 栖身；并假设在超势层面上可见 Sector 与隐藏 Sector 之间没有接触，即 $W_t(Z_a, Z)=W (Z_a)+ W_h(Z)$，其中 $W_t$ 是总超势，$W(Z_a)$ 是可见 Sector 场集合的超势，$W_h(z)$ 是隐藏 Sector 的超势。两个 Sector 的分离保证了它们之间的通讯被 $1/M_{Pl}$ 因子压低。当可见 Sector 中所有场都轻时这成立，人们发现软项典型大小为 $m_s=\kappa m^2$，当 $m\sim 10^{11}$ GeV 时可落在电弱区域。然而，对于大统一理论，既有轻 Sector 也有重 Sector，因此 $Z_a=(Z_\alpha, Z_i)$，其中 $Z_\alpha$ 轻而 $Z_i$ 重。在此情形下，质量平方修正可能变得很大，并可能出现如下形式的项
+
+$$
+m_s M_G, ~m_s M_G (\kappa M_G), \cdots,  m_s M_G (\kappa M_G)^k,
+$$
+
+对于 $k\leq 6$ 而言，这会破坏规范层级。在文献中表明，施加如下约束
+
+$$
+W_{,\alpha i} = O(\kappa  m^2);  ~~W_{,\alpha \beta} = O(\kappa m^2)
+$$
+
+就足以保护低能物理不受 GUT 质量尺度修正的影响。利用上述条件，一个显著的有效低能理论形式浮现出来。因此，对于 $f_{\alpha\beta} = \delta_{\alpha\beta}$ 且 Kähler 势取为与味无关的情形，得到
+
+$$
+V_{eff} = |\frac{\partial \tilde W}{\partial Z_{\alpha}}|^2  +
+m_0^2 Z_{\alpha}^{\dagger} Z_{\alpha} + (B_0 W^{(2)} + A_0 W^{(3)} + h.c)  + \frac{1}{2}[g_\sigma
+\kappa^{-2}
+(G_{\alpha}
+(T^{\sigma} Z)_{\alpha})]^2,
+$$
+
+其中 $\tilde W$ 是只包含轻场二次与三次函数的超势，即 $\tilde W(Z_{\alpha}) = W^{(2)}(Z_{\alpha}) + W^{(3)}(Z_{\alpha})$，而 $m_0, A_0, B_0$ 是大小为 $m_s$ 的软破缺参数。
+
+对于最小超对称标准模型（MSSM），$W^{(2)}$ 会包含形如 $\mu H_1H_2$ 的项，其中 $\mu$ 具有质量的量纲。这类项可由三次相互作用 $SH_1H_2$ 产生。结果 $S$ 可以发展出大小为 $m_s$ 的 VEV，从而产生电弱量级大小的贡献。一个更方便的机制是在 Kähler 势中假设形如 $c H_1H_2+ h.c.$ 的项，然后作 Kähler 变换将其移到超势中。另一个产生电弱大小 $\mu$ 的解是通过 Peccei–Quinn（PQ）对称性的破缺。假设 $H_1H_2$ 在整体 $U(1)_{\mathrm{PQ}}$ 对称性下不是不变的，但更高维算符 $\frac{S^2}{M_{Pl}} H_1H_2$ 由于 $S$ 带有适当的 PQ 荷而是不变的。在此情形下，虽然 $\mu=0$ 在树级成立，但在 PQ 自发破缺后它被产生出来。因此 PQ 对称性自发破缺后，场 $S$ 发展出 VEV，使得 $&lt;S&gt;\sim f_a$，其中 $f_a$ 是轴子衰变常数，而 $f_a\sim (10^{10}-10^{11})$ GeV 可以产生电弱大小的 $\mu$。另一个相关文献涉及在不产生 R 宇称破坏算符的前提下对十维时空进行约化，以及用电弱大小 $\mu$ 项解决强 CP 问题。
+
+接下来考虑耦合 $y_{ij\alpha} Z_iZ_j Z_{\alpha}$。除非 $Z_i$ 与 $Z_j$ 的 VEV 为零，否则这一耦合是被禁止的。我们注意到，除了式给出的标量夸克与标量轻子质量增长之外，gaugino（胶微子/规范微子）也可以获得质量。这可以在圈层级通过交换重场发生。一般地，gaugino 质量项具有形式 $(\tilde m)_{\alpha\beta} \lambda^\alpha \gamma^0 \lambda^\beta$。一个平坦的规范动力学项在交换重场后，会在 SUSY 破缺后给出 gaugino 质量，使得
+
+$$
+\tilde m_i= \frac{\alpha_i}{4\pi} m_{1/2} \frac{D(R)}{D(A)}
+$$
+
+其中 $i$ 指标规范群 $SU(3)_C$、$SU(2)$ 与 $U(1)$，$\alpha_i$ 是相应的规范耦合常数，$D(R)$ 是被交换表示的维数，$D(A)$ 是伴随表示的维数。或者，也可以更直接地通过在规范动力学能量函数中取适当的场依赖来产生。一般地，gaugino 质量可以都不同（只要与 $SU(3)_C\times SU(2)\times U(1)$ 规范不变性相容），即 $\tilde{m}_i, i=1,2,3$；但最简单的可能是它们在统一尺度全都相等，即 $\tilde{m}_i=m_{1/2}$。我们在此指出，在文献的工作之后有若干有趣的工作，其中主要是 Barbieri、Ibanez、Hall 等人的工作。关于 SUGRA 统一的历史视角，参见
+
+关于 SUGRA 统一的历史视角，参见 Chamseddine、Chamseddine、Arnowitt、Nath 等人的工作。关于超引力与弦论中软项的进一步工作，可见 Kaplunovsky、Brignole、Camara、Grana 以及相交 D 膜模型中的 Kors、Lust 等人的工作。关于场、弦与膜中超对称破缺的更详细讨论，参见 Dudas 的工作。
+
+### 3.3 电弱对称性的辐射破缺（Radiative breaking of electroweak symmetry）
+
+在大统一理论中，规范耦合与 Yukawa 耦合定义于大统一尺度，并使用重正化群演化到电弱尺度。它们在一圈与两圈重正化群阶上的演化已在若干工作中完成。在超引力大统一中，还需要软参数的演化，因为它们进入标量夸克、标量轻子、希格斯、higgsino 与 gaugino 质量的计算。它们在两圈阶上的演化也在若干工作中完成。
+
+在标准模型中，电弱对称性的破缺是 ad hoc（人为的），即在拉格朗日量中加入一个快子（tachyonic）质量项来实现破缺。在整体 SUSY GUT 中，$SU(2)_L \times U(1)$ 对称性破缺可以作为超对称破缺引起的辐射效应的结果而出现。如前所述，整体超对称没有根本的方法来实现唯象上可行的超对称破缺。由于在 SUGRA 模型中，超对称可以以自洽的方式自发破缺，这就提出了从第一性原理破缺电弱对称性的可能性。实现这一点的一个优雅方式是通过重正化群效应与辐射破缺，这已在若干工作中实现。在 SUGRA 大统一模型中，电弱对称性的破缺以一种与电荷与色守恒相容的自然方式出现。顶夸克的 Yukawa 耦合（质量为 175 GeV）在诱导辐射破缺中起着关键作用。因此最小 SUGRA 模型涉及一对希格斯二重态 $H_i$（$i=1,2$），其中 $H_2$ 与上夸克耦合，$H_1$ 与下夸克及轻子耦合。$H_2$ 希格斯软质量 $m_{H_2}^2$ 的 RG 方程包含来自顶夸克 Yukawa 耦合的主导负贡献，它在低能下驱动 $m_{H_2}^2$ 变负，导致 $H_i$ 的中性分量形成 VEV，即 $v_i=&lt;H_i&gt;$，从而破缺电弱对称性。VEV $v= \sqrt{v^2_1+ v^2_2}$ 由其与费米常数的关系确定为 $v\sim 246$ GeV，即 $G^{-1/2}_F=2^{1/4} v$。在低能物理分析中一个方便的参数是 $\tan\beta=&lt;H_2&gt;/&lt;H_1&gt;$，其中 $&lt;H_2&gt;$ 赋予上夸克质量，$&lt;H_1&gt;$ 赋予底夸克与轻子质量。
+
+### 3.4 mSUGRA
+
+在超引力统一中，$\mu$ 项作为 SUSY 破缺与某个标量场获得大小为 SUSY 破缺尺度（尽管它并非软参数）的 VEV 的后果而出现。如前所述，$\mu$ 也可以通过 Kähler 变换产生，该变换将 Kähler 势中的项 $cH_1H_2+ h.c.$ 变换到超势中。因此，式 (包含普适 gaugino 质量及 GUT 尺度上的 $\mu$) 的参数空间由 $m_0, m_{1/2}, A_0, B_0,\mu_0$ 给出。重正化群方程将这些参数从 GUT 尺度演化到电弱尺度。具体而言，$B_0,\mu_0$ 在电弱尺度变为 $B,\mu$，而关于 $v_1$ 与 $v_2$ 的希格斯势极小化给出两个方程，在树级为
+
+$$
+\mu^2=
+ {m_{H_1}^2-m_{H_2}^2\tan^2\beta\over \tan^2\beta-1} -{1\over 2}M_Z^2, ~~ B\mu={1\over 2}
+ \left(m_{H_1}^2+m_{H_2}^2+2\mu^2\right)\sin 2\beta .
+$$
+
+利用 $M_Z$ 作为输入来固定上述左手方程中的电弱尺度，人们调节 $\mu$，将参数空间从五个减到四个。进一步，可以利用右手方程消去 $B$ 而用 $\tan\beta$ 表示，剩余参数空间即为
+
+$$
+m_0, m_{\frac{1}{2}}, 
+A_0, \tan\beta, ~\text{sign}(\mu).
+$$
+
+这里我们有 4 个参数以及 $\mu$ 的符号（它之所以出现，是因为极小化方程确定的是 $\mu^2$，从而 $\mu$ 的符号未被确定）。由式给出的模型参数空间完全确定了 sparticle 的唯象。
+
+使用式的参数集对超引力大统一内 sparticle 质量谱的分析最早在 Arnowitt、Ross 等人的工作中完成，他们从式参数出发计算了所有 sparticle 的质量。式所刻画的模型曾被称为最小超引力模型、mSUGRA 与 CMSSM。其中缩写 mSUGRA 最为合适，因为它指明了其 SUGRA 起源，并将其与具有非普适性的 SUGRA 模型（我们记为 nSUGRA）区分开来，后者在后来的研究中也被广泛探讨。
+
+人们可以将上述这一组非常受限的参数，与整体超对称模型 MSSM 相对比——MSSM 允许加入大量与二次发散相消条件相容的软项。因此，在没有关于软 SUSY 参数如何产生的理论的情况下，人们不得不将一百多个参数约束到仅仅少数几个。然而如前所述，在非普适 SUGRA 模型中可以以受控的方式加入非普适性。因此，我们可以在希格斯玻色子 Sector、与 FCNC 相容的第三代 Sector，以及 gaugino Sector（其中 gaugino 质量 $\tilde m_i$，$i=1,2,3$，可以获取独立的质量）中允许非普适性。我们注意到，一般地 gaugino 质量会带有相位，这些相位进入夸克与轻子的电偶极矩。尽管引力介导的超对称破缺是第一个被发现的自洽超对称破缺机制，自那以后还出现了若干其他超对称破缺机制，其中包括规范介导、反常介导、gaugino 介导、模介导、模-反常介导（通常称为 mirage mediation，蜃景介导）、带 Green–Schwarz 机制的动力学破缺，以及劈裂超对称等。
+
+我们现在简要讨论与自然性（naturalness）相关的问题，它关系到电弱对称性破缺以及 sparticle 质量谱中一个小层级（little hierarchy）的生成。对于 GUT 尺度的普适边界条件，我们可以将电弱对称性破缺用 GUT 参数 $\mu_0, m_0, m_{1/2}, A_0$ 表示，使得 $\mu^2 = -\frac{1}{2}M_Z^2 + m^2_0 C_1+ A^2_0 C_2 + m^2_{1/2} C_3+ m_{1/2} A_0 C_4$，其中 $C_i$ 与 $\mu$ 依赖于重正化群尺度。如果 $C_i$ 全为正，人们会预期软参数与 $\mu$ 都在电弱尺度量级。然而，参数空间中存在 $C_1$ 可以消失甚至变为负的区域，这使得 $m_0$ 可以很大，即大到 $O(10)$ TeV。这就是辐射破缺的双曲分支（hyperbolic branch）。在该区域，弱尺度对 $m_0$ 变得不敏感，并且可以维持相对于 $m_0$ 很小的 $\mu$。上述结果是内部相消的后果，而非弱尺度上的精细调节。小的 $\mu$ 已被用于若干电弱物理的 SUSY 分析中。我们在此指出另一个现象，它允许生成自然的层级：其中标量夸克变得很重（质量为数 TeV 区域），而标量轻子保持相对较轻（数百 GeV）。这出现在重 gluino 驱动重正化群演化、而 $m_0$ 很小的情况——由于色相互作用，标量夸克质量被驱动到 TeV 区域，而标量轻子质量仍停留在数百 GeV 区域。同样，标量轻子质量与标量夸克质量之间的小层级是自然的，因为它作为 RG 演化的结果而出现。
+
+需要指出，mSUGRA 是在可见 Sector 标量场集合上取普适 Kähler 度规、以及普适规范动力学能量函数的假设下得到的。然而，式与式给出的超引力大统一形式体系是一般的，非普适性可以容易地引入，正如许多后续工作所指出。进一步，需要注意，即便标量质量在 GUT 尺度是普适的，它们在电弱尺度也不会是普适的。因此，与 SUSY 模型相关的另一个问题涉及味改变中性流（FCNC）。这是因为 sfermion 软质量与三线性耦合未必与费米 Yukawa 矩阵对齐，这一般可能引入显著的 FCNC。然而，FCNC 受到数据的强烈约束，例如关于 $K^0$–$\bar{K}^0$ 混合以及 $\mu \to e \gamma$ 的数据。解决 SUSY 味问题的一种途径是解耦合解——其中第一代与第二代 sfermion 比第三代重得多（即数 TeV 量级），这导致 FCNC 的质量压低。Seiberg 对齐机制利用强动力学实现了这种对齐。
+
+---
+
+## 4\. SUGRA GUT 的检验（Tests of SUGRA GUTs）
+
+### 4.1 规范与 Yukawa 耦合的统一（Gauge and Yukawa coupling unification）
+
+规范耦合统一的历史可追溯到 Georgi、Quinn 与 Weinberg 的论文。他们的分析表明，强、弱、电磁相互作用的规范耦合并不是常数，而是依赖于能量尺度。因此，规范耦合可以从低能外推到高能，从而允许在高尺度上检验它们是否统一。在标准模型中，外推确实使规范耦合常数在 $10^{14}-10^{15}$ GeV 尺度上彼此接近。然而，三者在一个尺度上会合则相差甚远。在 MSSM 中，规范耦合统一确实提供了更大希望。因此，在 1991 年 LEP 对规范耦合常数的精密测量之后，出现了大量以不同精度检验 SUSY 与 SUGRA 模型的工作。然而，已有指出，来自未知普朗克尺度物理的引力涂抹（gravitational smearing）可能影响普朗克尺度之下有效超对称大统一的预言。规范耦合常数的精密测量对弦论也有重要意义。因此，弦论中的规范耦合统一，以及 F 理论大统一中的规范耦合统一，均有分析。
+
+SUGRA GUT 的另一个重要方面，是第三代夸克 Yukawa 耦合统一的可能性。典型地，这可以在大 $\tan\beta$ 的情形下发生（可高达 $\tan\beta\sim 50$），但在某些模型中也可以在更小的 $\tan\beta$ 下出现。
+
+### 4.2 SUGRA 中希格斯玻色子质量的上限（Upper limit on the Higgs boson mass in SUGRA）
+
+希格斯玻色子质量的预言：具有电弱对称性辐射破缺的 SUGRA 模型允许 $A_0/m_0$ 在一个宽泛范围内，即在 GUT 尺度为 $(-5,5)$。重正化群演化因此允许电弱尺度上的三线性耦合 $A_t$ 落在类似范围，导致 $A_t$ 具有 $\mathcal{O}({\rm TeV})$ 量级的大小。这一观察的一个重要方面是，对于给定的 $\mu, \tan \beta,m_0$ 值，一个可观的 $A_t$ 会对希格斯玻色子质量作出相应的可观贡献。我们顺便指出，产生大 $A_t$ 的可能性是 SUGRA 模型所特有的。因此在规范介导破缺中，$A_t$ 相对标量质量被圈压低。在反常介导破缺中，$A_t$ 项也被圈压低，并且不像 SUGRA 模型中那样是一个自由参数。回到 SUGRA 模型：由于在 SUGRA 统一模型中轻希格斯在树级质量低于 $M_Z$，圈修正可以将希格斯质量显著提升到 $M_Z$ 之上。最大的圈修正来自 stop（$\tilde t_1, \tilde t_2$，顶夸克的超对称伙伴），来自底夸克超对称伙伴（即 $\tilde b_1, \tilde b_2$）的贡献也很重要。因此对于大 $\tan\beta$，$\tilde b_i$（$i=1,2$）的圈贡献可以与 $\tilde t_i$（$i=1,2$）的相当。反过来说，大的圈修正将意味着重的 sparticle 谱，特别是重的标量夸克，而 gaugino Sector 不受约束。利用上述论证，由于需要将希格斯玻色子质量通过大圈修正拉高到其树级值之上，它指向至少部分标量 sparticle 谱是重的。事实上，希格斯玻色子质量的圈修正允许标量夸克与 10 TeV 一样重或更重，同时允许 gaugino 保持轻。尽管标量夸克可以重达 10 TeV 甚至更重，该解在辐射破缺的双曲分支内仍然是自然的。当然，人们在此情形下如何定义自然性有些主观，因为存在基于所选定具体判据的各种自然性定义。将标量夸克质量上限设为 10 TeV，直接导出希格斯玻色子质量上限约 135 GeV。确实，包括电弱对称性约束在内的更严格分析预言希格斯玻色子质量低于 130 GeV。考虑到在标准模型中希格斯玻色子质量受幺正性约束可高达 $O(1)$ TeV，这一结果必须被认为是非常引人注目的。上述讨论在最小 SUGRA 模型内进行。然而，类似结果在其他辐射破缺情形中也成立。我们顺便指出，更重的希格斯玻色子质量也可以通过多种不同方式得到，例如层级破缺模型、加入矢量样多重态、例外超对称模型等。
+
+### 4.3 SUGRA 与 SM 的真空稳定性（Vacuum stability in SUGRA vs SM）
+
+对于 125 GeV 的希格斯玻色子质量，在标准模型当前顶夸克质量的测量精度下，真空稳定性并不能保证。因此，SM 中的希格斯势为 $V(H)= -\mu^2 H^\dagger H + \lambda (H^\dagger H)^2$。对于 $\lambda &gt;0$，在电弱尺度上 $v= 246$ GeV 处得到一个稳定极小。四次方耦合 $\lambda$ 的 RG 演化由 beta 函数 $\beta_\lambda =d\lambda/d\log Q$ 支配，其中 $Q$ 是重正化群尺度。对于标准模型希格斯势，它由 $\beta_\lambda \simeq (24 \lambda^2- 6y_t^4)/(4\pi)^2$ 给出，并由顶夸克 Yukawa 耦合 $y_t$ 主导。根据当前关于希格斯玻色子质量与顶夸克质量的实验数据，$\lambda(Q)$ 在高尺度上变为负值。这发生在 $10^{10-11}$ GeV 的 RG 尺度上，导致一个新的极小，这意味着 SM 真空处于亚稳态。然而，隧穿率被指数压低，使得 SM 真空的寿命远大于宇宙年龄。为了使真空稳定性完美，人们希望 $\lambda$ 一直到普朗克尺度都保持为正，但这在当前测量下似乎不太可能。在超对称模型中，希格斯的四次方耦合由电弱规范耦合确定，使得 $\lambda_{\text{susy}}= (g^2 + g^{&#39;2})\cos^2(2\beta)/4$ 一直到普朗克尺度都保持为正。
+
+### 4.4 SUGRA 的进一步检验（Further tests of SUGRA）
+
+关于 SUSY 与 SUGRA 有大量的文献，我们在此引述若干书籍与报告。在本节中，我们讨论在大型强子对撞机（LHC）、精密实验以及天体物理与宇宙学数据中可能发现 sparticle。
+
+超对称在 LHC 上的常规信号是产生喷注（jets）加上丢失的横能量。当前来自喷注 + 丢失横能量的对 gluino 与标量夸克的质量限制约为 $\sim 2-3$ TeV。完全可能 gluino 与第一代标量夸克很重，质量高达 10 TeV。然而，已有表明，如果假设 GUT 尺度上 gluino 质量很大，而 GUT 尺度上其余质量参数相对小得多，RG 跑动将生成一个劈裂的 sparticle 谱，具有重的 gluino 与标量夸克，而电弱 gaugino 与标量轻子保持轻。此外，轻谱一般可以是压缩的，其中一些最轻的 sparticle 簇拥在 LSP 附近。在此情形下，如果次轻 sparticle（NLSP）与最轻 sparticle（LSP）之间的质量差很小，即 $\Delta m = m_{\text{sparticle}} - m_{\chi^0_1}$ 相对较小，那么丢失的横能量将很小，SUSY 信号的探测变得更加困难。
+
+进而，如果 $\Delta m$ 足够小以至于 NLSP 是长寿命的，NLSP 的衰变可能发生在探测器内部，带有位移顶点（displaced vertex）并被探测到。这种情况可以出现在轻 chargino、轻 stau 或轻 stop 的情形。长寿命的标量夸克与 gluino 可以在腔内强子化，产生 **R**\-强子（R-hadrons）。上述情形在 gluino 驱动的辐射破缺中有显式演示，其中有一个数 TeV 的 gluino 与重的前两代标量夸克，而电弱 gaugino 与标量轻子在数百 GeV 范围、可在 LHC 上触及。在此类情形中，较轻的 stop 可能轻得足以在 LHC 上被观测到，或者 NLSP 长寿命并在腔内衰变产生 **R**\-强子。在其他信号中，最早被讨论的 SUSY 信号之一是三轻子信号。当轻 chargino 衰变到第二轻的中性微子，后者进一步衰变到最轻的中性微子时，出现这一信号。这些信号上的附加工作涉及 $W$ 玻色子的在壳衰变，其中 $W\to \tilde \chi_1^{\pm} \tilde \chi_2^0$，接着是 $\tilde \chi_1^{\pm}$ 与 $\tilde \chi_2^0$ 的在壳衰变。随后有工作指出，如果包含 $W$ 玻色子的离壳衰变，发现 chargino 的触及范围可以显著扩展。自那以后，这些特征被包含在三轻子信号的分析中。关于 SUGRA 模型内超对称信号的深入讨论，可见相关文献。
+
+超对称的间接信号可以出现在精密实验中。其中最主要的是缪子反常磁矩 $(g-2)_\mu$ 的精密测量，该测量正在进行，如果发现有别于标准模型预言的显著偏离，它可以提供超对称的线索。这是因为超对称的电磁贡献可以很显著，并可与标准模型的电弱修正相比拟。当前，轻标量轻子（200–500 GeV）与处于类似标量轻子质量范围的轻电弱 gaugino，与当前实验限制相容，并能在未来产生可探测的信号。另一个相关的精密实验是电子电偶极矩（EDM）实验。在 SUSY 中，基本粒子的 EDM 可以出现，因为 SUSY 通常通过软项带有大的 CP 破坏相位。ACME 实验给出 $d_e&lt;1.1\times 10^{-29}$ e·cm，它强烈约束 SUSY 的 CP 破坏相位，但允许 TeV 量级的超伴粒子，对 SUSY CP 相位的约束显著放松。在 mSUGRA 内针对重 sparticle 谱的分析已有给出。大的 CP 相位可以通过相消机制处理。在显式 CP 破坏存在时，CP 偶–CP 奇希格斯玻色子在圈层级混合，具有有趣的现象学含义。弦模型与弦启发的超引力模型可能产生小的 CP 相位。
+
+我们接下来讨论在质子衰变中 SUGRA/弦的可能线索。标准模型具有精确的 $U(1)_B\times U(1)_L$ 对称性，对于可重整相互作用质子衰变是被禁止的。然而，SM 的电弱 Sector 包含非微扰组态，即瞬子（instantons）与 sphaleron，它们使 $B$ 与 $L$ 违背 3 个单位，即 $\Delta B=\Delta L=3$。它们不会导致质子衰变。对于质子衰变，需要 GUT 模型。然而，非 SUSY $SU(5)$ 已被 Super-K 实验排除，其对 $e^+\pi^0$ 道给出了下限，使得 $\tau\big(p \rightarrow e^+ \pi^0\big) &gt; 2.4 \times 10^{34}$ 年（90% CL），这远高于非 SUSY $SU(5)$ 的预言，而 SUSY $SU(5)$ 与 Super-K 限制相容。类似论断对 $SO(10)$ 也成立。作为 SUSY/SUGRA 特征的独特质子衰变道是 $p\to \bar \nu K^+$，它是 SUSY GUT 的发现道。对于这一道，Super-K 最新的部分寿命下限是 $\tau/B(p \to \bar{\nu} K^{+}) &gt; 5.9 \times 10^{33}\ \text{years}~ (90\% \text{ C.L.})$，它与多种 SUSY/SUGRA 大统一模型相容。质子衰变也在弦中以及相交 D 膜模型中讨论过。Friedmann 与 Witten 的工作指出，在某些 M 理论紧致化中，$p\to e^+_R+ \pi^0$ 相对 $p\to e^+_L+ \pi^0$ 被压低。因此，观测到质子衰变道 $p \to \bar{\nu} K^{+}$ 将是 SUSY/SUGRA-GUT 的迹象，而观测到 $\to e^+ \pi^0$ 且以 $p\to e^+_L+ \pi^0$ 为主，将是其弦起源的强烈暗示。我们注意到，如果 R 宇称被破坏（例如可以在自发破缺中出现），超对称的信号将受到剧烈影响。
+
+---
+
+## 5\. 宇宙学中的 SUGRA（SUGRA in Cosmology）
+
+SUGRA 为研究暴胀、暗物质、重子生成、模稳定化与再加热提供了一个由紫外（UV）启发的框架。这里，Kähler 势、超势、规范动力学函数以及 SUSY 破缺的结构决定了宇宙学现象。我们在下面讨论一些具体例子。
+
+*暴胀（Inflation）：* 大爆炸宇宙学虽然在解释大量数据方面极为成功，但并非一个完整的理论，特别是关于宇宙极早期历史时。大爆炸宇宙学已知至少有三个难题，包括平坦性难题、视界难题与磁单极难题。在条件 $H=\dot a /a$（其中 $a$ 是 Friedmann–Robertson–Walker 线元中的标度因子）在宇宙早期历史的某个时期为常数的情况下，暴胀解决了这些难题。在那种情况下 $a(t)\sim a(t_0) e^{Ht}$。此时标度因子将指数增长，这有助于解决大爆炸宇宙学的难题。在涉及标量或赝标量场 $\phi$ 的场论语境中，如果 $\phi$ 的势满足
+
+慢滚（slow-roll）条件。因此定义参数 $\epsilon, \eta, \xi^2$，其中 $\epsilon \equiv = ({V&#39;}/{\sqrt 2\kappa V})^2$，$\eta\equiv |{V&#39;&#39;}/{\kappa^2 V}|$，$\xi^2\equiv ({V&#39;V&#39;&#39;}/{\kappa^4 V^2})$（其中 $V&#39;$ 表示 $V$ 对暴涨子场的导数），所有这些在慢滚下都要求很小，即 $(\epsilon, \eta, \xi^2)&lt;&lt;1$。
+
+在超引力中，暴胀可以通过 $F$ 项或 $D$ 项发生。对于 F 项暴胀，人们发现 $V&#39;&#39;=\kappa^2 K&#39;&#39; V+ \cdots$，这给出 $\eta\sim 1$，不满足慢滚条件，即 $\eta&lt;&lt;1$。这就是所谓的超引力暴胀的 $\eta$ 问题。克服这一问题的一个简单方法是施加 Nambu–Goldstone 移位对称性，在此对称性下 Kähler 势不变，即假设 Kähler 势取形式 $K(\phi+\phi^*)$。在此情形下，如果我们假设暴涨子场是 $\phi$ 的虚部，则 Kähler 势与暴涨子场无关。对于 D 项暴胀，没有外部因子 $exp(\kappa^2 K)$，因此没有 $\eta$ 问题。此外，无标度（no-scale）超引力模型、DBI 模型以及超共形模型（这类模型中暴胀在超共形对称性破缺后出现，从而导向类超引力模型）中也讨论了自洽的暴胀。
+
+*SUGRA 中的重子生成（Baryogenesis）：* 重子生成涉及由 Andrei Sakharov 阐明的三个条件，即重子数违背、CP 违背以及偏离热平衡。标准模型中的电弱相变无法做到这一点，因为 SM 中没有足够的 CP 违背，且相变是二阶的。在 MSSM 中，电弱重子生成在第一阶电弱相变中是一个可能性，但由于希格斯玻色子质量以及轻 stop 的实验下限约束，存在严格限制。因此 MSSM 中的电弱重子生成虽然未被排除，但作为重子生成的首选机制似乎可能性较小。然而，在超对称框架中有其他生成重子生成的途径，其中之一是 Affleck–Dine 机制。当前偏好的重子不对称机制是通过轻子生成（leptogenesis），其中先生成轻子不对称，然后通过 sphaleron 相互作用转移到重子不对称。关于轻子生成重子生成的最初提议由 Fukugita 与 Yanagida 提出，对 SUSY 情形的推广在若干后来的工作中给出。进一步，如果可见 Sector 与隐藏 Sector 耦合，重子不对称可以在 SUGRA 中自然出现。这里，隐藏 Sector 中的一个重场可以部分衰变到携带轻子数的可见 Sector 场，以及衰变到携带相等相反量子数的隐藏 Sector 场。可见 Sector 中的轻子数然后通过 sphaleron 效应转化为重子数。关于重子生成的综述，参见 Dine 的工作。
+
+### 5.1 SUGRA 暗物质：引力微子、中性微子、轴子（SUGRA dark matter: gravitino, neutralino, axion）
+
+引力微子作为暗物质的候选者，由 Primack 与 Pagels 讨论过，他们计算了它的遗迹密度。假设引力微子有热产生，并在其遗迹密度不会使宇宙过闭合的约束下，他们推导出对其质量的限制，使得 $m_{3/2} \leq O(1 \text{keV})$。更近期，利用宇宙学约束以避免小尺度结构被压低，Sato 等人（Osato 等）在标准宇宙学与热产生的假设下，得到了严格得多的引力微子质量限制 $m_{3/2} \leq 4.7 \text{eV}$。这一限制比 Primack 与 Pagels 得到的限制小了若干数量级。mSUGRA 提供了另一种暗物质候选者，即如果最轻的超对称粒子（LSP）是电中性的，它就是暗物质候选者。因此在 mSUGRA 中，在 R 宇称守恒下，如果 LSP 是中性微子（neutralino），它将完全稳定，是暗物质的候选者。进一步，在 mSUGRA 中从 GUT 尺度到电弱尺度的 RG 演化下，最轻的中性微子恰为 LSP。因此，在 SUGRA 模型提出后不久，Goldberg 提出中性微子作为暗物质的候选者。这一提议之后有许多作者跟进，并在暗物质的天体物理搜寻以及在对撞机上（将表现为丢失能量）发现暗物质方面产生了丰富的唯象。关于超对称暗物质的全面综述，参见 Jungman 的工作。这里人们发现，物质与规范粒子的 RG 演化给出最轻的中性微子作为 LSP，其组分依赖于模型，因为它可以接近 Bino、Wino 或 higgsino，或它们的线性组合。同样值得注意的是，在 mSUGRA 内，对 LHC 上中性微子产生的测量允许人们对宇宙中暗物质的数量作出预言。
+
+更近期，隐藏 Sector 在暗物质分析中开始发挥作用。因此，常规暗物质分析依赖于冻结出（freeze-out）机制来生成暗物质。这里，弱相互作用粒子处于热平衡，直到它们在冻结温度脱离平衡，这贡献了冻结出的遗迹密度。对于弱耦合的暗粒子，由于它们相互作用微弱，初始密度并不存在。相反，它们由冻结入（freeze-in）机制产生，该机制来自次轻超对称粒子（NLSP）的衰变，从而生成遗迹密度。更现实地，遗迹密度可能是冻结入与冻结出机制的组合。因此，假设 LSP 栖身于隐藏 Sector，并与可见 Sector 有微弱相互作用。进一步，假设 NLSP 是一个 MSSM 粒子，衰变到 LSP。在此情形下，冻结入贡献将来自 NLSP 的衰变。然而，NLSP 最初处于热平衡，但最终会在冻结温度脱离平衡，然后最终衰变到隐藏 Sector 的 LSP。这一现象的一个具体例子是 NLSP stop 衰变到顶夸克与隐藏 Sector 的 LSP，即 $\tilde t \to t+ \tilde\xi^0$，其中 $\tilde\xi^0$ 是隐藏 Sector 中的暗物质粒子。在此情形下，LSP 的遗迹密度将由冻结入分量与冻结出分量之和构成。
+
+有若干实验在探测中性微子暗物质：LUX-ZEPLIN (LZ)、XENONnT、PandaX-4T。质量限制依赖于模型。中性微子可以是低质量或高质量，范围在 $O(1)$ GeV 到 $O(1)$ TeV。LZ 的最新结果对 WIMP–核子截面给出了最严格的限制，并强烈约束 MSSM 参数空间，特别是在有显著 Bino–Higgsino 混合时。实验的探测灵敏度正接近所谓的"中微子地板"（neutrino floor），即 $\sigma_{SI}\sim 10^{-49}$ cm$^2$，在那里中微子散射成为不可约本底。
+
+除了引力微子与中性微子，轴子或轴微子（axino）也可以是暗物质的候选者。具体而言，轴子可以是极轻的（模糊暗物质，fuzzy dark matter），质量可低至 $10^{-21}$ eV。这样的质量在粒子物理模型中自然出现，包括来自弦与 SUGRA 的模型。
+
+### 5.2 SUGRA 中的暗能量（Dark energy in SUGRA）
+
+标准宇宙学模型通过宇宙学常数 $\Lambda$ 容纳暗能量，它与真空能 $\rho_{\text{v}}$ 通过关系 $\rho_{\text{v}}= \Lambda M_{\text{Pl}}^2/ 8\pi$ 相关联。真空能非常小，即 $\rho_{\text{v}} \sim (2.3 meV)^4$。真空能的微小性构成了一个难题，有大量学术工作探讨其微小性的可能起源。在标准模型中，真空能巨大，即 $O(M^4_{\text{Pl}})$。在 SUSY/SUGRA 中有所缓解，因为真空能为 $O(m^2_{3/2}M^2_{\text{Pl}})$，这仍远偏离观测值。
+
+一个提出的解释（主要由 Weinberg 倡导）是人择原理（anthropic principle），基于如下思想：假设存在一个多重宇宙，其中宇宙学常数在不同区域取不同的值。如果宇宙学常数更大且为正，宇宙将膨胀过快以致星系无法形成；如果它大而为负，宇宙将在结构形成之前迅速再坍缩。这一论证只导向允许星系、恒星乃至最终生命形成的一个狭窄的数值范围。然而，暗能量完全可能不是常数而是一个动力学场，称为精质（quintessence），正如 Peebles 与 Ratra 所提出的，关于这一思想有大量的后续工作。将精质纳入 SUGRA 与弦论已有若干作者讨论。DESI DR2 的最新分析表明，暗能量可能是时间依赖的，支持了暗能量动力学起源的思想。关于暗能量以及粒子物理与宇宙学交织的综述，参见相关文献。
+
+---
+
+## 6\. SUGRA 与弦（SUGRA and strings）
+
+### 6.1 超引力的多样性（Variety of supergravities）
+
+超弦与 SUGRA 之间的联系早在 Candelas 等人的工作中就被注意到。我们在下面更详细地讨论这一联系。因此，对于每种弦论——IIA 型、IIB 型、I 型与杂化弦——在低速极限下都有相应的超引力理论。Weyl 反常的消失将临界时空维数固定为十维（对于超弦），从而也固定了相应的低速极限超引力。弦的质量谱由无质量态与一座无穷高的有质量态塔组成，其质量典型为 $m^2 \sim {N}/{\alpha&#39;}$，其中 $\alpha&#39;$ 是弦张力倒数。在低能极限当 $E \ll {1}/{\sqrt{\alpha&#39;}}$ 时，只有无质量模式存留，而无质量谱与相应的十维超引力的无质量谱匹配。所有超弦理论有一个共同的 Neveu–Schwarz–Neveu–Schwarz（NS-NS）Sector。该 Sector 的无质量场由 $g_{\mu\nu}, B_{\mu\nu}, \Phi$ 组成，其中 $g_{\mu\nu}$ 是时空度规，$B_{\mu\nu}$ 是反对称二阶形式，$\Phi$ 是伸缩子（dilaton）。上述场构成十维超引力理论的引力 Sector。世界面的共形不变性要求导致可从超引力作用导出的时空运动方程，并且高阶导数的贡献被 $\alpha&#39;$ 的幂次压低。各种超弦理论的 Ramond–Ramond（R-R）Sector 则不同。因此，IIA 型弦（一种具有非手征超对称的闭定向弦理论）的 R-R Sector 由一个一形式 $C_1$ 与一个三形式 $C_3$ 组成。IIA 型超引力是非手征的，具有 $N=2$ 超对称与 32 个超荷，并来自十一维超引力在圆周上的维数约化。
+
+IIB 型弦论是一种具有 $\mathcal{N}=2$ 超对称的闭定向弦手征理论。其无质量 R-R Sector 由一个标量 $C_0$、一个二阶形式 $C_2$ 以及一个自对偶四形式 $C_4$ 组成。其低速极限是 IIB 型超引力，因相消而无反常。I 型弦具有开弦与闭的非定向弦。其闭弦 Sector 的无质量谱包含一个超引力多重态，而开弦 Sector 的无质量谱包含规范场。反常消去的 Green–Schwarz 机制将规范群限制为 $SO(32)$ 或 $E_8\times E_8$。对于 I 型弦，规范群被限制为 $SO(32)$。其低速极限是耦合到 $SO(32)$ 超 Yang–Mills 的 $\mathcal{N}=1$ 十维超引力。杂化弦论是纯闭弦理论，涉及左行玻色自由度与右行超对称自由度。反常消去允许规范群 $SO(32)$ 与 $E_8 \times E_8$。该理论的低速极限是耦合到超 Yang–Mills 的 $\mathcal{N}=1$ 十维超引力。Green 与 Schwarz 分析中有趣的结果之一是，零斜率极限下的超弦理论给出十维超引力，并耦合到超对称 Yang–Mills 理论，且存在正比于洛伦兹群陈–Simons 形式的高阶导数项，即
+
+$$
+\partial_{[P} B_{MN]} \to \partial_{[P} B_{MN]}+ \omega_{PMN}^{(Y)}- {\omega_{PMN}^{(L)}},
+$$
+
+其中 $\omega_{PMN}^{(Y)}$ 是 Yang–Mills 的、$\omega_{PMN}^{(L)}$ 是洛伦兹群的陈–Simons 形式。在 Green 与 Schwarz 工作之前的若干工作只涉及 Yang–Mills 陈–Simons 项。包含洛伦兹群陈–Simons 形式意味着低能超引力拉格朗日量需要计算到 $\kappa^2$ 阶，而此前的表述只完成到 $\kappa$ 阶。因此，在 Green–Schwarz 工作之后，若干工作完成了到 $\kappa^2$ 阶的十维超引力拉格朗日量的计算。
+
+### 6.2 Green–Schwarz 反常、SUGRA 的 Stueckelberg 推广与毫电荷（Green-Schwarz anomaly, Stueckelberg extensions of SUGRA, and milli charges）
+
+Stueckelberg 机制是一种现象：一个阿贝尔规范玻色子可以通过吸收一个轴子场而获得质量，而无需自发对称性破缺（如同希格斯玻色子那样）。具体而言，这发生在将一个阿贝尔规范场 $A_\mu$ 替换为 $A_\mu + \frac{1}{m}\partial_\mu \sigma$ 时。这里 $\sigma$ 是轴子场，并为 $A_\mu$ 生成纵向模式。进一步，在规范变换 $\delta A_\mu=\partial_\mu \lambda, ~~\delta \sigma= -m \lambda$ 下，组合 $A_\mu + \frac{1}{m}\partial_\mu \sigma$ 保持不变。与轴子场一起出现的这一质量参数 $m$ 被识别为拓扑性的。此外，用 Stueckelberg 机制由有质量阿贝尔矢量场构造的拉格朗日量已被证明是可重整的。Stueckelberg 耦合出现在高维超引力理论与弦论的约化中。因此，例如，考虑在存在内禀规范流（gauge fluxes）的情况下，耦合到超对称 Yang–Mills 场的十维超引力的约化。这里，反对称的张量 $B_{IJ}$ 的十维动能项耦合到 Yang–Mills 陈–Simons 项，其形式为 $\partial_{[I} B_{JK]} + A_{[I} F_{JK]} + \cdots$。在维数约化中使用内禀规范场强的期望值 $&lt;F_{ij}&gt;\neq 0$，得到形式 $\partial_\mu B_{ij} + A_\mu F_{ij}$。如果将 $B_{ij}$ 识别为轴子标量、$&lt;F_{ij}&gt;$ 识别为质量参数 $m$，我们就得到组合 $\partial_\mu \sigma + m A_\mu$。在拉格朗日量中，这一组合导致耦合 $mA_\mu \partial^\mu \sigma$。这一耦合也进入 Green–Schwarz 反常消去。在维数约化中，该参数典型为（某些情形下的）紧致化尺度，但原则上可以不同。
+
+标准模型与 MSSM 的 Stueckelberg 推广已通过上述机制得到，其中涉及超荷与可能来自隐藏 Sector 的附加 $U(1)_X$ 规范场的混合现象。两个 $U(1)$ 规范场的动能混合在此前场论与弦论语境的工作中已有讨论。然而，在 Stueckelberg 推广中，规范场之间存在质量混合。因此，人们可以考虑新的规范群 $SU(3)\times {SU(2)_L\times U(1)_Y}\times U(1)_X$。$U(1)_Y$ 与 $U(1)_X$ 之间的混合导致形式的质量项 $-\frac{1}{2} (\partial_{\mu}\sigma + M_1 A_{\mu} +M_2 B_{\mu})^2$。包括 $SU(2)_L\times U(1)_Y$ 电弱破缺，给出规范玻色子 $A^3_{\mu}, B^\mu, A^\mu$ 的 $3\times 3$ 维质量矩阵。此外，Stueckelberg 推广的模型预言一个尖锐的 $Z&#39;$ 共振，这是这类推广模型的一个特征。尖锐共振的预言与其他 $U(1)$ 推广形成对比——在其他推广中 $Z&#39;$ 质量很高，即需要 ${M_{Z}}/{M_{Z&#39;}} &lt;&lt;1$ 以符合对新 $Z&#39;$ 玻色子的严格电弱约束。相比之下，Stueckelberg $Z&#39;$ 可以位于低处，与电弱约束相容，因为可以选择 $\delta \equiv {M_2}/{M_1}$ 很小。Stueckelberg 模型可以在 FCC-ee 上检验，它可以探测该模型预言的尖锐 $Z&#39;$ 共振。
+
+与 Stueckelberg 推广相关的另一现象是毫电荷（milli-charges）的生成，这在标准模型中被禁止。它们可以在两个无质量规范场的动能混合中出现，但这与观测不符，从而被排除。然而，毫电荷可能在量子引力与弦论中出现。具体而言，标准模型与 SUGRA 的 Stueckelberg 推广——如果粒子带有 $U(1)_X$ 电荷——会预言毫带电粒子。在此情形下，Stueckelberg 质量混合机制导致隐藏 Sector 中的毫带电粒子。我们注意到，EDGES 反常的一个被偏好的解，是存在少量来自隐藏 Sector 的毫带电暗物质，它可以通过卢瑟福散射冷却早期宇宙中的重子，与 EDGES 的观测一致。当前，有若干实验在搜寻毫带电粒子。
+
+---
+
+## 7\. 未来展望（Future prospects）
+
+SUGRA 模型允许对从电弱尺度一直到的大统一尺度的物理进行描述。当前没有其他形式体系能够做到这一点。如上所述，SUSY 与 SUGRA 作为普朗克尺度之下弦的低能极限而出现。鉴于当前流行的观点——并非所有一致粒子物理理论都是量子引力的遗迹，它们中大多数属于所谓的"沼泽地"（swampland）——这一特征具有重要意义。可接受的、可被视为量子引力遗迹的粒子物理理论，属于所谓的"景观"（landscape）。景观思想在弦论语境下有具体形式：它容许多达 $10^{500}$ 甚至更多的可能真空解。每个真空对应于紧致化额外空间维并选择背景流的不同方式，每个真空产生不同的低能物理。我们的宇宙只是弦景观大量真空态中的一个真空态。
+
+由于 SUGRA 被预期作为超弦的低能极限出现，它提升了 SUGRA 作为粒子物理有效理论（将是量子引力的遗迹）的恰当候选者的地位。下一个挑战当然是为 m(n)SUGRA 模型找到精确的弦嵌入。SUGRA 还有另一个方面支持这一图景，即它与 SUGRA 中引力介导超对称破缺所需的隐藏 Sector 相关。隐藏 Sector 也存在于弦论中，例如杂化弦 $E_8\times E_8$，其中一个 $E_8$ 被识别为隐藏 Sector。进一步，在过去的几十年里，自 SUSY/SUGRA 出现以来，人们看到了粒子物理与宇宙学的更紧密交织，这体现在暴胀、暗物质与暗能量的分析中，指向它们共同起源的可能性。如正文所讨论，对 SUSY/SUGRA 已有显著的间接支持，包括解决规范层级问题、规范耦合的统一、由重顶夸克驱动的电弱对称性辐射破缺、对希格斯玻色子质量上限的预言、宇宙的真空稳定性，以及与质子寿命限制的一致。当前，验证 SUSY/SUGRA 的主要缺失环节是实验上观测到 sparticle。在此，我们的希望寄托在高亮度 LHC 第 4 轮运行（RUN 4）上，它预计在 2030 年中开始运行，并预期累积 3000–4000 fb$^{-1}$ 的积分亮度。
+
+**致谢：** PN 的研究部分由 NSF 基金 PHY-2209903 支持。
+
+---
+
+## 附录 A：规范超对称向标准超引力的收缩（The contraction of Gauge Supersymmetry to Standard Supergravity）
+
+1975 年导致规范超对称发展的思想基于一个前提：在我们所涉能量尺度领域中的基础物理理论应当是规范理论。所有成功的基础物理理论都是如此，即 Maxwell–Dirac、爱因斯坦引力理论、粒子物理标准模型，它们都是规范理论。然而，直到 1975 年超对称还是一种整体对称性，如果它真的是自然的基础对称性，就应当被规范化。这就是 Nath 等人工作的动机。实现这一点的步骤是将普通空间中的爱因斯坦引力理论扩展到超空间中的规范超对称，并创造弯曲超空间的几何。这一表述使用超空间中由玻色与费米坐标组成的单一张量超场 $g_{\Lambda\Pi}(z)$，即 $z^\Lambda=(x^\mu, \theta^{\alpha i})$，其中 $x^\mu$ 是普通时空的玻色坐标，$\theta^{\alpha i}$ 是反对易的 Majorana 费米坐标。Nath 等人的分析基于线元 $ds^2=dz^\Lambda g_{\Lambda\Pi}(z) dz^\Pi$ 在变换 $z^{\Lambda}= z^{&#39;\Lambda} + \xi^\Lambda(z)$ 下的不变性，由此导出动力学方程
+
+$$
+R_{AB}=\lambda g_{AB}.
+$$
+
+其中 $R_{AB}\equiv (-1)^c R^C_{~~ABC}$，其中 $g_{AB}=(g_{\mu\nu},g_{\mu\alpha}, g_{\alpha\beta})$，相应地 $R_{AB}= (R_{\mu\nu}, R_{\mu\alpha}, R_{\alpha\beta})$。运动方程可由作用积分导出：
+
+$$
+A = \int d^8 z \sqrt{-g} (R-2\lambda),
+$$
+
+其中 $R= (-1)^a g^{AB} R_{BA}$，$\sqrt{-g}$ 由下式给出：
+
+$$
+\sqrt{-g}= [-(det g_{\mu\nu}) (det(g^{\alpha\beta})]^{1/2}.
+$$
+
+定义 $R^{AB}= g^{AC} R_{CD} g^{DB}$，可以推导出如下 Bianchi 恒等式：
+
+$$
+(-1)^b [R^{BA}- \frac{1}{2} g^{BA} R]_{;B}=0.
+$$
+
+它们构成一般的超空间坐标变换，并诱导度规 $g_{\Lambda\Pi}(z)$ 形式的变换：
+
+$$
+\delta g_{\Lambda\Pi}(z)= g_{\Lambda\Sigma} \xi^\Sigma_{,\Pi} + (-1)^{\Lambda+ \Lambda\Sigma} \xi^\Sigma_{,\Lambda}
+\xi_{\Sigma\Pi} + g_{\Lambda\Pi,\Sigma} \xi^\Sigma\,,
+$$
+
+其中当 $\Lambda$ 对应玻色情形时 $(-1)^{\Lambda}= 1$，当 $\Lambda$ 对应费米情形时 $(-1)^{\Lambda}=-1$。该理论的切空间群是 $OSp(3,1|4N)$，其切空间度规为
+
+$$
+\eta_{AB} =\text{diag}\left(\eta_{mn}, k\eta_{ab}\right).
+$$
+
+这里 $\eta_{mn}$ 是玻色空间度规，$\eta_{ab}$ 是费米空间度规，由 $\eta_{ab}= -(C^{-1})_{ab}$ 定义，其中 $C$ 是电荷共轭矩阵。我们注意到，费米空间引入了一个任意的新参数 $k$。利用这一切空间度规，通过下式定义超 vierbein：
+
+$$
+g_{\Lambda \Pi}(z) = V^A_{~~\Lambda}(z) \eta_{AB} (-1)^{(1+B) \Pi} V^B_{~~\Pi} (z)
+$$
+
+整体超对称的变换对应于 $\xi^\Lambda=(\xi^\mu, \xi^\alpha)$，其中
+
+$$
+\xi^\mu =i \bar\lambda \gamma^\mu \theta, ~~~ \xi^\alpha= \lambda^\alpha\,.
+$$
+
+这里 $\lambda^\alpha$ 是不依赖于 $x$ 的无穷小反对易参数。对于式的整体超对称变换，不变线元由度规分量给出：
+
+$$
+g_{\mu\nu} = \eta_{\mu\nu}\,, \quad
+g_{\mu\alpha} = -i(\bar\theta \gamma^m)_{\alpha} \eta_{m \mu}\,, \quad
+g_{\alpha \beta}= k \eta_{\alpha\beta} + (\bar \theta \gamma^m)_{\alpha} (\bar \theta\gamma_m)_\beta\,.
+$$
+
+为了纳入引力，我们引入 vierbein 场 $e^\mu_a$，度规定义为 $g_{\mu\nu}(x) = e_{a\mu} e^a_{\nu}$。这些场必须以如下方式进入度规：使得爱因斯坦规范变换 $\xi^\mu(z)=(\xi^\mu(x),\xi^\alpha=0)$ 与局域 vierbein 转动 $\xi^\mu(z)=0, \xi^\alpha(z)=\frac{i}{4} \omega_{ab}(x) (\sigma^{ab} \theta)^\alpha$ 都由式产生。关于这些子群的上述约束在文献中称为"规范完备性"（gauge completeness）。因此，关于爱因斯坦与局域 vierbein 变换规范完备的度规为
+
+$$
+g_{\mu\nu}(z)= g_{\mu\nu}(x) - i \bar\theta \gamma_{(\mu}\Gamma^{(0)}_{\nu)} \theta -k \bar \theta \Gamma_\mu^{(0)} \Gamma_{\nu}^{(0)} \theta + \cdots\,, \quad
+g_{\mu\alpha}(z) = -i (\bar \theta \gamma^a)_{\alpha} e_{a\mu} (x) - k (\bar \theta \Gamma^{(0)}_\mu)_\alpha + \cdots
+$$
+
+其中 $\Gamma_\mu^{(0)}= \frac{1}{4} \omega^{(0)}_{ab\mu}\sigma^{ab}$，$\omega^{(0)}_{abc}$ 定义为 $\frac{1}{2} \left[\Omega_{cab} + \Omega_{bca}-\Omega_{abc}\right]$，其中 $\Omega_{abc}= e_a^{~~\lambda} e_{b}^{~~\rho} (e_{c\rho, \lambda} - e_{c\lambda,\rho})$ 且 $\omega^{(0)}_{ab\mu}= \omega^{(0)}_{abc}e^c_{~~\mu}$。
+
+然而，式的度规还不是局域超对称协变的。为此我们需要纳入一个自旋 $3/2$ 的 Majorana 场，并使 $\lambda$ 成为 $x$ 的函数。因此局域超对称变换要求
+
+$$
+\tilde{\xi}^\mu =i\bar \lambda(x) \gamma^\mu \theta + \frac{1}{2} (\bar \psi_a \gamma^\mu \theta) (\bar \lambda(x) \gamma^a \theta),\qquad
+\tilde {\xi}^\alpha= \lambda^{\alpha}(x) - \frac{i}{2} \psi_a^{~~\alpha} (\bar \lambda(x) \gamma^a \theta),
+$$
+
+其中 $\psi_a= \psi_\mu e_a^{~~\mu}$。由式可以计算出与 $k$ 无关的度量分量：
+
+$$
+\tilde{g}_{\mu\nu}(z)= g_{\mu\nu} (x) + i\bar{\psi}_{(\mu}\gamma_{\nu)} \theta - i \bar\theta \gamma_{(\mu}\Gamma_{\nu)}\theta -\frac{1}{2} (\bar \theta_{(\mu}\gamma^a \theta) (\bar \theta_{\nu)}\gamma_a \theta)\,, \quad
+\tilde {g}_{\mu\alpha} = -i (\bar \theta \gamma^a)_\alpha e_{a\mu} + (\bar \psi_\mu \gamma_a \theta) (\bar \theta \gamma^a)_\alpha\,,
+$$
+
+而 $\tilde{g}_{\alpha\beta}$ 如式（global）所给。在上面 $\Gamma_\mu$ 由下式给出：
+
+$$
+\Gamma_\mu= \frac{i}{4} \sigma^{ab} \omega_{ab\mu},\qquad
+\omega_{ab\mu} = \omega^{(0)}_{ab\mu}+ K_{\mu ab},\qquad
+K_{\mu ab}= -\frac{i}{4} \left[ \bar \psi_\mu \gamma_{[a} \psi_{b]} + \bar \psi_a \gamma_\mu \psi_b\right].
+$$
+
+由上述，式表明使用式导致如下场的变换律：
+
+$$
+\delta e_{a\mu} = i\bar \psi_\mu \gamma_a \lambda, \qquad
+\delta g_{\mu\nu}= i\bar \psi_{(\mu} \gamma_{\nu)}\lambda, \qquad
+\frac{1}{2} \delta \psi_\mu(x) = D_\mu \lambda \equiv (\partial_\mu- \Gamma_\mu) \lambda\,.
+$$
+
+以上正是标准超引力变换。接下来，我们在相关阶上展示变换 $\xi^\mu$、$\xi^\alpha$ 以及 $\Delta g_{\mu\nu}, \Delta g_{\mu \alpha}, \Delta_{\alpha\beta}$ 中与 $k$ 有关的部分。这里得到
+
+$$
+\Delta \xi_{\mu}= \frac{ik}{2} (\bar \lambda \gamma^a\theta) (\bar \theta D_{[\mu } \psi_{a]} +\frac{k}{8} (\bar \theta \sigma^{ab}\lambda) (\bar \theta \gamma_\mu D_{[a} \psi_{b]}),
+$$
+
+$$
+\Delta \xi^{\alpha}= -\frac{ik}{8} (\sigma^{ab} \theta)^{\alpha} \bar \lambda D_{[a}\psi_{b]} + \frac{ik}{8} D_{[a} \psi_{b]}^{\alpha} (\bar \theta \sigma^{ab} \lambda) +\frac{ik}{32} \epsilon^{abcd} (\gamma^5 \gamma_d \theta)^{\alpha} \bar \lambda \gamma_c D_{[a}\psi_{b]}.
+$$
+
+接下来，我们纳入与式变换一致的度规中与 $k$ 有关的项。这里我们发现：
+
+$$
+\Delta g_{\mu\nu} =\frac{k}{4}\bar \psi_{\mu}\psi_\nu+ \frac{k}{2} \bar \psi_{(\mu} \Gamma_{\nu)} \theta- k \bar\theta \Gamma_\mu \Gamma_\nu \theta\,,
+$$
+
+$$
+\Delta g_{\mu\alpha}= \frac{k}{2} \bar \psi_{\mu\alpha} - k (\bar \theta \Gamma_\mu)_\alpha -\frac{ik}{2} (\bar\theta \gamma^a)_{\alpha} \bar\theta D_{[\mu} \psi_{a]} + \frac{k}{4} (\bar\theta \sigma^{ab})_\alpha \bar \psi_\mu D_{[a} \bar \psi_{b]} + \frac{ik^2}{16} (\bar \psi_\mu \sigma^{ab})_\alpha \bar \theta D_{[a}\psi_{b]} +\frac{ik^2}{16}(\bar\theta \sigma^{ab})_\alpha \bar\psi_\mu D_{[a}\psi_{b]} -\frac{ik^2}{64} \epsilon^{abcd} (\bar \psi_\mu \gamma^5 \gamma^d)_\alpha \bar \theta \gamma_c D_{[a}\psi_{b]}\,,
+$$
+
+$$
+\Delta g_{\alpha\beta} = -\frac{ik^2}{8} D_{[a} \bar\psi_{b] ~[\alpha}(\bar\theta \sigma^{ab})_{\beta]} -\frac{ik^2}{16} \epsilon^{abcd} (\eta \gamma^5 \gamma_d)_{\alpha\beta} \bar\theta \gamma_c D_{[a} \psi_{b]}\,.
+$$
+
+接下来我们讨论规范超对称如何给出标准超引力场方程。它们来自规范超对称 $R_{AB}=\lambda g_{AB}$ 在 $k\to 0$ 极限下、且度规中只保留自旋 2 与自旋 $3/2$ 多重态时的结果。因此，关于 $g_{\mu\nu}$ 与 $\psi^\mu$ 的超引力方程来自 $R_{\mu\nu}$ 与 $R_{\mu\alpha}$ 的与 $\theta$ 无关的分量。注意规范超对称的动力学方程涉及逆度规 $g^{\alpha\beta}$，它包含 $k$ 的负幂，即 $g^{\alpha\beta}=\frac{1}{k} \eta^{\alpha\beta} + \cdots$。这就是在度规展开中保留到 ${\cal O}(k^2)$ 项的原因。于是可见，在计算 $R_{AB}$ 时，我们发现 $O(k^{-2})$ 与 $O(k^{-1})$ 的项。然而这些项在内部相消，我们过渡到 $k\to 0$ 的光滑极限。因此，在 $k\to 0$ 极限下，$R_{\alpha\mu}-\lambda g_{\alpha\mu}$ 的与 $\theta$ 无关部分给出
+
+$$
+R_{\alpha\mu}-\lambda g_{\alpha\mu} = \frac{3}{4}\bar M_{\mu\alpha} + \frac{1}{16} (\bar M^b \gamma_b \gamma_\mu)_\alpha\,,\qquad
+M^\mu \equiv \epsilon^{\mu bcd}\gamma^5 \gamma_d D_{[c}\psi_{b]}.
+$$
+
+上述分析于是意味着 $R_{\alpha\mu}=\lambda g_{\alpha\mu}$ 导致 $M^\mu=0$，即
+
+$$
+\epsilon^{\mu bcd}\gamma^5 \gamma_d D_{[c}\psi_{b]} =0,\qquad
+D_\mu= \partial_\mu- \Gamma_\mu, \quad \Gamma_\mu= \frac{i}{4} \sigma^{ab} \omega_{ab\mu},\qquad
+\omega_{ab\mu}= \omega^{(0)}_{ab\mu} + K_{\mu ab},\qquad
+K_{\mu ab}= -\frac{i}{4} \left[ \bar \psi_\mu \gamma_{[a} \psi_{b]} + \bar \psi_a \gamma_\mu\psi_b\right]\,.
+$$
+
+进一步，方程 $R_{\mu\nu}= \lambda g_{\mu\nu}$ 在 $k\to 0$ 极限下给出与 Rarita–Schwinger 场 $\psi^\mu$ 耦合的关于 $g_{\mu\nu}$ 的标准超引力方程。在上面我们看到，正确的超引力变换方程以及正确的 $g_{\Lambda \Pi}$（直到 ${\cal{O}}(\theta^2)$）都在规范超对称的 $k\to 0$ 极限下出现。
+
+需要指出，对式的积分要求使用超出 $\theta$ 线性阶的在壳约束，这意味着需要利用场方程来完成积分。此外，不使用场方程（即在壳外，off the mass-shell）的积分需要辅助场，它允许在不使用场方程的情况下完成规范完备性。我们注意到，这里讨论的将 $OSp(3,1|4N)$ 超空间几何收缩为标准超引力（具有 $O(3,1)\times O(N)$ 切空间群、粒子内容为自旋 2 与自旋 $3/2$）的几何收缩，可视为 Inonu–Wigner 群收缩的对应物。然而在精神上它们是相同的（从收缩的终点看），即几何收缩也包含了与收缩相关的动力学。
+
+---
+
+## 附录 B：SUSY 与 SUSY GUT（SUSY and SUSY GUTs）
+
+在本节我们扩展第 2 节的讨论，并进一步讨论整体超对称理论的性质。因此，关于超对称量子场论的一个重要结果是存在无重整化定理。这些定理的含义是，超势 $W(\Phi)$ 不收到微扰的辐射修正，而 Kähler 势与规范动力学项收到辐射修正并被重整化。关于超势，不能辐射地生成新的项。这进一步意味着，如果 SUSY 在树级未被破缺，它在圈级也保持未破缺。因此，超对称理论中二次发散的相消是由底层的超对称所强制要求的。虽然超势在微扰下受到保护，但非微扰效应（如瞬子与 gaugino 凝聚）可以产生修正。
+
+标准模型的超对称推广（MSSM）建立在若干更早的工作之上。在讨论超对称大统一（SUSY GUTs）之前，讨论非超对称 GUT 是有益的。超越电弱与强相互作用标准模型、走向统一的第一步，由 Pati 与 Salam 在 1973 年迈出——他们提出了 $G(4,2,2)\equiv SU(4)\times SU(2)_L\times SU(2)_R$ 模型，其中轻子数被识别为第四种颜色，通过将色群扩展，使得左手色多重态 $(d_r, d_g, d_b)_L$ 扩展为 $(d_r, d_g, d_b,e)_L$、$(u_r, u_g, u_b)_L$ 扩展为 $(u_r, u_g, u_b,\nu)_L$。Pati–Salam 模型是一个左右对称模型。$G(4,2,2)$ 在一个高尺度上破缺为 $SU(4)\times SU(2)_L\times SU(2)_R \to SU(3)_C\times SU(2)_L\times U(1)_Y$。然而，由于群的直积性质，该模型不是一个完整的 GUT 模型。第一个完整的 GUT 模型归于 Georgi 与 Glashow（1974），他们提出 $SU(5)$ 作为大统一群，其表示 $\bar 5+ 10$ 包含了所有的夸克与轻子。$SO(10)$ 大统一模型由 Fritzsch 与 Minkowski 以及 Georgi 在 1975 年提出，它具有额外的良好特征：群的 16 重态表示包含完整的一代夸克与轻子。此外，$SO(10)$ 可以破缺到子群 $SU(4)\times SU(2)\times SU(2)$ 或 $SU(5)\times U(1)$。GUT 群随后被扩展以纳入超对称。因此 $SU(5)$ 被扩展为 SUSY $SU(5)$。与本质上唯一的 SUSY $SU(5)$ 不同，$SO(10)$ 模型并非唯一，因为希格斯 Sector 的选择有若干可能性。进一步，基于 $SU(5)$ 与 $SO(10)$ 的模型在希格斯 Sector 有所谓的双态–三态问题，它要求对于 SUSY 情形，一对希格斯二重态是轻的，而所有希格斯三态变重。这要求在大统一理论中额外的一步来制造实现它的机制。一种途径是"缺失伴子"（missing partner）机制，然而它要求超出将 GUT 规范群破缺到标准模型规范群所需的额外希格斯表示。
+
+---
+
+## 附录 C：SUGRA GUT 中的重场与规范层级（Heavy fields and gauge hierarchy in SUGRA GUTs）
+
+规范层级关系到电弱尺度对大的量子圈修正的稳定性。对于标量场，普通规范理论收到正比于截断尺度的二次发散修正，这会破坏规范层级。如果这一截断尺度是大统一尺度或普朗克尺度，对质量的圈修正 $\delta m^2_{\phi}\sim 10^{32}- 10^{36}$ GeV$^2$。在超对称中，二次发散精确相消。接下来的问题是：当超对称不是精确的而是被破缺时会发生什么？这里表明，只要超对称是软破缺的，二次发散的相消仍然成立。在此情形下，对 sparticle 质量的修正正比于 SUSY 破缺尺度，即 $\delta m^2 \sim \mathcal{O}(m_{\text{soft}}^2)$。软项的完整分类在文献中给出。我们顺便指出，已有高效的超场形式体系被发展出来，使用改进的超图方法计算超对称圈。
+
+这里我们进一步阐述 SUGRA GUT 如何受到式的软项保护。如果隐藏 Sector 只依赖于组合 $\bar Z \equiv \kappa Z$，则这类项不存在。然而，即使隐藏 Sector 场与可见 Sector 有耦合，只要这种耦合被 $\kappa$ 因子压低，仍可产生可接受的软项。如果我们在超势上施加式的约束，就可以实现所需的压低。这些约束足以保护有效低能理论免受式不希望出现的大修正，并且是非平凡的。对于特定模型的显式展示在 Chamseddine 等人的工作中给出，更一般的证明见 Nath 的工作。那里表明，形如 $m_s M_G (\kappa M_G)^k$ 的项在式的约束下缺席或相消。这里我们简要回顾这是如何发生的，因为这一结果构成了建立 SUGRA GUT 的基础。
+
+为了讨论式动力学如何运作，我们首先聚焦满足场方程的超 Higgs 场 $Z$ 与重场 $Z_i$：
+
+$$
+\frac{\partial V}{\partial Z}=0,  ~~ \frac{\partial V}{\partial Z_i} =0.
+$$
+
+这些方程被用来用轻场 $Z_\alpha$ 解出 $Z$ 与 $Z_i$。为此，我们将 $Z$、$Z_i$ 与 $Z_\alpha$ 的 VEV 按 $\kappa$ 的幂次展开，使得
+
+$$
+Z= Z^{(-1)} + Z^{(0)} + \cdots; \quad
+Z_{i}= Z_{i}^{(0)} + Z_{i}^{(1)} + Z_{i}^{(2)} + \cdots; \quad
+Z_{\alpha}= Z_{\alpha}^{(1)} + Z_{\alpha}^{(2)} + \dots,
+$$
+
+其中 $Z^{(n)}$ 是 $\kappa^n$ 阶的。我们的目的是证明有效低能势 $V_{eff}$ 与 $M_G$ 无关，即
+
+$$
+V_{eff}(Z_{\alpha})= V[ Z_i(Z_{\alpha}); ~Z_\alpha; ~Z(Z_\alpha)]
+$$
+
+与尺度 $M_G$ 无关。分析相当复杂。我们可以从写出场 $Z_A$ 的运动方程开始，其形式为
+
+$$
+T_{AB} G_{B}=0,
+$$
+
+其中 $T_{AB}$ 由下式给出：
+
+$$
+T_{AB} = W_{,AB} + \frac{1}{2} \kappa^2 (Z_A G_B + Z_B G_A) -\frac{1}{4} \kappa^4 Z_A Z_B W -\kappa^2 \delta_{AB} W,
+$$
+
+且 $W_{,A}\equiv \partial W/\partial Z_A$，而 $G_A$ 由下式给出：
+
+$$
+G_A= W_{,A} + \frac{1}{2} \kappa^2 Z_A^{\dagger} W.
+$$
+
+为了进一步分析，定义重标度场变量 $z_\alpha, z_i, z$ 如下：
+
+$$
+Z_{\alpha}= m_s z_\alpha, ~~ Z_i= M_G z_i, ~~ Z=M_{Pl} z.
+$$
+
+此外，方便地定义无量纲量 $\overline{W}$、$\overline{G}_\alpha$、$\overline{G}_i$ 与 $\overline{G}_Z$，通过如下重标度：
+
+$$
+W= m^2 M_{Pl} \overline{W}, \quad
+G_{\alpha} = m_s^2 \overline{G}_{\alpha}, \quad G_{i} = m_s^2 \overline{G}_{i}, \quad G_Z= m^2 \overline{G}_Z.
+$$
+
+利用式，可以在 $A=Z, Z_i, Z_{\alpha}$ 时得到方程。因此超 Higgs 场 $Z$ 的场方程形式为
+
+$$
+\left [\frac{1}{m_s} {W}_{SH,ZZ} + (z \bar G_Z -{\overline W} - \frac{1}{4} z^2 \bar W) + \frac{1}{2} (\epsilon \delta_s z_i {\overline G}_i + \delta_s^2 z_{\alpha} {\overline G}_{\alpha})\right ] {\overline G}_Z +\frac{1}{4} \epsilon \delta_s z z_i {\overline G}_i {\overline W} + \frac{1}{2} \delta_S^2 (z {\overline G}_i^2 + z {\overline G}_{\alpha}^2 - \frac{1}{2} z z_{\alpha} {\overline G}_{\alpha} {\overline W}) =0,
+$$
+
+而重场 $Z_i$ 的场方程形式为
+
+$$
+[W_{,ij} +\frac{M_G}{2} \left\{\delta_s^2 (z_i\bar G_j + z_j \bar G_i) -\frac{1}{2} \epsilon \delta_s z_iz_j \bar W \right\} + m_s \delta_{ij} \left\{\frac{1}{2} z \bar G_z - \bar W + \frac{1}{2} \delta_s^2 z_{\alpha} \bar G_{\alpha} \right\}] {\overline G}_j + M_G \left[ \frac{1}{2} z_i {\overline G}^2_Z -\frac{1}{4} z_i z \overline{W} {\overline G}_Z + \frac{1}{2} \delta_s^2 z_i ({\overline G}_{\alpha}^2 - \frac{1}{2} {\overline G}_{\alpha} \overline{ W})\right]=0,
+$$
+
+而轻场的场方程由下式给出：
+
+$$
+\left (\frac{1}{m_s} {W}_{,\alpha \beta} + \delta_{\alpha \beta} (\frac{1}{2} z \overline G_Z - \overline{W}) + \frac{1}{2} \epsilon \delta_s \delta_{\alpha\beta} z_i \overline{G}_i + \frac{1}{2} \delta_s^2 (z_\alpha \overline{G}_\beta + z_\beta \overline{G}_\alpha) -\frac{1}{4} z_\alpha z_\beta \overline{W} \right ) \overline{G}_\beta + \left (\overline{W}_{,\alpha i} \overline{G}_i + \frac{1}{2} z_{\alpha} \overline{G}_Z^2 -\frac{1}{4} z_\alpha z \overline{W}~\overline{G}_z \right) -\frac{1}{4} \epsilon \delta_s z_\alpha z_i \overline{W} ~\overline{G}_i + \frac{1}{2} \delta_s^2 z_\alpha \overline{G}_i^2 =0.
+$$
+
+场方程包含一个小量参数
+
+$$
+\epsilon = \kappa M_G \sim 10^{-2}; \quad \delta_s= \kappa m_s \sim 10^{-16}.
+$$
+
+由于 $W_{,ij}$ 正比于重 Sector 质量矩阵，即 $W_{,ij} \sim M_G$，我们看到式允许方程的解集，其中所有无量纲的 barred 与小写场都是 $O(1)$（带有大小为 $\epsilon \delta_s$ 与 $\delta_s^2$ 的修正）。这十分引人注目，因为按量纲分析人们本应预期 $G_i\sim M_G^2$。式与式允许用一个 $Z_{\alpha}$ 确定 $Z$ 与 $Z_i$，当代入式时给出确定 $z_{\alpha}$ 的方程，它因而与 $M_G$ 无关（除了小的 $\epsilon \delta_s, \delta^2_s$ 修正）。经过详细分析，表明所得的方程是由只依赖于低能场 $Z_{\alpha}$ 的有效势 $V_{eff}$ 变分可推导出的场方程。
+
+由上述分析我们观察到，用轻场表示的低能场方程虽然免于大质量 $M_G$ 与 $M_{Pl}$，但并非完全独立于它们。然而，它们只以组合 $\epsilon \delta_s$ 与 $\delta^2_s$ 进入，因此贡献本质上非常小。我们现在讨论式的约束对超势中允许的耦合的含义。因此，考虑耦合 $y_{i\alpha\beta} Z_iZ_{\alpha} Z_{\beta}$。这一耦合给出依赖于 $Z_{\beta}$ 的 $W_{,i\alpha}$，其具有大小为 $O(m_s)$ 的轻 VEV，因此式的第一个条件满足。式的第二个条件在 $Z_i$ 的 VEV 消失时满足。然而，后来表明，如果 $Z_\alpha$ 耦合到其他轻场，这类重–重–轻耦合会破坏规范层级。
+
+---
+
+> **关于参考文献：** 原文参考文献列表（共约 150 条）收录于源码 `sample.bib` 中，按出现顺序（unsrt）编号，对应正文中的 `\cite{...}` 标注。本译文逐句保留所有 `\cite{...}` 引用标记，未对参考文献条目本身作翻译或重排；如需查阅具体文献，请对照原文 `sample.bib` 或 arXiv 版本。
+
+**—— 译文完 ——**
+{% endraw %}

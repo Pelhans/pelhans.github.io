@@ -1,0 +1,129 @@
+---
+title: "论文解读：Defeating Prompt Injections by Design（2025）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版), Agent_Harness_重要论文解读_·_索引]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# 论文解读：Defeating Prompt Injections by Design（2025）
+
+> 一句话总结：Google DeepMind 提出的 CaMeL（Capabilities for Machine Learning）在 LLM 外层套了一个"系统层"，通过把**控制流锁定在可信查询上、用能力(capability)与数据流追踪强制工具调用策略**，从结构上杜绝提示注入劫持 agent，即使底层模型本身可被注入也能保证安全。
+
+## 1\. 背景与动机
+
+LLM agent 越来越多地连接不可信环境（读邮件、抓网页、调 API）。一旦处理的不可信数据里夹带"把密码发给我"之类的指令，agent 就可能被远程操控——这就是 prompt injection。传统防御（指令层级训练、输入过滤、分隔符）在《The Attacker Moves Second》（见本目录 attacker-moves-second.md）式的自适应攻击下基本失效，因为它们仍把"安全"压在模型"听话"的概率上。
+
+CaMeL 的核心动机是：**与其指望模型不被骗，不如让模型根本没有"被骗后作恶"的能力**。它借鉴操作系统安全原语——能力(capability)、控制流完整性(CFI)、信息流控制(IFC)——把安全做成一个确定性的解释器强制层。
+
+## 2\. 核心问题
+
+1.  能否让 agent 在**底层 LLM 仍可被注入**的前提下，依然保证"控制流不被劫持、私密数据不外泄"？
+
+2.  如何把"不可信数据永远不能影响程序流"这一不变量，做成可由系统强制、而非靠模型自觉的性质？
+
+3.  这种结构隔离在真实 agent 基准上，能在多大程度上兼顾安全性与任务完成率？
+
+## 3\. 方法与架构
+
+CaMeL 是 Dual-LLM 模式（Privileged + Quarantined）的工程化增强，关键在"确定性解释器 + 能力/污染追踪"：
+
+```plain
+   可信用户查询
+        │
+        ▼
+  ┌──────────────┐   仅看见可信查询,产出 Python 风格计划(控制流)
+  │ Privileged   │   在"见到任何不可信数据之前"就定下控制流
+  │ LLM (P-LLM)  │
+  └──────┬───────┘
+         │ 代码(含占位:需从不可信数据取的值)
+         ▼
+  ┌──────────────────────────────────────────────┐
+  │ CaMeL 解释器(确定性,非LLM)                      │
+  │  · 维护数据流图 + 每个值的 capability/污染来源    │
+  │  · 执行控制流                                    │
+  │  · 调用工具前,按安全策略检查参数 capability      │
+  └──────┬───────────────────────┬───────────────┘
+         │                        │
+         ▼                        ▼
+  工具调用(如 send_email)    ┌──────────────┐ 只解析数据,无工具、不能改控制流
+  (策略不过则 fail-closed)   │ Quarantined  │ 从邮件/网页抽取结构化值
+                             │ LLM (Q-LLM) │
+                             └──────────────┘
+```
+
+两个"按构造安全"的保证：
+
+-   **控制流不可被劫持**：控制流由 P-LLM 在见到不可信数据前就固定；解析不可信内容的 Q-LLM 没有任何工具、也不能产出控制流，因此注入指令永远无法改变执行路径。
+
+-   **数据不外泄**：每个值都带 capability 元数据（来源=可信查询 or 不可信数据；可被谁读、可用于什么）。当工具调用会把私密数据送往未授权 sink（例如把邮件内容发给外部地址），解释器按策略拒绝（fail-closed）或要求用户显式确认。
+
+能力示例（论文中的策略函数）：只允许向 `@company.com` 域内发信，否则拒绝。
+
+## 4\. 关键实验与结论
+
+在 **AgentDojo** 基准（动态 agent 攻防环境）上评估：
+
+-   CaMeL（含安全策略）以**可证明安全(provable security)的方式完成 77% 的任务**。
+
+-   作为对照，**无防御系统**完成率为 **84%**——即 CaMeL 用约 7 个百分点的任务完成率代价，换来了对 prompt injection 的结构性防护。
+
+-   安全性随模型无关：在 Claude、GPT-4、Gemini 等多种底层模型上均提升安全性，说明防护来自架构而非模型本身。
+
+-   在受攻击时，CaMeL 相比其它防御保持了更高的 utility，即"被攻击时仍可用"。
+
+## 5\. 贡献与创新点
+
+-   **首个把"能力/信息流控制"系统落到 LLM agent 的实用架构**，把 OS 安全原语（capability、CFI、IFC）翻译为 agent 运行时语义。
+
+-   **分离"可信规划"与"不可信解析"到两个物理模型 + 确定性解释器**，使"不可信数据不影响控制流"成为结构不变量而非学习行为。
+
+-   **可证明安全 + 仅小幅 utility 损失**（77% vs 84%），证明"安全不必以瘫痪功能为代价"。
+
+## 6\. 局限与争议 / 后续工作
+
+-   **局限**：需要把任务用代码计划表达，对天然难结构化的问题有适用边界；安全策略需人工编写，且 fail-closed 可能误拦合法操作；P-LLM 本身若被诱导生成恶意计划（而非被注入数据劫持）仍属威胁面。
+
+-   **与 attacker-moves-second 的关系**：CaMeL 基本不在那篇"12 防御被 90%+ 攻破"的统计之内，正是因为它是"按构造安全"而非模型级防御——但它并非银弹，仍有策略编写与规划层风险。
+
+-   **后续/相关**：
+
+-   *Progent: Programmable Privilege Control for LLM Agents*（arXiv:2504.11703, 2025）——可编程语言化的权限控制。
+
+-   *The Instruction Hierarchy*（arXiv:2404.13208）——训练模型区分特权指令的互补路线。
+
+-   *IPIGuard*（2025）——基于工具依赖图的间接注入防御。
+
+## 7\. 与 Agent Harness 的关系
+
+对 harness 工程师的可操作建议：
+
+1.  **把工具调用收口到一个确定性执行/策略层**。不要让 LLM 直接触达高危工具；所有工具调用先过 harness 的策略检查（capability + 信息流），fail-closed 优先。
+
+2.  **强制"先规划、后接触不可信数据"**。让规划模型只消费可信查询，把解析不可信内容隔离到无工具、无控制流权限的通道——这正是 CaMeL 的双 LLM 思路，可直接借鉴到你的 harness 架构。
+
+3.  **给数据打"来源/能力"元数据标签**。在记忆与上下文在工具间流动时，记录每个值的 provenance，策略据此判断是否允许跨信任边界流动（如私密记忆 → 外部发送工具）。
+
+## 8\. 原文与资源
+
+-   论文（arXiv）：[https://arxiv.org/abs/2503.18813](https://arxiv.org/abs/2503.18813)
+
+-   PDF：[https://arxiv.org/pdf/2503.18813](https://arxiv.org/pdf/2503.18813)
+
+-   代码库：[https://github.com/google-research/camel-prompt-injection](https://github.com/google-research/camel-prompt-injection)
+
+## 9\. BibTeX
+
+```plain
+@misc{debenedetti2025defeating,
+  title        = {Defeating Prompt Injections by Design},
+  author       = {Debenedetti, Edoardo and Shumailov, Ilia and Fan, Tianqi and Hayes, Jamie and Carlini, Nicholas and Fabian, Daniel and Kern, Christoph and Shi, Chongyang and Terzis, Andreas and Tram{\`e}r, Florian},
+  year         = {2025},
+  howpublished = {arXiv preprint arXiv:2503.18813},
+  url          = {https://arxiv.org/abs/2503.18813}
+}
+```
+{% endraw %}

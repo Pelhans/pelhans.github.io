@@ -1,0 +1,89 @@
+---
+title: "论文解读：Tree of Thoughts: Deliberate Problem Solving with Large Language Models（2023）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版), Agent_Harness_重要论文解读_·_索引]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# 论文解读：Tree of Thoughts: Deliberate Problem Solving with Large Language Models（2023）
+
+> 一句话总结：ToT 把 CoT 从线性链推广为树，让 LLM 在每一步生成多个候选"思维"并自我评估，配合 BFS/DFS 做前瞻与回溯，从而解决需要探索与规划的难题。
+
+## 1\. 背景与动机
+
+标准 LLM 推理是 token 级、从左到右的自回归过程，无法在中间步骤分叉、无法前瞻或回溯。对需要探索、战略性前瞻、或早期决策影响全局的任务（如数学拼装、约束满足），单链 CoT 一旦走错就全盘皆输。ToT 想回答：能否让模型"深思熟虑"地搜索，而非一条道走到黑？
+
+## 2\. 核心问题
+
+-   如何把问题分解为可独立评估的中间"思维"（thought）单元？
+
+-   如何用 LLM 自身作为启发式评估器，对思维打分并指导搜索？
+
+-   树搜索（BFS/DFS）能否显著提升需要规划/回溯的任务表现？
+
+## 3\. 方法与架构
+
+ToT 把推理建模为树搜索：节点是部分解（thought），边上挂打分。四要素：(1) 思维分解（每步生成 b 个候选 thought）；(2) 状态评估（LLM 把每个状态评为 sure / maybe / impossible）；(3) 搜索算法（BFS 按分支宽度剪枝，或 DFS 深度优先 + 回溯）；(4) 决定何时终止或回溯。
+
+```plain
+        Root(问题)
+       /     |     \
+   thought1 thought2 thought3   ← 生成 b 个候选
+      │        │        │
+   评估:     评估:     评估:
+   sure     maybe   impossible(剪枝)
+      │        │
+   继续展开   回溯 / 换支
+```
+
+以 Game of 24 为例：每步把当前数字组合拆成 b=5 种运算，LLM 评估"能否得到 24"，保留有希望的分支，最终回溯到正确路径。
+
+## 4\. 关键实验与结论
+
+基准：Game of 24、Creative Writing、Mini Crosswords（均用 GPT-4）。
+
+-   Game of 24 成功率：GPT-4 CoT 仅 4%，CoT-SC（100 采样）9%，ToT 达 74%；GPT-3.5+ToT 仅 19%（强依赖模型生成质量）。
+
+-   Creative Writing：GPT-4 连贯性评分 IO 6.19 → CoT 6.93 → ToT 7.56；人类偏好 ToT 胜 CoT 41/100 次，CoT 胜 ToT 仅 21/100。
+
+-   Mini Crosswords：ToT 字母级 78%、单词级 60%、整局 20%；CoT 为 40.6% / 15.6% / ~5.6%。
+
+-   成本：Game of 24 每题 ToT 约 $0.74，best-of-100 CoT 约$0.47。
+
+## 5\. 贡献与创新点
+
+首次把"深思熟虑的搜索"系统化引入 LLM 推理，提出 thought / value / search 的通用框架；证明自我评估可作启发式；给出 BFS / DFS / 回溯的可插拔实现。是"agent 主动探索而非被动生成"的代表作。
+
+## 6\. 局限与争议 / 后续工作
+
+代价高昂（token 消耗是 CoT 的 5–100 倍）；评估器本身也会犯错（把正确分支判为 impossible）；三个任务偏合成。模型依赖强（GPT-3.5+ToT 仅 19%）。后续与 Reflexion 结合（"思维树 + 反思"）、用于代码/规划（ToT 变体），以及把搜索过程作为 harness 的"规划器"组件。
+
+## 7\. 与 Agent Harness 的关系
+
+-   对需要回溯/多方案的子任务（代码修复、约束求解），在 harness 中实现"生成多候选 → 评估 → 回溯"的搜索原语，而不是贪心单链。
+
+-   把"自我评估"做成独立、可替换的模块（value function），评估器出错要有守护（如交叉验证、外部校验）。
+
+-   成本敏感：仅在 CoT 明显失败的高价值任务启用树搜索，用 beam size / 投票数做性能-成本权衡。
+
+## 8\. 原文与资源
+
+-   论文：[https://arxiv.org/abs/2305.10601](https://arxiv.org/abs/2305.10601)
+
+-   代码：[https://github.com/princeton-nlp/tree-of-thought-llm](https://github.com/princeton-nlp/tree-of-thought-llm)
+
+## 9\. BibTeX
+
+```plain
+@inproceedings{yao2023tree,
+  title={Tree of Thoughts: Deliberate Problem Solving with Large Language Models},
+  author={Yao, Shunyu and Yu, Dian and Zhao, Jeffrey and Shafran, Izhak and Griffiths, Thomas L and Cao, Yuan and Narasimhan, Karthik},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2023}
+}
+```
+{% endraw %}

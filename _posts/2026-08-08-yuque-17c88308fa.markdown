@@ -1,0 +1,77 @@
+---
+title: "论文解读：SWE-bench: Can Language Models Resolve Real-world GitHub Issues?（2023/2024）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版), Agent_Harness_重要论文解读_·_索引]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# 论文解读：SWE-bench: Can Language Models Resolve Real-world GitHub Issues?（2023/2024）
+
+> 一句话总结：SWE-bench 用 12 个真实 Python 仓库的 2294 个 GitHub issue+PR 构建代码 agent 基准，证明即便最强模型在发布时也仅能解决约 2% 任务，催生了 agentic coding 这一整个研究方向与 SWE-bench Verified 等变体。
+
+## 1\. 背景与动机
+
+传统代码基准（HumanEval、MBPP）是人为设计、自包含的小函数题，早已饱和且无法反映真实软件工程：真实任务要求**在完整代码库中导航、跨多文件/类协调改动、处理超长上下文、与执行环境交互**。作者（Princeton、Chicago）认为真实世界的软件工程是评测下一代 LLM 的"丰富、可持续、极具挑战"的试验场，但当时缺乏这样的基准。SWE-bench 因此而生：把"改一个真实 bug/特性"作为评测单元。
+
+## 2\. 核心问题
+
+(1) LLM 能否从一段 issue 描述出发，在整库范围内做复杂代码编辑以修复问题？(2) 这种任务对模型的检索、长上下文、多步推理与执行交互提出了哪些超越传统 code generation 的要求？(3) 当前 SOTA 模型离"自主软件工程师"还有多远？
+
+## 3\. 方法与架构
+
+**数据采集**：爬取 12 个热门 Python 仓库（django、scikit-learn、sympy、matplotlib 等）的 PR，筛选"关联 issue 且改动含测试文件"的实例，构造 **2294 个 task instance**。每个实例绑定：(a) issue 文本作为 problem statement；(b) 基于 PR 前 commit 的 Docker 执行环境；(c) **FAIL\_TO\_PASS** 测试（打补丁前失败、合入后通过，是解题主信号）；(d) **PASS\_TO\_PASS** 测试（前后都通过，验证未破坏无关功能）。
+
+**评测协议**：给 agent 仓库+issue，由 agent 自行编辑代码库；运行 FAIL\_TO\_PASS 与 PASS\_TO\_PASS，两者全过才算 resolved。测试对 agent 不可见（防泄露）。初始 RAG 基线仅 **1.96%**。
+
+## 4\. 关键实验与结论
+
+-   发布时最佳模型 **Claude 2 仅解决 1.96%**，GPT-4、自研 SWE-Llama 只能解最简单的问题——证实巨大能力鸿沟。
+
+-   首个 agent 求解器 **SWE-agent**（同团队）达 **12.47%**，证明"脚手架/agent 循环"是关键增量。
+
+-   问题常需跨多函数、多类、多文件协调，远难于单函数生成。
+
+-   后续演化：SWE-bench Verified（2024，与 OpenAI 合作）由 93 名开发者人工校验、筛出 **500 个无歧义且可解**的任务，取代原全集成为主基准；Verified 上 GPT-4o 约 38%、Claude 3.5 Sonnet 约 49%（2025 初），前沿系统 2025–2026 年已突破 70–87%。
+
+## 5\. 贡献与创新点
+
+(1) 首次把"真实 GitHub issue→补丁"做成大规模、可执行、抗污染的端到端基准，定义 FAIL\_TO\_PASS/PASS\_TO\_PASS 验证范式，被整个 agentic coding 领域沿用；(2) 证明评测对象应是**agent 系统而非裸模型**——同一模型配不同 harness 结果迥异，直接推动 SWE-agent、Agentless、OpenHands 等求解器生态；(3) 引出 Verified/Lite/Multimodal/Multilingual 一整套变体，成为代码 agent 的事实标准。
+
+## 6\. 局限与争议 / 后续工作
+
+已知短板：测试常过窄——同一 PR 的单元测试可能只覆盖部分行为，约 7.8% 被标"已解决"的补丁其实通不过仓库其他测试，约 11% 明确错误但原测试未捕获（PatchDiff 分析）；issue 描述常欠指定，导致歧义或不可解（Verified 因而删除了大量原样本）；仅 Python、单仓库、无架构设计/代码评审/部署。后续：SWE-bench Verified、SWE-bench Multimodal（517 题）、MultiSWE-bench（Java/TS/Go/Rust/C++）、SWE-smith（训练数据生成）、以及agent 安全基准 Agent-SafetyBench、RiOSWorld。
+
+## 7\. 与 Agent Harness 的关系
+
+对 harness 工程师的三条可操作建议：
+
+1.  **harness 是主要杠杆**：同一底座模型在 SWE-bench 上从 <2% 到 12%+ 的提升几乎全来自 agent 循环（文件检索、测试运行、迭代修复）。构建 coding harness 时应优先打磨"定位→编辑→跑测→重试"的闭环，而非迷信模型参数量。
+
+2.  **验证必须可执行且充分**：仅靠 FAIL\_TO\_PASS 会高估正确性；harness 应额外跑 PASS\_TO\_PASS 与更广的回归，必要时自动生成补充测试（类似 PatchDiff），避免"看似通过实则破坏"。
+
+3.  **警惕任务定义污染**：issue 文本即问题、PR 即答案，存在训练数据重叠风险；在自家 harness 评测中应定期用私有/新仓库做隔离验证。
+
+## 8\. 原文与资源
+
+-   论文（arXiv 2310.06770）：[https://arxiv.org/abs/2310.06770](https://arxiv.org/abs/2310.06770)
+
+-   官方站点与数据：[http://swe-agent-bench.github.io/](http://swe-agent-bench.github.io/)
+
+-   SWE-bench Verified 介绍（OpenAI）：[https://openai.com/index/introducing-swe-bench-verified/](https://openai.com/index/introducing-swe-bench-verified/)
+
+## 9\. BibTeX
+
+```plain
+@inproceedings{jimenez2024swebench,
+  title={{SWE}-bench: Can Language Models Resolve Real-world Github Issues?},
+  author={Jimenez, Carlos E. and Yang, John and Wettig, Alexander and Yao, Shunyu and Pei, Kexin and Press, Ofir and Narasimhan, Karthik R.},
+  booktitle={The Twelfth International Conference on Learning Representations (ICLR)},
+  year={2024},
+  url={https://openreview.net/forum?id=VTF8yNQM66}
+}
+```
+{% endraw %}

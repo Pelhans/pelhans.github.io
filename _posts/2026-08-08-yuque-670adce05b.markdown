@@ -1,0 +1,564 @@
+---
+title: "2._Agent_循环_一次_turn_的生命周期"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版), Codex_Agent_Harness_深度解剖_·_系列索引]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+> 一句话：**Agent 不是一个"问答机"，而是一个"循环机"——它反复"思考→行动→观察"，直到自己觉得干完了才停。** 在 Codex 里，这个循环的一次完整运行叫一个 **turn（回合）**。
+
+---
+
+## 从"高级工程师修 bug"说起
+
+想象你让一位高级工程师修一个 bug。他不会"看一眼就立刻写出正确答案"，而是：
+
+```plain
+理解问题（思考）
+  → 跑测试看报错（行动）
+  → 读报错、定位原因（观察）
+  → 改代码（行动）
+  → 再跑测试（观察）
+  → ……直到测试全绿，对你说"修好了"
+```
+
+**Agent Loop 就是把这位工程师的工作方式，变成了程序。** 模型负责"思考"，工具负责"行动"（跑命令、读写文件），工具的结果就是"观察"。三者不断循环。
+
+无论 Claude Code、Codex、Cursor 还是 LangGraph，核心骨架都长这样（出自 Steve Kinney 对主流框架源码的拆解）：
+
+```python
+while not done:
+    response = call_llm(messages, tools)        # 让模型看上下文、做决定
+    if response.has_tool_calls:                 # 模型想调用工具？
+        results = execute_tools(response.tool_calls)
+        messages.append(results)                # 结果放回上下文，继续循环
+    else:
+        done = True                             # 模型只回纯文本 → 结束
+```
+
+**这里有一句最关键、必须记住的直觉：**
+
+> 工具调用 = "我还没干完，需要更多信息或要动手"；纯文本回复 = "我干完了"。
+
+模型用"要不要调工具"这一个决定，自己掌控了循环的生死。开发者不写 if/else 去规定步骤，只把方向盘交给模型。更极致的写法（Barry Zhang 提炼）：`env.state = tools.run(llm.run(system_prompt + env.state))`——环境变化、模型观察、模型行动、再循环。
+
+这个模式不是拍脑袋想的。2022 年 Google + 普林斯顿的 **ReAct 论文** 把它形式化：**Thought（推理）→ Action（行动）→ Observation（观察）→ Thought → …**。让模型"边想边做、做完看结果再想"，比纯推理（Chain-of-Thought）更能减少幻觉，因为它用真实世界反馈校正自己。
+
+一个具体例子，你让 Codex"把 `auth` 模块的测试修好"，turn 大致这样跑：
+
+| 轮次 | 模型的动作 | 工具结果（观察） |
+| --- | --- | --- |
+| Turn 1 | 调用 Bash 跑 `npm test` | 3 个用例失败，贴出报错 |
+| Turn 2 | 调用 Read 读 `auth.ts` / `auth.test.ts` | 拿到源码 |
+| Turn 3 | 调用 Edit 改代码 → 再 Bash 跑测试 | 全部通过 |
+| Final | 只回文本："已修复，测试全绿" | —（循环结束，控制权交还你） |
+
+每一轮都以一条"助手消息"收尾。所以 **Agent 的真正产出不只是那段文字，它改掉的代码、跑过的命令，都是副作用**。把上面那张表背下来，你就能读懂下面所有源码细节——它们都在回答同一个问题："这个循环在生产环境里，怎么才跑得稳？"
+
+---
+
+## 朴素循环为什么不够：Codex 把循环做"重"了
+
+上面 6 行循环能跑，但真实产品要回答一堆难题：**工具出错怎么办？用户中途插话怎么办？上下文爆了怎么办？流式输出怎么接？** Codex 的答案是——把循环从一个 while，升级成一组分层协作的组件。
+
+### 三层循环（本质是嵌套）
+
+```plain
+外层：任务循环      —— 接住你"中途插的话"，turn 结束后继续跑
+  └─ 中层：turn 主循环 —— 一轮采样→工具→是否还要 follow-up / 是否要压缩
+       └─ 内层：采样流循环 —— 消费模型返回的事件流，逐条解析成文本/工具调用
+```
+
+-   **为什么分层？** 外层保证"你在我干活时发新消息不会被丢掉"；中层负责"这轮到底还要不要继续"的生死决策；内层负责"模型吐出来的半截内容怎么拼成完整结果"。
+-   **决定 turn 去留的** `continue`**/**`break` **落在中层**：它决定 turn 是"再采一轮样"还是"彻底结束"。
+
+### 一次 turn 的端到端骨架
+
+```plain
+预压缩（上下文已经爆了就先压缩）
+  → 捕获本 turn 的上下文快照（StepContext）
+  → 注入 skills / plugins（把"该会的能力"以用户消息形式唤醒）
+  → 跑 PreToolUse hooks（可被拦截）
+  → loop {
+        构造采样请求 → 跑模型
+        模型返回：有工具调用？→ 执行并把结果回灌 → 还要继续
+        没工具调用？→ 跑 stop hooks → turn 结束
+        上下文要爆了？→ 自动压缩 → 带着新上下文继续
+    }
+```
+
+**核心哲学：模型驱动编排（model-driven orchestration）。** harness 不预设"先调 A 再调 B"。每轮采样的工具调用顺序、次数，完全由模型当场决定；harness 只做两件事：**执行工具 + 把结果回灌上下文**。这正是 OpenAI Responses API 的设计本质（`tools` + `function_call_output`）。对照 Anthropic 的 OpenAI Agents SDK：它用一个判别联合（NextStep）把每轮结果分成 `final_output / handoff / run_again / interruption` 四种——思路完全一致，只是 Codex 把这套决策内化进了 Rust 引擎内部。
+
+### 两个"信封"：模型说的 vs 前端听的
+
+模型返回的是 `ResponseEvent`（流式事件的"方言"：文本增量、工具调用边界、推理过程…）；Codex 把它**翻译**成 `EventMsg`（客户端能懂的统一事件：TurnStarted、AgentMessage、ItemCompleted、TokenCount…）。所有"为什么前端看到的事件和模型返回对不上"的排查，都发生在这个翻译层。
+
+### 可重入、中途 steer 与中断
+
+-   **可重入**：turn 不是"一次跑完就销毁"，它的状态（上下文、历史、预算）跨采样持久存在，随时可被取消、可被你中途插入新指令"续跑"。
+-   **中途 steer**：你在模型跑的时候发消息，`input_queue` 会接住，turn 结束后立刻处理。
+-   **中断**：`Op::Interrupt`（protocol.rs:525）通过 `CancellationToken` 取消正在跑的 turn。
+
+### 横向对照
+
+| 维度 | Codex | Claude Code | OpenAI Agents SDK |
+| --- | --- | --- | --- |
+| 底层 API | Responses API（WebSocket） | Messages API（SSE） | Responses API |
+| 循环粒度 | 三层、引擎内部、偏"重" | 统一消息流、偏"粗" | `runSingleTurn` 四分支、偏"轻" |
+| 多 Agent | 原生 agent 树 | Subagent 独立上下文 | Handoff 工具调用 |
+| 压缩/预算 | 双层（窗口内 + 会话总账） | `/compact` + 子 agent | 依赖外部 |
+
+**共识**：大家都是"采样→解析工具→执行→回灌→再采样"的模型驱动循环，差异只在 API 方言、事件翻译层、中断/steer 的成熟度。
+
+---
+
+## 把循环落进代码：run\_turn 主循环
+
+下面所有结论都能对应到具体文件与符号。Codex 用 Responses API 而非 Chat Completions。
+
+### 入口：一条用户消息如何变成一次 turn
+
+客户端投递 `Op::UserInput`（`protocol.rs:550`），携带 `items`、`thread_settings` 等。它经 `AgentControl::send_input`（`agent/control.rs:142`）进入提交队列：先 `ensure_execution_capacity_for_turn_start` 做容量检查，再 `send_input_after_capacity_check` 调 `state.send_op(agent_id, input.into())`（`agent/control.rs:163` 这一行正是内部 `state.send_op(...)` 调用）。`send_op` 本体定义在 `ThreadManagerState::send_op`（`thread_manager.rs:1315`）——它记一笔 ops 日志后 `thread.submit(op).await`，把 `Op` 封装成 `TurnInput` 交给 `RegularTask`。
+
+`RegularTask::run`（`tasks/regular.rs:38`）是普通 turn 的执行体——它本身就是"外层任务循环"：
+
+```rust
+// codex-rs/core/src/tasks/regular.rs:77
+loop {
+    let last_agent_message = run_turn(
+        Arc::clone(&sess), Arc::clone(&ctx),
+        Arc::clone(&turn_extension_data),
+        next_input,                          // 首轮是原始输入；续跑时为 Vec::new()
+        prewarmed_client_session.take(),     // 预热连接（见后文）
+        cancellation_token.child_token(),
+    )
+    .instrument(run_turn_span.clone())
+    .await?;
+    if !sess.input_queue.has_pending_input(&sess.active_turn).await {
+        return Ok(last_agent_message);       // 没有后续输入，turn 真正结束
+    }
+    next_input = Vec::new();                 // 有中途 steer，继续跑（但本轮不重复采样输入）
+}
+```
+
+> 注意 `next_input = Vec::new()`：`RegularTask` 把"中途插入的消息"留在 `input_queue` 里，而不是重新喂给 `run_turn`。为什么？因为正在跑的那一轮之后累积的 steer 消息，应该由 `run_turn` 自己去 `input_queue` 里 `get_pending_input` 取，避免重复采样。`RegularTask` 只负责"再起一个 turn"，不负责"搬运 steer 内容"。
+
+### run\_turn 的逐步拆解（turn.rs:153）
+
+```rust
+pub(crate) async fn run_turn(
+    sess: Arc<Session>,
+    turn_context: Arc<TurnContext>,
+    turn_extension_data: Arc<codex_extension_api::ExtensionData>,
+    input: Vec<TurnInput>,
+    prewarmed_client_session: Option<ModelClientSession>,
+    cancellation_token: CancellationToken,
+) -> CodexResult<Option<String>>
+```
+
+按执行顺序：
+
+1.  **预压缩** `run_pre_sampling_compact`（`turn.rs:851`）：先检查模型切换/降配导致的上下文变化（`comp_hash` 变了、或换到更小上下文窗口的模型），或 `token_limit_reached`，超限就在采样前先压（`run_auto_compact`，turn.rs:868，phase = `PreTurn`）。压缩失败且是 `TurnAborted` 就 `run_hooks_and_record_inputs` 后返回错误；否则降级成"这轮空跑"返回 `Ok(None)`。
+2.  **捕获上下文快照** `sess.capture_step_context(...)`（`turn.rs:188`）生成 `StepContext`——本 turn 的上下文/工具表/环境的一次性冻结视图，保证采样、执行、读上下文看到同一份请求。
+3.  **冻结模型可见状态并落库**（`turn.rs:199-234`）：`record_context_updates_and_set_reference_context_item` 把本 turn 的 world state 定格，`build_skills_and_plugins` 把 skill 指令**以"用户消息片段"的形式注入**（见 `ContextualUserFragment::into`,turn.rs:673）——相当于在上下文里伪造一条用户指令"唤醒"模型使用对应能力；随后 `record_conversation_items` 把这些注入项当成普通对话项写入历史。
+4.  **PreToolUse 等价物** `run_hooks_and_record_inputs`（`turn.rs:542`）：可被 hook 拦截（`should_stop` 返回 true 即 `blocked_input && !accepted_user_input`，run\_turn 直接 `return Ok(None)`）。
+5.  **主循环** `loop`（`turn.rs:254`）：每次迭代取 `pending_input`→跑 hooks→构造并 `run_sampling_request`（turn.rs:310）→评估 `has_pending_input` 与 `context_window_token_status`→决策 follow-up / roll-over / 结束。
+
+### 主循环 body 逐行拆解（turn.rs:254-513）
+
+这一节把单轮迭代拆开看每一行在干什么。粗略说，一轮迭代 = **取输入 → 跑 hooks → 采样 → 评估生死 → 决策下一步**。
+
+**① 取待灌入输入（turn.rs:258-262）**
+
+```rust
+let pending_input = if can_drain_pending_input {
+    sess.input_queue.get_pending_input(&sess.active_turn).await
+} else {
+    Vec::new()
+};
+```
+
+`can_drain_pending_input` 是关键开关：它初始为 `input.is_empty()`（turn.rs:218），即**首轮不 drain**——你这次显式投喂的 `input` 要优先被采样，不能先被历史里残留的 steer 冲掉。采样成功后置 `true`（turn.rs:337）；但 auto-compact 后会重设为 `!model_needs_follow_up`（turn.rs:423），意思是"模型还在跑工具时，先把 steer 按住，等模型自己停下再说"。
+
+**② 跑 hooks + 落输入（turn.rs:264-266）**
+
+```rust
+if run_hooks_and_record_inputs(&sess, &turn_context, &pending_input).await {
+    break;
+}
+```
+
+hook 拦截（或没有 accepted user input 且被 blocked）就直接 `break` 出主循环——这是"PreToolUse 拒绝"的出口。
+
+**③ 预算提醒 + 重新捕获 step context（turn.rs:269-283）**
+
+```rust
+super::rollout_budget::maybe_record_reminder(sess.as_ref(), turn_context.as_ref(), &window_id).await;
+let step_context = match next_step_context.take() {
+    Some(step_context) => step_context,         // 复用首轮冻结的快照
+    None => sess.capture_step_context(Arc::clone(&turn_context), &cancellation_token).await?,
+};
+```
+
+`next_step_context` 在循环外初始化为 `Some(first_step_context)`（turn.rs:253），第一次迭代 `.take()` 拿走后变 `None`，此后每轮重新 `capture_step_context`，确保工具执行后世界状态变化（新文件、新环境变量）能反映进下一轮采样。`maybe_record_reminder` 则在会话级预算（`RolloutBudget`）快耗尽时，往模型上下文塞一条"剩余 token 不多了"的提示。
+
+**④ 构造采样请求并跑模型（turn.rs:284-322）**
+
+这段 `async` 块做了三件要事：
+
+```rust
+world_state = sess
+    .record_step_world_state_if_changed(&world_state, step_context.as_ref())
+    .await;
+
+let sampling_request_input: Vec<ResponseItem> = async {
+    sess.clone_history().await
+        .for_prompt(&turn_context.model_info.input_modalities)
+}.instrument(trace_span!("run_turn.prepare_sampling_request_input")).await;
+
+run_sampling_request(
+    Arc::clone(&sess), Arc::clone(&step_context), Arc::clone(&turn_extension_data),
+    Arc::clone(&turn_diff_tracker), &mut client_session,
+    &responses_metadata, sampling_request_input, cancellation_token.child_token(),
+).await
+```
+
+-   `record_step_world_state_if_changed`：把"环境里多出来的文件/变更"以增量形式反映进 world state（驱动后面的 TurnDiff 事件）。
+-   `clone_history().for_prompt(...)`：把会话历史按当前模型的输入模态（text / image / audio）过滤、剪裁成真正发给模型的 `input`。这一步是"上下文窗口"与"模态能力"的交汇点。
+-   `run_sampling_request` 内部再调 `build_prompt`（`turn.rs:1147`）组装 `Prompt`：`tools`、`parallel_tool_calls`、`base_instructions`、`output_schema` 都来自这一层。最后 `child_token()` 把主 token 派生给本次采样，便于单独取消。
+
+**⑤ 评估"要不要继续"（turn.rs:323-385）**
+
+返回的是 `SamplingRequestResult { needs_follow_up, last_agent_message }`（turn.rs:1442）。注意这里开始分叉：
+
+```rust
+let SamplingRequestResult { needs_follow_up: model_needs_follow_up, .. } = sampling_request_output;
+if model_needs_follow_up {
+    // 模型还要继续 → 把邮箱里挂起的 steer 收编进当前 turn，让工具结果后能直接接话
+    sess.input_queue
+        .accept_mailbox_delivery_for_current_turn(&sess.active_turn, &turn_context.sub_id)
+        .await;
+}
+can_drain_pending_input = true;
+
+let (has_pending_input, token_status) = async {
+    let has_pending_input = sess.input_queue.has_pending_input(&sess.active_turn).await;
+    let token_status = super::context_window::context_window_token_status(
+        sess.as_ref(), turn_context.as_ref()).await;
+    (has_pending_input, token_status)
+}.instrument(trace_span!("run_turn.collect_post_sampling_state")).await;
+
+let needs_follow_up = model_needs_follow_up || has_pending_input;   // turn.rs:350
+let token_limit_reached = token_status.token_limit_reached;          // turn.rs:351
+```
+
+两个布尔量决定了 turn 的命运：
+
+-   `needs_follow_up = model_needs_follow_up || has_pending_input`：**模型想继续，或用户塞了新消息**，都算"还没完"。
+-   `should_roll_over`，见下一节。
+
+**⑥ 决策下一步（turn.rs:385-478）**
+
+```rust
+let should_roll_over = needs_follow_up
+    && (sess.take_new_context_window_request().await || token_limit_reached);  // turn.rs:385
+```
+
+`should_roll_over` 为真 → `run_auto_compact`（turn.rs:398，phase = `MidTurn`）压缩后 `continue`（turn.rs:424），带着更短上下文重跑。注意第 423 行 `can_drain_pending_input = !model_needs_follow_up`：压缩发生在"模型还想继续"时，先不把 steer 灌进去，等模型主动停下。
+
+`should_roll_over` 为假且 `!needs_follow_up`（turn.rs:427）才是真正的收尾分支：
+
+```rust
+last_agent_message = sampling_request_last_agent_message;
+let stop_outcome = run_turn_stop_hooks(&sess, &turn_context, stop_hook_active, last_agent_message.clone()).await;
+if stop_outcome.should_block { /* stop hook 要求续跑：塞一条 hook_prompt_message，accept_mailbox，continue */ }
+if stop_outcome.should_stop { break; }
+// legacy after-agent hook 也可能 return Ok(None) 提前结束
+break;
+```
+
+可见 **stop hook 有"否决权"**：即使模型说干完了，`should_block` 也能把 turn 拉回 `continue`。最后 `needs_follow_up` 仍为真时落到 `continue`（turn.rs:478）——典型的"模型又调了工具"路径。
+
+**⑦ 错误处理（turn.rs:480-511）**
+
+-   `TurnAborted` → `return Err(err)`（被上层 `RegularTask` 捕获，整条任务链中断）。
+-   `InvalidImageRequest` → 发一条友好的 `EventMsg::Error` 并 `break`（不让用户卡死，但本 turn 失败）。
+-   其他错误 → 记录、发 `EventMsg::Error`、`break`，**让对话继续**（用户还能再发消息）。
+
+### 采样请求与 Responses API
+
+`Prompt`（`client_common.rs:18`）是发给模型的载荷：`input`（历史）、`tools`（工具规格）、`parallel_tool_calls`、`base_instructions`、`output_schema`。`build_prompt`（`turn.rs:1147`）把它组装起来，其中 `parallel_tool_calls` 直接取自 `turn_context.model_info.supports_parallel_tool_calls`——模型是否支持并行工具，决定了同一响应里能吐几个 `FunctionCall`。
+
+模型返回经 `codex_api::ResponseEvent`（`codex-api/src/common.rs:76`）逐事件流式下发：
+
+| `ResponseEvent` 变体 | 行号 | 含义 | 在 try_run_sampling_request 的处理 |
+| --- | --- | --- | --- |
+| `Created` | common.rs:77 | 响应开始 | 无操作 |
+| `OutputItemAdded` | common.rs:80 | 流式项开始 | turn.rs:2236，建立 `active_item`、订阅 diff consumer |
+| `OutputItemDone` | common.rs:79 | 流式项完成（工具/消息定型） | turn.rs:2141，触发工具编排（见下节） |
+| `OutputTextDelta` | common.rs:99 | 助手文本增量 | turn.rs:2405，解析后发 `AgentMessageContentDelta` |
+| `Completed { end_turn }` | common.rs:92 | 响应结束 | turn.rs:2369，判定 follow-up、发 TokenCount/TurnDiff |
+| `RateLimits` | common.rs:121 | 限流快照 | turn.rs:2356，延迟到 TokenCount 一起发 |
+| `ReasoningContentDelta` | common.rs:114 | 推理原文增量 | turn.rs:2531，发 `ReasoningRawContentDelta` |
+
+这些被翻译成 `EventMsg`（`protocol.rs:1279`）：`TurnStarted`、`AgentMessage`、`ItemCompleted`、`TokenCount`、`ContextCompacted`、`TurnComplete`… `ResponseEvent` 是"模型流方言"，`EventMsg` 是"客户端语言"。
+
+### 工具调用闭环：请求 → 编排执行 → 结果回灌
+
+这一节是整个引擎最硬核的地方。`OutputItemDone` 落下一个工具项时，会触发编排；回灌发生在流结束后。
+
+`handle_output_item_done`（`stream_events_utils.rs:287`）用 `ToolRouter::build_tool_call(item)`（stream\_events\_utils.rs:295，这是调用点）把 `ResponseItem` 解析为结构化 `ToolCall`。它的 `match` 有四个出口，值得逐一看：
+
+```rust
+// codex-rs/core/src/stream_events_utils.rs:287（精简）
+match ToolRouter::build_tool_call(item.clone()) {
+    // 1) 模型真的发起了工具调用
+    Ok(Some(call)) => {
+        // 先把邮箱里挂起的 steer 收编进本 turn（见 ⑤）
+        ctx.sess.input_queue
+            .accept_mailbox_delivery_for_current_turn(&ctx.sess.active_turn, &ctx.turn_context.sub_id)
+            .await;
+        record_completed_response_item(ctx.sess.as_ref(), ctx.turn_context.as_ref(), &item).await; // 落库
+        let cancellation_token = ctx.cancellation_token.child_token();
+        let tool_future: InFlightFuture<'static> = Box::pin(
+            ctx.tool_runtime.clone().handle_tool_call(call, cancellation_token),  // 真正去跑工具
+        );
+        output.needs_follow_up = true;          // 有工具调用就必然续跑
+        output.tool_future = Some(tool_future); // 交给 FuturesOrdered 稍后统一写回
+    }
+    // 2) 不是工具调用（纯消息 / 推理）→ 直接定型并下发客户端事件
+    Ok(None) => {
+        let finalized = finalize_non_tool_response_item(...).await;
+        if previously_active_item.is_none() {
+            ctx.sess.emit_turn_item_started(&ctx.turn_context, &finalized.turn_item).await;
+        }
+        ctx.sess.emit_turn_item_completed(&ctx.turn_context, finalized.turn_item).await;
+        record_completed_response_item_with_finalized_facts(...).await;
+        output.last_agent_message = finalized.facts.last_agent_message;
+    }
+    // 3) 工具请求被权限/策略拒绝，或需直接回话 → 直接构造 FunctionCallOutput 回灌
+    Err(FunctionCallError::RespondToModel(message)) => {
+        let response = ResponseInputItem::FunctionCallOutput {
+            call_id: String::new(),
+            output: FunctionCallOutputPayload { body: FunctionCallOutputBody::Text(message), ..Default::default() },
+        };
+        record_completed_response_item(...).await;
+        if let Some(response_item) = response_input_to_response_item(&response) {
+            ctx.sess.record_conversation_items(&ctx.turn_context, std::slice::from_ref(&response_item)).await;
+        }
+        output.needs_follow_up = true;          // 拒绝也要续跑，让模型基于拒绝结果决定下一步
+    }
+    // 4) 致命错误
+    Err(FunctionCallError::Fatal(message)) => return Err(CodexErr::Fatal(message)),
+}
+```
+
+要点：
+
+-   `needs_follow_up = true` **是"模型产出工具项"传导到"turn 继续"的唯一桥梁**。无论是真调用（出口 1）还是被拒回话（出口 3），都把 `needs_follow_up` 置位；`try_run_sampling_request` 末尾 `needs_follow_up |= output_result.needs_follow_up`（turn.rs:2227）把它累积进返回值，再回到 `run_turn` 的 `model_needs_follow_up`，最终与 `has_pending_input` 做 `||`（turn.rs:350）。
+-   **工具执行失败如何被捕获并回灌成** `FunctionCallOutput`：出口 3 是"软失败"（权限拒绝、需澄清），它不崩溃，而是把一段说明文字直接作为 `FunctionCallOutput` 写进历史，让模型自己决定怎么办——这正是 agent 能"自我纠错"的机制。出口 4 是"硬失败"，冒泡成 `Err`，最终在 `run_turn` 的 `Err(e)` 分支（turn.rs:501）转成 `EventMsg::Error`。至于工具运行时抛出的异常，则封装在 `tool_future` 的 `Result` 里，由 `drain_in_flight` 统一处理（见下节）。
+-   `InFlightFuture` **入队**：出口 1 把 `tool_future` 放进 `output.tool_future`；回到 `try_run_sampling_request`，`if let Some(tool_future) = output_result.tool_future { in_flight.push_back(tool_future); }`（turn.rs:2221-2222）。`in_flight` 是一个 `FuturesOrdered`（turn.rs:2077）。
+
+### 并行执行 vs 顺序写回：FuturesOrdered 的妙处
+
+模型在一个 `Response` 里可能并发发起多个工具调用（受 `parallel_tool_calls` 控制）。Codex 的处理分两层：
+
+-   **执行层是并行的**：每个 `tool_future = Box::pin(tool_runtime.handle_tool_call(...))`（stream\_events\_utils.rs:318）一旦被 `push_back` 进 `FuturesOrdered`，future 就已经被 pin 住、开始推进（tokio 的 `FuturesOrdered` 在 `push_back` 时就会 poll 已就位的 future）。所以多个工具**真正同时跑**。
+-   **写回层是顺序的**：`drain_in_flight`（`turn.rs:1984`）用 `while let Some(res) = in_flight.next().await` 逐个 `await`，但 `FuturesOrdered` 的语义是"**按入队顺序**产出结果"——即便工具 B 比工具 A 先完成，`in_flight.next()` 也会先返回 A 的结果，B 被卡住直到 A 写完。
+
+```rust
+// codex-rs/core/src/session/turn.rs:1984
+async fn drain_in_flight(
+    in_flight: &mut FuturesOrdered<BoxFuture<'static, CodexResult<ResponseInputItem>>>,
+    sess: Arc<Session>, turn_context: Arc<TurnContext>,
+) -> CodexResult<()> {
+    while let Some(res) = in_flight.next().await {
+        match res {
+            Ok(response_input) => {
+                let response_item = response_input.into();
+                sess.record_conversation_items(&turn_context, std::slice::from_ref(&response_item)).await;  // 顺序写回历史
+                mark_thread_memory_mode_polluted_if_external_context(...).await;
+            }
+            Err(e) => { /* 工具运行期异常：转成错误项写回，turn 仍能继续 */ }
+        }
+    }
+    Ok(())
+}
+```
+
+**为什么"并行跑、顺序写回"？** 因为对话历史（transcript）必须保持确定性：工具结果在 `messages` 里的相对顺序，直接影响模型下一轮的理解。如果顺序随完成时间抖动，同一个 task 跑两次可能得到不同的上下文，调试和复现都会变成噩梦。`FuturesOrdered` 用"入队序"为写回序，既享受了并发的延迟收益，又保住了 transcript 的可复现性。
+
+`drain_in_flight` 在 `try_run_sampling_request` 流结束后、发 TokenCount 之前被调用（turn.rs:2569）。工具运行期的异常不会让整个 turn 崩，而是被当作一项错误结果写回历史——除非是 `Fatal`，才冒泡出去。
+
+### follow-up 判定、token 上限与自动压缩（turn.rs:329-478）
+
+前面已给出 `needs_follow_up` / `should_roll_over` 的精确行号与逻辑。这里补充两套互补预算：
+
+-   `context_window_token_status`（`context_window.rs:23`，窗口内的压缩阈值视角）：输出 `token_limit_reached`、`auto_compact_scope_limit` 等。它只看"当前这个窗口装不装得下"。
+-   `RolloutBudget::record_usage`（`rollout_budget.rs:44`，按 `sampling_token_weight`/`prefill_token_weight` 加权的整条会话"总账"）：
+
+```rust
+// codex-rs/core/src/rollout_budget.rs:44
+pub(crate) fn record_usage(&self, usage: &TokenUsage) -> bool {
+    let Some(mut state) = self.lock() else { return false; };
+    state.weighted_tokens_used += usage.output_tokens.max(0) as f64 * state.config.sampling_token_weight
+        + usage.non_cached_input() as f64 * state.config.prefill_token_weight;
+    state.weighted_tokens_used >= state.config.limit_tokens as f64   // 超总账 → true
+}
+```
+
+两个维度都会让 turn 提前进入 `should_roll_over` / 被截断：窗口级决定"要不要压缩"，会话级决定"整条会话还能不能继续烧 token"。`maybe_record_reminder`（turn.rs:269）就是会话级预算快见底时往上下文塞提醒。
+
+### "状态机"的真相：没有单一 enum
+
+`codex-rs/core` 里**没有名为** `ThreadRequest` **的状态枚举**（`ThreadRequest` 只出现在 `app-server` 层）。真正的"turn 状态"是由 `input_queue` + `active_turn` + `RolloutBudget` + `CancellationToken` **共同维护的分布式状态**——更灵活，但也更难一眼看全，是读源码时最易被低估的复杂度来源。
+
+---
+
+## 中途 steer 与取消：不丢消息、能续跑、能打断
+
+这是 Codex 相对"朴素循环"最值钱的部分。三个结构协作：
+
+### input\_queue + active\_turn：保证"不丢"
+
+-   `active_turn`：当前正在跑的 turn 标识。`input_queue` 的所有操作都带 `&sess.active_turn`，确保 steer 消息只挂到"当前 turn"或"下一个 turn"，不会串台。
+-   **写入时机**：你在模型跑的时候发 `Op::UserInput`，它经 `send_op` → `submit` 进队列，但**不会打断**正在进行的采样。它要么被 `accept_mailbox_delivery_for_current_turn` 收编（模型还想继续时，见上文 ⑤），要么留在 `input_queue`，等本轮 `run_turn` 结束、回到 `RegularTask::run` 的 `has_pending_input` 检查（regular.rs:88）时，触发新一轮 `run_turn`（`next_input = Vec::new()`，内容从队列取）。
+-   **一次只服务一个 turn**：`has_pending_input(&sess.active_turn)` 用 `active_turn` 过滤，确保并发子 agent / 多窗口的 steer 互不污染。
+
+### CancellationToken：保证"能打断、能续跑"
+
+`CancellationToken`（`tokio_util`）是协作式取消原语，整条调用链靠它传播取消信号：
+
+-   `RegularTask::run` 把自己的 `cancellation_token.child_token()` 传给 `run_turn`（regular.rs:84）；`run_turn` 再派生 `child_token()` 给 `run_sampling_request`（turn.rs:318）、给 `try_run_sampling_request` 里的流（turn.rs:2075 的 `.or_cancel(&cancellation_token)`）和每个工具 future（stream\_events\_utils.rs:317，其 `ctx.cancellation_token` 派生自 turn.rs:2188）。
+-   **取消信号怎么来**：`Op::Interrupt`（`protocol.rs:525`）走同样的 `send_op` 通道，线程的提交处理器取消对应 turn 的 `CancellationToken`。
+-   **取消在哪里被观察到**：
+
+-   采样流：`stream.next().or_cancel(&cancellation_token).await`（turn.rs:2115），一旦取消返回 `CancelErr::Cancelled` → `break Err(CodexErr::TurnAborted)`（turn.rs:2119-2121）。
+-   工具执行：每个 `tool_future` 携带 child token（构造于 `HandleOutputCtx` 的 `cancellation_token.child_token()`，turn.rs:2188），取消会中断正在跑的 Bash/命令。
+-   收尾兜底：即使流正常结束，`try_run_sampling_request` 末尾还查一次 `if cancellation_token.is_cancelled() { return Err(CodexErr::TurnAborted); }`（turn.rs:2580）——防止"取消发生在 drain 之后"导致半截状态被当成成功。
+
+**为什么是"协作式"而不是"暴力 kill"？** 因为工具可能正在改你的文件系统、跑数据库迁移。强制 kill 会留下半个副作用。Codex 选择在 `await` 点检查 token，让工具自己有机会清理（回滚事务、删临时文件），然后把"被打断"作为 `TurnAborted` 事件诚实告知客户端，而不是假装成功。
+
+### prewarmed\_client\_session：压低首 token 延迟
+
+会话启动时，Codex 会预热一个 `ModelClientSession`（内部缓存 WebSocket 连接 + sticky routing 状态），存入"startup prewarm"。`RegularTask::run` 开头就先消费它（regular.rs:50-74）：
+
+```rust
+// codex-rs/core/src/tasks/regular.rs:50
+let prewarmed_client_session = async {
+    let event = EventMsg::TurnStarted(TurnStartedEvent { ... });
+    sess.send_event(ctx.as_ref(), event).await;
+    sess.consume_startup_prewarm_for_regular_turn(&cancellation_token).await
+}.instrument(trace_span!("regular_task.prepare_run_turn")).await;
+```
+
+拿到后传给 `run_turn`，在 `run_turn` 开头 `prewarmed_client_session.unwrap_or_else(|| sess.services.model_client.new_session())`（turn.rs:161-162）。好处有两点：
+
+1.  **首 token 更快**：不用等新开 WebSocket 握手，直接复用已建立的连接。
+2.  **重试不重建连接**：turn.rs:246-247 注释明确——`ModelClientSession` 是 turn 作用域的，单个 turn 内的多次重试复用同一个实例。
+
+预热可能被取消（`SessionStartupPrewarmResolution::Cancelled`）或不可用（`Unavailable`，降级为 `None` 实时新建），都不影响正确性，只影响延迟。
+
+---
+
+## ResponseEvent → EventMsg：为什么前后端事件"对不上"
+
+所有"前端看到的事件和模型返回对不上"的困惑，根源都在 `try_run_sampling_request` 的 `match event`（turn.rs:2139-2552）这一翻译层。几个常见原因：
+
+1.  **一对多 / 多对一。** 一个 `OutputItemDone(agent_message)` 在 handler 里会触发 `emit_turn_item_started` + `emit_turn_item_completed`（可能还有 plan mode 的 `PlanDelta` 等），即**一个 ResponseEvent 扇出多个 EventMsg**；反过来，多个 `OutputTextDelta` 经 `AssistantMessageStreamParsers` 缓冲、去空白、拼段（turn.rs:2414-2422、1772-1835），最终只 flush 成若干 `AgentMessageContentDelta`——**多个 ResponseEvent 收敛成一个语义事件**。
+2.  **翻译有损/归一化。** harness 会 `strip_citations`（turn.rs:1782-1785，引用信息本地剥离、暂不暴露给协议层）；plan mode 下会把"纯计划文本"和"普通回复文本"拆到 `PlanDelta` 与 `AgentMessageContentDelta` 两条通道（`handle_plan_segments`,turn.rs:1709），并**延迟 agent message 的 start 事件**直到出现非空白非计划文本（`maybe_emit_pending_agent_message_start`,turn.rs:1591），避免前端出现"空助手气泡"。因此**客户端事件顺序 ≠ 模型原始事件顺序**。
+3.  **有些 ResponseEvent 根本没有 1:1 的 EventMsg。** `Created` → 无操作；`RateLimits` → 不单独发，攒到 `Completed` 阶段与 token 用量一起合成 `TokenCount`（turn.rs:2356、2572-2578）；`ServerModel`（后端安全路由换模型）→ 顶多发个 warning。
+4.  **工具这一层天然双层。** 模型侧看到 `FunctionCall`（请求）和 `FunctionCallOutput`（结果）；客户端侧看到的是 `ItemStarted`/`ItemCompleted`（针对那个 function call 项）以及工具运行期的 `McpToolCallBegin/End`、`ExecCommandBegin/...`、`PatchApplyBegin/...` 等。模型与前端对"同一次工具调用"的视角根本不在同一抽象层，所以"对不上"是设计使然，不是 bug。
+
+排查口诀：**唯一切入点是** `try_run_sampling_request` **的** `match event`。先看 ResponseEvent 进了哪个分支，再看该分支发了什么 EventMsg，差异一目了然。
+
+---
+
+## 如果由你来重写 run\_turn：必须守住的不变量
+
+把 Codex 的引擎收敛成"SDK 里的一个 while"很容易，但真要重写成生产级引擎，下面这些不变量是 Codex 用大量边界处理换来的，丢了就会出事：
+
+1.  **模型驱动编排**：harness 只做"执行工具 + 把结果回灌上下文"，不替模型决定步骤顺序。任何"我帮你先调 A 再调 B"的硬编码，都会破坏 agent 的涌现能力。
+2.  `needs_follow_up` **是唯一布尔桥**：所有"还要继续"的信号（工具调用、被拒回话、pending steer、stop hook 否决、压缩续跑）都必须汇聚到这一个布尔量，再与 `has_pending_input` 做 `||`。不要散落多个 `break`/`continue` 条件，否则会出现"模型干完了但 turn 卡死"或"还没干完就停了"。
+3.  **工具结果顺序写回**：用"并行执行 + `FuturesOrdered` 顺序写回"保住 transcript 可复现。若贪图简单改成"谁先完成谁先写"，会让同一任务两次跑出不同上下文，调试地狱。
+4.  **取消只在 await 点生效且要兜底**：`CancellationToken` 必须沿 `child_token()` 一路派生到采样流和每个工具 future；并在流结束后补一次 `is_cancelled()` 检查（turn.rs:2580），否则"取消发生在 drain 之后"会留下半成功状态。
+5.  **steer 不丢、不串台**：`input_queue` 的操作必须带 `active_turn` 维度过滤；首轮不 drain 用户输入，避免 steer 冲掉本轮输入。
+6.  **双层预算都要接**：窗口级 `context_window_token_status`（决定压缩）与会话级 `RolloutBudget`（决定总账）是两个独立维度，缺一不可；且压缩后要把 `can_drain_pending_input` 设为 `!model_needs_follow_up`，否则会在模型还在跑工具时把 steer 灌进去。
+7.  **turn 状态可重入**：`StepContext` 每轮重新捕获、world state 增量反映、client session 跨重试复用——turn 必须能在任意点被取消、被续跑，而不依赖"从零开始"。
+
+---
+
+## 心智模型
+
+> **turn = 一个"可重入的状态机 + 三层循环 + 一条（模型方言 → 客户端事件）翻译管道"。**
+
+-   **三层循环**：任务循环（接住 steer）→ turn 主循环（follow-up / roll-over 决策）→ 采样流循环（解析 + 工具编排）。
+-   **两个信封**：`ResponseEvent`（给 harness）→ `EventMsg`（给客户端）。排查"前后端事件对不上"唯一切入点是 `try_run_sampling_request` 的 `match event`。
+-   **两条预算线**：窗口内 `auto_compact` + 会话级 `RolloutBudget`，都能让 turn 提前结束。
+-   **模型驱动编排**：harness 只"执行 + 回灌"，`needs_follow_up` 是连接"模型想继续"与"turn 继续"的唯一布尔桥。
+-   **并行执行 / 顺序写回**：`FuturesOrdered` 让工具并发跑、历史顺序落，兼顾延迟与可复现。
+
+**一句话观点**：Codex 把"agent loop"从"SDK 里的一个 while 循环"升级成了"引擎内核的一等公民"——预压缩、skills 注入、PreToolUse、可重入 steer、双层预算、方言翻译，全部内化进 `run_turn`。要改 Codex 的"行为性格"，几乎一定得回 `run_turn` 这层动刀。
+
+---
+
+## 自测题（检验你是否真懂）
+
+1.  为什么"工具调用"既是 Agent 的能力来源，又是它"还没干完"的信号？
+2.  朴素 6 行循环 vs Codex 三层循环，多出来的复杂度在解决什么问题？
+3.  `ResponseEvent` 和 `EventMsg` 为什么要分两个？如果只用一个会怎样？
+4.  用户在中途发新消息，Codex 靠哪几个结构保证不丢、且能续跑？`can_drain_pending_input` 的初始值与重置规则分别是什么？
+5.  `needs_follow_up = true` 在什么情况下会被置位？它和"自动压缩"如何共同决定 turn 是否继续？
+6.  工具结果为什么用 `FuturesOrdered` 顺序写回，而不是谁先完成谁先写？如果改成后者会有什么后果？
+7.  `Op::Interrupt` 是怎么让正在跑的 turn 停下来的？为什么是"协作式"取消而不是暴力 kill？
+8.  前端看到的 `AgentMessageContentDelta` 顺序，为什么可能和模型发出的 `OutputTextDelta` 顺序不一致？
+
+---
+
+## 延伸阅读（结合网络讲解）
+
+-   **ReAct 论文**（Thought-Action-Observation 的理论起源）：Yao et al., 2022
+-   **The Anatomy of an Agent Loop**（"6 行循环"与各框架对比）：stevekinney.com/writing/agent-loops
+-   **AI Agent 实现原理与实践(一): Agent Loop**（以 Codex/Claude Code 为案例的机制剖析）：skyan.github.io/posts/agents-arch-1
+-   **深入理解 Agent Loop: 从 ReAct 到现代 AI Agent**（Claude/OpenAI Agents SDK 实现对照）：cnblogs.com/itech/p/20424166
+-   **Codex Harness 官方讲解（Agent Loop 入门）**：agent.csdn.net/6a4e6233662f9a54cb8bea84.html
+
+---
+
+## 关键符号速查
+
+| 符号 | 位置 |
+| --- | --- |
+| `run_turn` | `codex-rs/core/src/session/turn.rs:153` |
+| `run_turn` 主循环 `loop` | `codex-rs/core/src/session/turn.rs:254` |
+| `RegularTask::run` | `codex-rs/core/src/tasks/regular.rs:38` |
+| `RegularTask::run` 外层循环 | `codex-rs/core/src/tasks/regular.rs:77` |
+| `AgentControl::send_input` | `codex-rs/core/src/agent/control.rs:142` |
+| `ThreadManagerState::send_op` | `codex-rs/core/src/thread_manager.rs:1315` |
+| `run_sampling_request` | `codex-rs/core/src/session/turn.rs:1176` |
+| `try_run_sampling_request` | `codex-rs/core/src/session/turn.rs:2033` |
+| `try_run_sampling_request` 内层 `match event` | `codex-rs/core/src/session/turn.rs:2139` |
+| `handle_output_item_done` | `codex-rs/core/src/stream_events_utils.rs:287` |
+| `ToolRouter::build_tool_call`（调用点） | `codex-rs/core/src/stream_events_utils.rs:295` |
+| `InFlightFuture` 类型别名 | `codex-rs/core/src/stream_events_utils.rs:191` |
+| `FuturesOrdered`（工具结果顺序写回） | `codex-rs/core/src/session/turn.rs:2077` |
+| `drain_in_flight` | `codex-rs/core/src/session/turn.rs:1984` |
+| `run_pre_sampling_compact` | `codex-rs/core/src/session/turn.rs:851` |
+| `run_auto_compact` | `codex-rs/core/src/session/turn.rs:1017` |
+| `capture_step_context`（调用点） | `codex-rs/core/src/session/turn.rs:188` |
+| `build_skills_and_plugins` | `codex-rs/core/src/session/turn.rs:571` |
+| `run_hooks_and_record_inputs` | `codex-rs/core/src/session/turn.rs:542` |
+| `build_prompt` | `codex-rs/core/src/session/turn.rs:1147` |
+| `context_window_token_status` | `codex-rs/core/src/session/context_window.rs:23` |
+| `RolloutBudget::record_usage` | `codex-rs/core/src/rollout_budget.rs:44` |
+| `Prompt` | `codex-rs/core/src/client_common.rs:18` |
+| `ResponseEvent` | `codex-rs/codex-api/src/common.rs:76` |
+| `EventMsg` | `codex-rs/protocol/src/protocol.rs:1279` |
+| `Op`（枚举） | `codex-rs/protocol/src/protocol.rs:522` |
+| `Op::UserInput` | `codex-rs/protocol/src/protocol.rs:550` |
+| `Op::Interrupt` | `codex-rs/protocol/src/protocol.rs:525` |
+{% endraw %}

@@ -1,0 +1,314 @@
+---
+title: "T5（Transfer Text-to-Text Transformer）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 大模型, 1._模型调研]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# T5（Transfer Text-to-Text Transformer）
+
+> **论文：**[introducing a unified framework that converts every language problem into a text-to-text format.](https://arxiv.org/pdf/1910.10683.pdf)
+
+重点是 text-to-text，即所有的任务都以文本到文本的方式去做。是不是很酷？
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-1.png)
+
+编辑切换为居中
+
+T5 使用样例
+
+-   模型结构：跟原始的 encoder-decoder 结构一样，pre RMS Norm， 11 B 参数量, 24 层，128 个头
+-   训练数据：对 common crawl 里清理得到了 750 GB 的训练数据，叫 Colossal Clean Crawled Corpus （超大型干净爬取数据, C4）清理过程为
+
+-   只保留结尾是正常符号的行；
+-   删除任何包含肮脏、顽皮、淫秽或其他不好的词语列表的词的页面
+-   包含 Javascript 词的行全去掉；
+-   任何包含”lorem ipsum（用于排版测试）“的页面；
+-   包含编程语言中常用花括号的页面；
+-   连续三句话重复出现情况，保留一个
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-2.png)
+
+编辑切换为居中
+
+数据集
+
+-   预训练目标：
+
+-   自监督的预训练方法对比 - BERT-style 最好：
+
+-   语言模型式：自回归那种
+-   BERT-style
+-   Deshuffling：文本打乱再还原
+
+-   文本破坏策略 - replace span 效果最好：
+
+-   Mask : [M]
+-   span replace：2, 3, 5, 10 四个值， 3 最好（3个字的结构最常见吧可能）
+-   Drop
+
+-   文本破坏百分比：10% vs 15% vs 25% vs 50% ，15% win
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-3.png)
+
+编辑切换为居中
+
+预训练目标组合探索
+
+-   Scaling：bigger is better？增大模型， 增大数据，在一定资源限制下的集成。。。最终要的是大模型
+-   即使是容量提到 11B，性能提升的间隔还是没有变缓，因此我认为再往上加容量还是有提升空间
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-4.png)
+
+编辑切换为居
+
+评测表现
+
+# LaMDA Language Models for Dialog Applications
+
+> 论文链接：[LaMDA: Language Models for Dialog Applications](https://arxiv.org/abs/2201.08239)
+
+特点参数多（137B)，训练数据量大(1.56T words)。
+
+-   模型结构：decoder-only Transformer，类似 GPT。64 层， 维度 8192， ff 维度 65536, 128 个头，k 和 v 的维度是 128 。。。 1024 个 TPU-v3 上要跑 57.7 天
+-   数据集：
+-   评估：
+
+-   质量：
+
+-   合理性：指模型是否产生在对话上下文中有意义的响应（例如，没有常识错误，没有荒谬的回应，以及与先前的回应没有矛盾）
+-   特异性：通过判断系统的响应是否特定于前面的对话上下文来衡量的，而不是适用于大多数上下文的通用回应
+-   趣味性：衡量模型是否产生了富有洞察力、出乎意料或机智的回应，因此更有可能创造更好的对话
+
+-   安全：安全度量由一组说明性的安全目标组成，这些目标试图限制模型的输出，以避免任何可能对用户造成伤害的意外结果
+-   根基性 Groundedness：幻觉
+
+-   模型训练：用 GSPMD 框架(GSPMD 是一个基于 XLA 编译器的模型分布系统，它允许将 TPU 集群视为单个虚拟设备，并在几个张量上使用 sharding annotations 来指示编译器自动分发数据并在数千个设备上进行计算) 训练模型。自回归任务
+-   模型微调：
+
+-   微调数据（总计 58K对话）：众包标注，为了保证质量（评估里的质量），让众包与 LaMDA 实例就任何主题进行交互，共收集6400 个对话，共 121K 轮，每轮对话要持续 14-30 次；和 SSI 类似，通过要求众包工作者与LaMDA实例就任何主题进行交互来收集8K次和48K轮的对话；为了保证安全，收集了 4k个对话和 40 k轮数据（有点迷惑）..很多关键指标还被3个不同的crowdworker标注，并投票决定最终的结果，以保证标注质量
+-   微调任务 : 先fine-tune一个预测 SSI 和 safety rating的模型，过滤掉 safety 分数比较低的回复，然后在ranking阶段选最高得分的回复作为最终结果。得分计算方法 3 \* P(sensible) + P(specific) + P(interesting)：
+
+-   生成式微调（<context> <sentinel> <response>)
+-   判别式微调 （<context> <sentinel> <response> <attribute-name> <rating>)
+
+-   减轻幻觉的微调：
+
+-   利用外部知识（一个信息检索异同，一个计算器，一个翻译器）
+
+-   Information retrieval： "How old is Rafael Nadal?" -> ["Rafael Nadal / Age / 35"]
+-   Calculator: "135+7721" -> ["7856"]
+-   Translator: "hello in French" -> ["Bonjour"]
+
+-   将知识融入：两个 task，一个 base 生成任务，一个research (借助上面的三个 tool 做）
+
+-   推理阶段模型输出有两种：
+
+-   User 开头 ： 后面跟着的文本是最终回复
+-   TS 开头 ： 后面跟着的事要输入 TS 并以此输出作为下一轮模型的输入，继续改进回复，这样的迭代最多 4 轮。research 需要判断是否要使用工具进行检索
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-5.png)
+
+编辑切换为居中
+
+用于减轻幻觉的推理阶段模型
+
+# Flan -- Scaling Instruction-Finetuned Language Models
+
+> 论文链接 [https://arxiv.org/pdf/2210.11416.pdf](https://arxiv.org/pdf/2210.11416.pdf) ，解读：[nghuyong：Flan-T5: One Model for ALL Tasks](https://zhuanlan.zhihu.com/p/580468546)
+
+这篇工作提出了Flan的微调框架，核心有四点：统一的输入输出格式（4种类型），引入chain-of-thought，大幅提高任务数量，大幅提高模型体积；实现了用一个模型来解决超过1800种几乎全部的NLP任务，通过较低的成本，极大发掘了现有语言模型的泛化性能，让大家看到了通用模型的希望
+
+对指令微调进行了探索：
+
+-   缩放任务数量
+-   缩放模型大小
+-   对 COT 数据进行微调
+
+最终发现，在上面这仨维度进行指令微调可以显著提高各种模型(PaLM、T5、U-PaLM）、提示设置（零样本、少样本、CoT）和评估基准（MMLU、BBH、 TyDiQA、MGSM、开放式生成、RealToxicityPrompts）。例如，在 1.8K 任务上微调的 Flan-PaLM 540B 指令大大优于 PaLM 540B（平均 +9.4%）。 Flan-PaLM 540B 在多个基准测试中实现了最先进的性能，例如在五次 MMLU 上达到 75.2%。
+
+同时，经过探索，还发布了 Flan-T5 模型，可以与 PaLM 62B 媲美。最后得出结论，指令微调是提高预训练语言模型性能和可用性的通用方法。内部搞了个 Flan-PaLM， 注意这里的语言模型可以进行任意的替换（需要有Decoder部分，所以不包括BERT这类纯Encoder语言模型），论文的核心贡献是提出一套多任务的微调方案（Flan），来极大提升语言模型的泛化性
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-6.png)
+
+编辑切换为居中
+
+很牛逼的证明
+
+怎么做的
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-7.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   **任务收集：**工作的第一步是收集一系列监督的数据，这里一个任务可以被定义成<数据集，任务类型的形式>，比如“基于SQuAD数据集的问题生成任务”。需要注意的是这里有9个任务是需要进行推理的任务，即[Chain-of-thought](https://www.zhihu.com/search?q=Chain-of-thought&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra=%7B%22sourceType%22%3A%22article%22%2C%22sourceId%22%3A%22580468546%22%7D)（CoT）任务
+-   **形式改写：**因为需要用单个语言模型来完成超过1800+种不同的任务，所以需要将任务都转换成相同的“输入格式”喂给模型训练，同时这些任务的输出也需要是统一的“输出格式”
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-8.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   根据是否需要推理（CoT)以及是否需要提供示例（Few-shot），可以讲输入输出划分为四种类型：
+
+-   无 CoT + 无 few shot：左上，输入指令 + 问题，输出答案 （ 普通 使用）
+-   有 CoT + 无 few shot：右上，输入指令 + CoT 引导 + 问题，输出理由+答案（CoT）
+-   无 CoT + 有 few shot：左下，输入指令 + 提示问题 + 示例问题回答 + 指令 + 问题，输出 答案（ICL）
+-   有 CoT + 有 few shot：右下，输入 指令 + CoT 引导 + 示例问题 + 示例问题理由 + 示例问题回答 + 指令 + CoT 引导 + 问题，输出 理由 + 答案（ICL + CoT）
+
+-   训练过程：采用恒定的学习率以及Adafactor优化器进行训练；同时会将多个[训练样本](https://www.zhihu.com/search?q=%E8%AE%AD%E7%BB%83%E6%A0%B7%E6%9C%AC&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra=%7B%22sourceType%22%3A%22article%22%2C%22sourceId%22%3A%22580468546%22%7D)“打包”成一个训练样本，这些训练样本直接会通过一个特殊的“结束token”进行分割。训练时候在每个指定的步数会在“保留任务”上进行模型评估，保存最佳的checkpoint。
+-   尽管微调的任务数量很多，但是相比于语言模型本身的预训练过程，计算量小了非常多，只有0.2%。所以通过这个方案，大公司训练好的语言模型可以被再次有效的利用，我们只需要做好“微调”即可，不用重复耗费大量计算资源再去训一个语言模型
+-   模型结构 + 微调带来的计算量对比
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-9.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   结论：
+
+-   1\. 微调可以大幅提升模型效果
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-10.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   2\. 模型越大效果越好
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-11.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   3\. 见过的任务越多，效果越好，但任务数量超过 282 之后，就不明显了
+
+-   随任务数量的增加(上图右)，模型的性能也会跟着增加，但是当任务数量超过282个之后，提升就不是很明显了。因为继续增加新的任务，尤其任务形式跟之前一样，不会给模型带来新的知识；[多任务微调](https://www.zhihu.com/search?q=%E5%A4%9A%E4%BB%BB%E5%8A%A1%E5%BE%AE%E8%B0%83&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra=%7B%22sourceType%22%3A%22article%22%2C%22sourceId%22%3A%22580468546%22%7D)的本质是模型能够更好的把从预训练学到的知识进行表达，超过一定任务之后，继续新增相似的任务，知识的表达能力不会继续有很大的收益。进一步统计全部微调数据集的token 数，发现只占到了预训练数据token数的0.2%，这表明还是有很多的知识没有在微调阶段重新被激发
+
+-   4\. 掺杂 CoT 相关任务很重要：
+
+-   尽管在1800多个任务中只有9个需要推理再给出回答的任务（CoT任务），但是混杂了这9个任务之后对整个模型的提升很大。在针对CoT相关任务的预测上，如果在微调中混淆CoT任务能带来明显的提升（左图中蓝色和绿色线）；在针对非CoT相关任务的预测上，如果在微调中混淆了CoT任务也不会对模型带来伤害（右图中蓝色和绿色线）
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-12.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   对于 zero-shot 任务，混杂 CoT 也有明显提升
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-13.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   5.最终在多个不同尺寸的模型上进行实验，都可以获得一致性的结论：引入Flan微调方案，可以很好提高语言模型在超大规模任务上的整体效果
+
+# PaLM: Scaling Language Modeling with Pathways
+
+> 论文链接：[https://storage.googleapis.com/pathways-language-model/PaLM-paper.pdf](https://storage.googleapis.com/pathways-language-model/PaLM-paper.pdf)
+
+Jeff 在 22 年十月提出了 Pathways 架构，看起来非常的 fancy，大概有一下几个好处：
+
+-   训练一个模型可以做千上万个任务：传统模型每个任务都需要一个模型，非常的浪费，Google则希望训练一个模型，不仅可以处理许多独立的任务，而且可以借鉴和结合其现有的技能，从而更快、更有效地学习新任务。此外，模型也会有不同的能力，可以根据需要调用，并且还可以将多个模型拼接起来，进而执行新的、更复杂的任务
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-14.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   能够使用多种感官数据
+-   让模型变得稀疏且高效：经过Pathways训练的AI也可以模拟人类大脑的行为，通过建立一个「稀疏」激活的单一模型，只有在特定任务需求的时候才会激活特定部分的神经元。模型能够动态地学习网络的哪些部分擅长哪些任务，可以学习到如何找到模型的最相关部分来处理任务。运行速度更快，并且更省电
+
+PaLM是基于pathways系统的，6144个TPUv4。
+
+模型大小有 8B、62B、540B 三种规模，PaLM超越了许多之前的SOTA。作者归功于1. 更好的数据的清理，2. 更多的数据，3. 模型规模的进一步提升。在激活层，ShareEmbedding，PosEmbedding等模块做了一些结构优选。核心的TransformerBlock的变种选择也更多是为了优化模型的训练效率
+
+模型结构：
+
+-   decoder-only 的标准 transformer 结构
+-   用 SwiGLU 激活函数 （Swish(xW)\*xV) ，说是比 ReLU 和 GeLU 更好
+-   Parallel Layers：层并行，MLP 和 attention 同时算
+-   multi-query attention：query 还是 [k,h] 的shape，但 k, v 在每个 head 内共享，维度更低，可以提升计算效率（没听懂？）
+-   RoPE embedding：替代之前的绝对或相对 pos embedding，因为 RoPE 在长序列表现更好
+-   共享输入和输出层向量
+-   全都不用 bias：可以提升训练稳定性
+-   词表：SentencePiece 词表,256k tokens
+-   模型尺寸
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-15.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   训练数据：
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-16.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+# LLaMA: Open and Efficient Foundation Language Models
+
+meta 搞的，开源的大模型，也是进一步验证了 scaling law。1.4T tokens， 65B 的模型就能达到跟 chinchillia、PaLM 解禁的性能，14B 的模型可以在单 GPU 上跑
+
+-   scaling law 不仅在模型大小上，数据上也很重要
+-   数据集：GitHub on BigQuery、Wikipedia、C4、English CommonCrawl 、Gutenberg、arxiv、stack exchanged等，都是可以公开获取的数据集
+
+-   去重
+-   BPE预处理，1.4T tokens，比 PaLM 多 50%
+-   数字的特殊处理：数字独立 token
+
+-   模型结构：decoder 架构
+
+-   RMSNorm：pre-normalization， GPT-3 用的
+-   SwiGLU 激活函数
+-   Rotary embedding , GPTNeo 用的
+-   AdamW
+-   cosine learning rate schedule
+-   0.1 权重衰减 + 1.0 梯度 clip
+
+# GLM: General Language Model Pretraining with Autoregressive Blank Infilling
+
+> 论文链接：[https://aclanthology.org/2022.acl-long.26.pdf](https://aclanthology.org/2022.acl-long.26.pdf)
+
+清华搞得（这个后面要详细补充，毕竟中文开源最大的）
+
+-   任务 ： Autoregressive Blank infilling，大体上来说，首先我们有输入 x1,x2...x6，使用泊松分布进行随机采样，随机 mask 掉 15% 的token 得到输入 part A，被mask 的部分得到输入 Part B。对B 部分进行随机打乱 （下图的 x5 和 x6 前后用[S] span 包围作为整体），将Part A 和part B拼接作为 模型输入。其中attention 的 mask 情况如下图d 所示（part A 是双向的，B部分是单向的）。最终模型输出被 mask 掉的部分。这样模型同时有双向encoder 和 单向 encoder 能力
+
+![image.png](/img/yuque/计算机/大模型/1._模型调研/assets/1.3_大模型逐个学习笔记-17.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+-   2D position embedding：position 1 是正常文本时所处的位置， position 2 表示 span 内的位置。该编码方法确保模型在重建它们时不知道掩蔽跨度的长度，这种设计适合下游任务，因为通常生成的文本的长度事先是未知的。
+-   模型结构：传统 transformer，mask 如上图所示， pre-norm，激活函数 GeLUs
+
+为了能够兼顾NLU和文本生成，对于文档和句子采用不同的空白填充方式。
+
+-   文档：span的长度从原始长度的50%-100%的均匀分布中抽取。该目标旨在生成长文本。
+-   句子：限制masked span必须是完整的句子。多个span(句子)被取样，以覆盖15%的的原始标记。这个目标是针对seq2seq任务，其预测往往是完整的句子或段落
+
+这个 span 的设计可以比较好的对下游任务进行适配（相当于留出了各种各样的 slot），使得训练和 fine-tune 见的 gap 比较小
+
+与经典模型的比较：
+
+-   与 BERT 相比：BERT 的各个mask token 间是独立的，对连续 span 和长 span 效果不好
+-   与 XLNet 相比：1.需要提前知道要预测的长度。2.训练时间多一倍
+-   与 T5 x相比：T5 在使用和训练时没有 GLM 这么一致
+{% endraw %}

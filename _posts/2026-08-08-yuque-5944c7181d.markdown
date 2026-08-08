@@ -1,0 +1,444 @@
+---
+title: "Agent Harness 前沿问题详解：研究现状与代表论文"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版)]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# Agent Harness 前沿问题详解：研究现状与代表论文
+
+> 配套文档：本篇是《Agent Harness 技术调研报告》第十四节「前沿开放问题」的逐题展开版。  
+> 目标读者：准备进入 agent harness 方向的工程师 / 研究者。  
+> 对每一道开放问题，给出：① 问题定义与为什么重要；② 截至 2026 年的研究现状（含关键数据与结论）；③ 代表论文 / 文献清单（含年份、出处与一句话点评）。
+
+---
+
+## 目录
+
+1.  长程任务一致性（Long-horizon Consistency & Planning）
+
+2.  多智能体协调瓶颈（Multi-Agent Coordination Bottleneck）
+
+3.  提示注入：结构性无解（Prompt Injection: Structurally Unsolvable）
+
+4.  记忆的「写」与「忘」（Memory Write & Forget）
+
+5.  评测困境（The Evaluation Dilemma）
+
+6.  成本经济（Cost Economics）
+
+7.  Computer Use 可靠性（GUI / Computer-Use Reliability）
+
+8.  协议互操作（Protocol Interoperability）
+
+9.  供应链风险（Supply Chain Risk）
+
+10.  自我改进失控（Self-Improvement / Misevolution Risk）
+
+---
+
+## 1\. 长程任务一致性（Long-horizon Consistency & Planning）
+
+### 1.1 问题定义
+
+Agent 在需要\*\*数十到上百个相互依赖步骤、跨越很长时间窗口（甚至多会话）\*\*的任务中，能否保持目标不漂移、状态不矛盾、子目标之间不自相矛盾。典型失败：中途忘记最初约束、对已完成的步骤重复执行、在长轨迹中累积微小错误导致最终崩盘。
+
+### 1.2 研究现状
+
+-   **共识**：当前 LLM「在真正长程规划上仍吃力」。 libertarian 综述直言「LLMs struggle with truly long-horizon planning—tasks requiring dozens of interdependent steps」。
+
+-   **主流解法走向**：从「单一 LLM + 长 CoT 提示」转向「多模块 LLM + 显式规划算法 + 外部规划器」。例如：
+
+-   **Pre-Act**（执行前先生成多步计划，每步据工具输出迭代修正）在 Almita 数据集上相对 ReAct 的 Action Recall 提升约 70%，微调后 Llama-3.1-70B 甚至超过 GPT-4。
+
+-   **MAP（Modular Agentic Planner）** 把规划拆成类「前额叶功能模块」（任务分解 / 行动者 / 监控 / 预测 / 评估 / 编排），用有限树搜索协作，其中 Monitor（约束检查 / 幻觉过滤）被证明尤为关键。
+
+-   **Reflexion** 的「自我反思」机制让 agent 在失败后反思并重试，是长程自我修正的基础范式。
+
+-   **分层规划（hierarchical planning）** 被视为缓解长程不一致的默认手段：把长任务拆成嵌套子计划，逐层展开。
+
+-   **仍是开放问题**：跨会话的持久一致性、超长轨迹中的误差累积抑制、规划与执行的一致性验证，尚无公认最优解。
+
+### 1.3 代表论文 / 文献
+
+| 文献 | 年份 / 出处 | 一句话点评 |
+| --- | --- | --- |
+| Yao et al., **ReAct: Synergizing Reasoning and Acting** | ICLR 2023 | 思考+行动交替的基线范式，几乎所有后续工作的起点 |
+| Yao et al., **Tree of Thoughts (ToT)** | NeurIPS 2023 | 把规划变成可回溯的树搜索，适合高不确定任务 |
+| Shinn et al., **Reflexion** | NeurIPS 2023 | 用语言化自我反思做失败修正，长程自修正基石 |
+| Wang et al., **Voyager**（Minecraft 终身智能体） | EMNLP 2023 | 写/调试/改进自己的代码，环境反馈驱动闭环重规划 |
+| Park et al., **Generative Agents** | UIST 2023 | 记忆 + 反思机制，长程社会化行为标杆 |
+| Xi et al., **The Rise and Potential of LLM-Based Agents: A Survey** | 2023 | 86 页「大脑—感知—行动」智能体栈总论，最常被引用的入口 |
+| Wang et al., **A Survey on LLM based Autonomous Agents** | arXiv 2308.11432（2023/2025 更新） | 单智能体规划 / 多智能体 / HITL 的系统分类法 |
+| Xi et al., **R3: Reverse-curriculum RL** | 2024 | 逆向课程强化学习教 LLM 更长程推理 |
+| Modular Agentic Planner (MAP) | 2025 | 脑启发模块化规划，Monitor 模块被证关键 |
+| Zhang et al., **A Survey on the Memory Mechanism of LLM based Agents** | arXiv 2404.13501（2024） | 记忆机制系统综述，与长程一致性紧密耦合 |
+
+---
+
+## 2\. 多智能体协调瓶颈（Multi-Agent Coordination Bottleneck）
+
+### 2.1 问题定义
+
+当系统从「单 agent」扩展到「多 agent 协作」时，性能何时随 agent 数量提升、何时饱和甚至下降？如何设计**聚合 / 选择 / 角色分配**机制，让多 agent 真正产生「集体智能」而非「多人变一人」或「互相干扰」。
+
+### 2.2 研究现状
+
+-   **「越多越强」被证伪为条件成立**。Tencent 的 *More Agents Is All You Need*（采样+投票，Agent Forest）显示性能随 agent 数提升；但同质扩展收益迅速饱和。
+
+-   **多样性比数量更重要**。上海交大 / UC Berkeley / Caltech / JHU 的 *Understanding Agent Scaling via Diversity* 指出：同质扩展收益很快归零，**信息冗余是多 agent scaling 的真正瓶颈**；少量异质 agent 胜过大规划同质系统。
+
+-   **聚合机制比生成器多样性更关键**。**When Agents Disagree**（Maryanskyy et al., MDPI 2026）提出「选择瓶颈」：基于 judge 的选择在 42 个任务上**全胜** MoA 式合成；合成式聚合在 80% 任务上输给单模型基线。弱模型（如 Haiku）加入强队反而提升胜率并降成本。
+
+-   **同质团队（Self-MoA）在某些设置优于混合团队**（Li et al. 2025），与 Mixture-of-Agents（Wang et al. 2024）结论相反——分歧源于聚合方式，已被「选择瓶颈」模型统一解释。
+
+-   \*\*「懒惰代理（Lazy Agent）」\*\*问题：双 agent（元思考者+推理者）中常出现一方主导、另一方几乎不贡献；需用因果影响测度 + 可验证奖励缓解。
+
+-   **共识正在收敛**：多 agent 不必然优于单 agent；协调的杠杆是**选择器质量 / 多样性设计 / 协作拓扑**，而非简单堆数量。
+
+### 2.3 代表论文 / 文献
+
+| 文献 | 年份 / 出处 | 一句话点评 |
+| --- | --- | --- |
+| Li et al., **More Agents Is All You Need** | arXiv 2402.05120（2024, Tencent） | 采样+投票让小模型逼近大模型，但揭示边际收益递减 |
+| Wang et al., **Mixture-of-Agents Enhances LLM Capabilities** | 2024（Together AI） | 异构 MoA 在 AlpacaEval/MT-Bench 达 SOTA |
+| Wang et al., **Rethinking the Bounds of LLM Reasoning** | ACL 2024 | 强提示的单 agent 可追平多 agent 讨论 |
+| Li et al., **Self-MoA / Are More LLM Agents Better?** | 2025 | 同质团队一致优于混合团队，与 MoA 结论相反 |
+| Maryanskyy et al., **When Agents Disagree: The Selection Bottleneck** | Applied Sciences / MDPI 2026（arXiv 2603.20324） | 选择瓶颈模型统一解释分歧，judge 选择全胜合成 |
+| **Understanding Agent Scaling in LLM-Based MAS via Diversity** | 2026（SJTU/UC Berkeley/Caltech/JHU） | 信息冗余是多 agent scaling 瓶颈，多样性延缓饱和 |
+| Google, **Multi-Agent Design: Optimizing Generative Agents** | 2025 | 工程侧的多 agent 设计经验与编排建议 |
+| **Emergent Coordination in Multi-Agent LLMs**（PID 部分信息分解） | 2025 | 量化「真协同」vs「伪协同」 |
+| **Lazy Agent Behavior** 相关研究 | 2025 | 理论刻画懒惰行为成因，提出因果影响测度 |
+
+---
+
+## 3\. 提示注入：结构性无解（Prompt Injection: Structurally Unsolvable）
+
+### 3.1 问题定义
+
+不可信的外部内容（邮件、网页、文档、MCP 工具描述、检索结果）被模型当作指令执行，从而劫持 agent。这是 agent 安全的第一号风险，且被主流安全界判定为**架构层面的结构性问题，而非可打补丁的 bug**。
+
+### 3.2 研究现状
+
+-   **OWASP Top 10 for LLM Applications** 自 2023 第一版起将提示注入列为 **LLM01 第一名**，2025 修订版仍为第一。
+
+-   **「攻击者后手」铁证**：OpenAI / Anthropic / Google DeepMind 联合 14 人论文 **The Attacker Moves Second**（2025-10）对 12 个已发表防御做自适应攻击，**全部被绕过**——基于提示的防御 ASR 95–99%，基于训练的 96–100%，甚至 500 人/$2 万的人类红队达 100%。
+
+-   **模型层防御有进展但不彻底**：
+
+-   **Instruction Hierarchy**（OpenAI, arXiv 2404.13208）训练模型遵守「系统>用户>外部」优先级，抗朴素攻击提升最多 63%，但可被模仿系统权限的注入绕过。
+
+-   **StruQ / SecAlign**（BAIR, 2025）把结构化查询与外部数据区分训练，SecAlign 对自适应攻击降到约 8%，但 2025-07 的「架构感知攻击」仍可绕过。
+
+-   **架构层缓解 CaMeL**（Google DeepMind, arXiv 2503.18813, 2025）：双 LLM + 信息流控制（特权 LLM 出计划、隔离 LLM 出数据、自定义解释器做溯源与 IFC），在 AgentDojo 上挡住 67% 攻击、GPT-4o 配置近乎清零，代价是 ~2.7× token。
+
+-   **现实漏洞已出现**：**EchoLeak**（CVE-2025-32711, 2025-06, CVSS 9.3）是首个零点击间接注入泄露 Microsoft 365 Copilot 数据的真实案例。
+
+-   **共识**：提示注入在模型层**无法根治**，正确范式是「假设被攻破、限制爆炸半径、拦截动作而非提示」（Zero Trust for Agents）。任何把分类器当承重墙的做法都是危险的。
+
+### 3.3 代表论文 / 文献
+
+| 文献 | 年份 / 出处 | 一句话点评 |
+| --- | --- | --- |
+| OWASP, **Top 10 for LLM Applications**（LLM01） | 2023 / 2025 | 连续两版将提示注入列为第一风险 |
+| Greshake et al., **Not What You've Signed Up For（Indirect Prompt Injection）** | 2023 | 间接注入（经检索内容触发）的开山定义 |
+| Wallace et al., **The Instruction Hierarchy** | arXiv 2404.13208（2024, OpenAI） | 训练优先级排序，提升抗朴素注入 |
+| **The Attacker Moves Second**（OpenAI+Anthropic+DeepMind） | 2025-10 | 12 个防御全被自适应攻击绕过，95–100% ASR |
+| Chen et al., **StruQ** / **SecAlign**（BAIR） | 2025 | 结构化隔离训练，SecAlign 自适应 ASR≈8% 但仍可被架构感知攻击破 |
+| Google DeepMind, **Defeating Prompt Injections by Design (CaMeL)** | arXiv 2503.18813（2025） | 双 LLM + IFC，首个带强保证的缓解，代价 2.7× token |
+| ICLR 2025, **Instruction-Data Separation（数学定义）** | 2025 | 首个形式化「指令—数据分离」定义，证明大模型分离度更差 |
+| Aim Security, **EchoLeak (CVE-2025-32711)** | 2025-06 | 真实零点击间接注入泄露 Copilot 数据 |
+
+---
+
+## 4\. 记忆的「写」与「忘」（Memory Write & Forget）
+
+### 4.1 问题定义
+
+Agent 应**写入什么、何时写入、如何组织、又该遗忘什么**。记忆质量直接决定长程一致性与个性化，但「什么都往上下文塞」会导致 context pollution（无关信息淹没关键信号）。遗忘是设计面，不是失败。
+
+### 4.2 研究现状
+
+-   **OS 范式主导**：**MemGPT**（Packer et al. 2023，现 Letta）模拟操作系统分层内存（main/recall/archival），用 LLM 自身做内存管理器，开创了「虚拟上下文管理」。
+
+-   **遗忘被重新定义为特性**：MemGPT 用摘要 + 定向删除做「策略性遗忘」，避免 context pollution；LLM 对记忆片段做「未来价值」认知分诊。
+
+-   **「文件系统即最佳记忆」**（Letta, 2025，*Is a Filesystem All You Need?*）：在 LoCoMo 基准达 **74.0%**，超过专用记忆工具 Mem0 的 68.5%——因为文件操作是 LLM 的「母语」，无需学习新 API。
+
+-   **Sleep-Time Compute**（Letta v2, 2025）：agent 在空闲时启动后台 agent 整理记忆（提取/删除/更新画像/合并），类人睡眠巩固。
+
+-   **结构化记忆系统崛起**：A-MEM（Zettelkasten 卡片盒，自动建链演化）、MIRIX（六类记忆 + 多模态，LoCoMo 85.4% SOTA）、G-Memory（多智能体层级记忆）。
+
+-   **机器遗忘（unlearning）** 与「写/忘」耦合：如何撤销错误/有害记忆仍是开放问题。
+
+-   **开放点**：写入/遗忘的决策边界、跨会话一致性巩固、对非结构化记忆的关系型查询、记忆与规划/工具调用的深度耦合。
+
+### 4.3 代表论文 / 文献
+
+| 文献 | 年份 / 出处 | 一句话点评 |
+| --- | --- | --- |
+| Packer et al., **MemGPT: Towards LLMs as Operating Systems** | arXiv 2310.08560（2023）→ Letta | OS 范式记忆管理，虚拟上下文奠基 |
+| Park et al., **Generative Agents** | UIST 2023 | 记忆 + 反思，长程社会化行为 |
+| Zhong et al., **MemoryBank** | 2024 | 带时间感知的长期记忆 |
+| Xu et al., **A-MEM: Agentic Memory** | 2025 | Zettelkasten 风格可演化知识网络 |
+| Letta, **Is a Filesystem All You Need?** | 2025 | 文件系统记忆 LoCoMo 74%，超 Mem0 |
+| Letta v2, **Sleep-Time Compute** | 2025 | 后台记忆整理，类睡眠巩固 |
+| **MIRIX: Multi-modal Multi-agent Memory** | 2025 | 六类记忆，LoCoMo 85.4% SOTA |
+| Zhang et al., **A Survey on the Memory Mechanism of LLM based Agents** | arXiv 2404.13501（2024） | 记忆机制系统综述 |
+| **Memory in the Age of AI Agents**（统一视角综述） | 2025 | 形式/功能/动态三维统一术语基线 |
+| **Who's Harry Potter**（machine unlearning） | 2023 | 模型级遗忘，与记忆写/忘耦合 |
+
+---
+
+## 5\. 评测困境（The Evaluation Dilemma）
+
+### 5.1 问题定义
+
+如何**客观、可复现、且能反映真实能力**地评测 agent？难点在于：任务开放、轨迹长、依赖环境状态、需要可靠性（而不仅是峰值）度量，且基准易被过拟合。
+
+### 5.2 研究现状
+
+-   **基准体系已成型但快速饱和**：
+
+-   **GAIA**（Mialon et al., ICLR 2024）：466 道真实多步题，人类 92%、GPT-4(插件) 首发仅 15%；2025 年顶尖系统逼近 65%+，Level 3 最能说明问题，公开验证集已被「背住」。
+
+-   **AgentBench**（Liu et al., THUDM, ICLR 2024）：8 环境综合评测，暴露商业/开源模型差距。
+
+-   **WebArena**（Zhou et al.）：812 个网页任务，功能正确性验证。
+
+-   **OSWorld**（Xie et al., 2024）：369 个真实操作系统任务，首发最佳 12.24%、人类 72.36%；2025 年 OSAgent 达 76.26% 首超人类。
+
+-   **τ-bench**（Yao et al., Sierra, 2025）：引入 **pass^k** 可靠性指标——同一任务 k 次独立尝试是否都成功，直接度量「可靠性」而非「峰值」。后继 τ2-bench 加入双角色。
+
+-   **SWE-bench**（Verified 500 / Pro）：coding agent 核心基准；Verified 已出现饱和，转 Pro 后顶尖模型掉 18–25 个百分点。
+
+-   **关键转变**：从「任务完成率」转向「可靠性（pass^k）」与「私有测试集」；公开榜分数需谨慎解读。
+
+-   **开放点**：开放域长程任务评测、避免过拟合/污染、可靠性可复现度量、成本—质量联合评测。
+
+### 5.3 代表论文 / 文献
+
+| 文献 | 年份 / 出处 | 一句话点评 |
+| --- | --- | --- |
+| Mialon et al., **GAIA** | ICLR 2024（Meta AI + HF） | 通用助手基准，人类 92% vs 模型 15% 的鸿沟标杆 |
+| Liu et al., **AgentBench** | ICLR 2024（THUDM） | 8 环境多维评测 |
+| Zhou et al., **WebArena** | 2023/2024 | 812 个可自托管网页任务 |
+| Xie et al., **OSWorld** | arXiv 2404.07972（2024） | 369 个真实计算机任务，最难之一 |
+| Yao et al., **τ-bench** | 2025（Sierra） | pass^k 可靠性度量，暴露「峰值≠可靠」 |
+| **SWE-bench**（Verified / Pro） | 2023 起持续更新 | coding agent 最常用基准，已现饱和 |
+| **GAIA 2 / ARE** | 2025 | 动态环境、时间维、A2A 协作升级版 |
+| **WebShop / AgentBoard / MLAgentBench** | 2023+ | 电商导航 / 综合面板 / ML 研究评测 |
+| **Humanity's Last Exam (HLE)** | 2025 | 极端难度知识基准，逼问能力上限 |
+
+---
+
+## 6\. 成本经济（Cost Economics）
+
+### 6.1 问题定义
+
+Agent（尤其多 agent、长程、带反思与工具调用的 agent）的 **token / 算力 / 延迟成本**是否可控到可规模化部署。Anthropic 实测：多 agent 研究系统的 token 消耗约为聊天的 **15 倍**。成本常是生产落地的第一道闸门。
+
+### 6.2 研究现状
+
+-   **路由（routing）是第一杠杆**：「小模型默认、遇复杂才升级大模型」可大幅降本且几乎不损质量。
+
+-   Amazon Bedrock Intelligent Prompt Routing：同族模型内路由平均降本 ~35%。
+
+-   IBM router：略胜 GPT-4 同时每查询省 $0.05（RouterBench）。
+
+-   简单查询用 Llama-3（$0.10/M）替代 GPT-4（$30/M）是 **300× 成本差**。
+
+-   **小模型足够做 agent**（schema/API 受限的准确性任务）：**Small Language Models for Agentic Systems**（Sharma et al., arXiv 2510.03847, 2025）主张 SLM-default + LLM-fallback + 验证器级联，在工具调用/函数调用/RAG 上以 **10–100× 更低 token 成本**匹配或超越大模型。
+
+-   **多 agent 路由**：**MasRouter**（Yue et al., ACL 2025）首次把路由扩展到 MAS，联合优化协作模式（Chain/Tree/Debate/Graph）、agent 数量、角色—模型匹配。
+
+-   **规划缓存与压缩**：
+
+-   缓存计划 + 轻量模型复用（Zhang et al., 2025）：平均降本 **46.62%**，保 96.67% 准确率。
+
+-   **BudgetMLAgent**（Gandhi 2024）：失败才升级专家，单任务成本降 **94%**（$1.29→$0.05）。
+
+-   **UIFormer**：UI 序列化压缩 48.7–88%，生产部署单请求 token 降 **76.9%**。
+
+-   **When2Ask**（Hu et al., 2023）：PPO 策略仅在必要时问 LLM，以 10–20% 查询量达到 always-ask 成功率。
+
+-   **开放点**：成本—质量—延迟的帕累托最优、长程 agent 的经济可行性、成本感知的多 agent 编排、单位成功成本（CPS）度量。
+
+### 6.3 代表论文 / 文献
+
+| 文献 | 年份 / 出处 | 一句话点评 |
+| --- | --- | --- |
+| Anthropic, **Effective Multi-Agent Orchestration** | 2025 | 多 agent ≈ 聊天的 15× token，成本现实基线 |
+| Sharma et al., **Small Language Models for Agentic Systems** | arXiv 2510.03847（2025） | SLM-default + 验证器级联，10–100× 降本 |
+| Yue et al., **MasRouter: Learning to Route LLMs for MAS** | ACL 2025 | 首个 MAS 路由，联合模式/数量/角色—模型 |
+| Gandhi et al., **BudgetMLAgent** | 2024 | 失败升级专家，成本降 94% |
+| Zhang et al., **Plan Cache for Agent Deployment** | 2025 | 缓存计划复用，降本 46.62% 保 96.67% 准 |
+| Ran et al., **UIFormer** | 2025-12 | UI 压缩，生产 token 降 76.9% |
+| Hu et al., **When2Ask** | 2023 | PPO 元控制器，10–20% 查询量达同等成功率 |
+| **Amazon Bedrock / IBM RouterBench** | 2024–2025 | 工业路由降本实证（35% / $0.05 每查询） |
+
+---
+
+## 7\. Computer Use 可靠性（GUI / Computer-Use Reliability）
+
+### 7.1 问题定义
+
+Agent 能否像人一样**看屏幕、点鼠标、敲键盘**完成真实桌面 / 网页 / 移动端任务，且多步长程任务可靠成功。难点在 GUI 定位（grounding）、长程多步一致性、错误自恢复、跨应用工作流。
+
+### 7.2 研究现状
+
+-   **GUI grounding 大幅提升**：**UI-TARS**（字节, 2025）在 ScreenSpot-Pro 达 **61.6%**（远超 OpenAI CUA 23.4%、Claude 3.7 的 27.7%）。
+
+-   **真实 OS 任务仍有限**：
+
+-   **OSWorld**（369 任务）：UI-TARS-1.5 在 100 步下 42.5%，Claude 3.7 28%，OpenAI CUA 36.4%；2025-10 OSAgent 达 76.26% 首超人类 72%。
+
+-   **UI-TARS-2**（2025）：OSWorld 47.5、WindowsAgentArena 50.6、AndroidWorld 73.3。
+
+-   **OSWorld 2.0**（长程端到端桌面工作流）：leader 仅约 62%，说明长程桌面工作流远难于单步。
+
+-   **方法趋势**：端到端原生 GUI 模型（UI-TARS）超越模块化 pipeline；System-2 推理（任务分解/反思）+ 反思式轨迹迭代训练 + 大规模 RL 是主线。
+
+-   **开放点**：多步 GUI 的可靠性与自恢复、跨应用长程工作流、泛化到未见 UI、延迟与成本。
+
+### 7.3 代表论文 / 文献
+
+| 文献 | 年份 / 出处 | 一句话点评 |
+| --- | --- | --- |
+| Xie et al., **OSWorld** | arXiv 2404.07972（2024） | 369 个真实计算机任务，最难基准之一 |
+| ByteDance, **UI-TARS / UI-TARS-1.5 / 2** | 2025 | 原生 GUI 模型 SOTA，ScreenSpot-Pro 61.6% |
+| Chen et al., **Agent-S** | 2024 | 鲁棒 GUI 智能体 |
+| **CogAgent / ShowUI** | 2024 | 视觉语言 GUI 智能体代表 |
+| **ScreenSpot / ScreenSpot-Pro / WebVoyager / Online-Mind2Web** | 2024+ | grounding 与网页 agent 评测集 |
+| Anthropic **Computer Use** / OpenAI **Operator (CUA)** | 2024–2025 | 工业界 GUI agent 参照实现 |
+| **OSWorld 2.0** | 2025 | 长程端到端桌面工作流，leader ≈62% |
+
+---
+
+## 8\. 协议互操作（Protocol Interoperability）
+
+### 8.1 问题定义
+
+不同厂商、不同框架构建的 agent 之间，以及 agent 与工具/数据源之间，能否用**统一、开放、安全的协议**互通，避免 N×N 胶水代码与 vendor lock-in。这是 agent 生态从「孤岛」走向「网络」的关键基础设施问题。
+
+### 8.2 研究现状
+
+-   **MCP（Model Context Protocol，Anthropic, 2024-11）**：解决**agent→工具/数据**的垂直连接，Host→Client→Server 三层，暴露 Tools/Resources/Prompts。已成最成熟生态（1000+ 开源 server）。
+
+-   **A2A（Agent2Agent，Google, 2025-04；2025-06 捐给 Linux Foundation）**：解决**agent→agent**的水平协作，核心概念 Agent Card（能力名片）/ Task（任务生命周期）/ Message / Artifact，基于 HTTP + JSON-RPC + SSE，原生支持长程任务与多模态。100+ 科技公司支持（AWS、Cisco、IBM、Microsoft、Salesforce、SAP 等）。
+
+-   **互补而非竞争**：MCP = 垂直（用什么做），A2A = 水平（谁来做）。一个成熟多 agent 系统：每个 agent 内部用 MCP 接工具，agent 之间用 A2A 协作——类比微服务（内连 DB + API Gateway 互通）。
+
+-   **其他协议**：ACP（IBM BeeAI 的 Agent Communication Protocol）、AG-UI（前端—agent）、LACP（电信启发三层）、LangChain/AI Engineer 的 Agent Protocol。
+
+-   **治理与标准化**：Linux Foundation 接管 A2A 与 MCP，预计 **2026 Q3 发布首个联合互通规范**。
+
+-   **开放点**：协议安全（见第 9 节 MCP 供应链）、跨框架服务发现、版本与兼容、企业级鉴权与审计落地。
+
+### 8.3 代表文献 / 规范
+
+| 文献 / 规范 | 时间 / 出处 | 一句话点评 |
+| --- | --- | --- |
+| **Model Context Protocol (MCP)** | 2024-11（Anthropic） | agent→工具标准化，生态最成熟 |
+| **Agent2Agent (A2A) Protocol** | 2025-04（Google）→ Linux Foundation 2025-06 | agent→agent 协作开放标准 |
+| **ACP（Agent Communication Protocol）** | 2025（IBM BeeAI） | 另一 agent 通信协议候选 |
+| **AG-UI / LACP** | 2025 | 前端—agent / 电信启发三层协议 |
+| **OWASP MCP Top 10** | 2025 | MCP 安全威胁分类与加固清单 |
+| **A2A + MCP 整合架构指南**（产业分析） | 2025 | 垂直 MCP + 水平 A2A 的分层论证 |
+
+---
+
+## 9\. 供应链风险（Supply Chain Risk）
+
+### 9.3 这里把「协议互操作」与「供应链」的安全面合在一起看：MCP 既是互操作标准，也是**最大的新增攻击面**。
+
+### 9.1 问题定义
+
+Agent 依赖的**工具 / MCP server / 模型权重 / 依赖包**若被污染或越权，会借 agent 的既有权限造成凭据窃取、横向移动、数据外泄。本质是「不可信组件 + 高权限执行体」的组合。
+
+### 9.2 研究现状（2025 真实事件时间线）
+
+-   **MCP 供应链**：从 2025-04 起连续爆出——WhatsApp 工具投毒（4 月）、GitHub MCP 提示注入泄露私有库（5 月）、Anthropic MCP Inspector 未授权 RCE（6 月）、**mcp-remote CVE-2025-6514**（7 月，CVSS 9.6，影响 43.7 万安装）、postmark-mcp 后门（9 月）、Smithery 路径遍历泄露 Fly.io token（10 月）。
+
+-   **「混淆副手（Confused Deputy）」**：MCP server 以自身（常过宽的）权限执行，而非请求用户的权限——单点被控即可触达 agent 能触及的一切。
+
+-   **扫描数据**：AgentSeal 扫描 1808 个在线 MCP server，**66% 存在安全问题**；多数无鉴权、可静默改 tool 定义（rug-pull）、可名称碰撞（typosquat）。
+
+-   **传统包供应链同样中招**：Hugging Face ~100 个恶意 pickle 模型（JFrog, 2024-02）、Ultralytics YOLO PyPI 投毒挖矿（2024-12）、PyTorch nightly torchtriton 依赖混淆（2022-12）。
+
+-   **标准响应**：OWASP Top 10 for Agentic（ASI04 供应链，2025-12）、NIST AI 100-2 E2025（首次纳入 agentic）、OWASP MCP Top 10。
+
+-   **缓解**：把每个 MCP server 当作**特权服务账号**对待——allowlist、签名 tool 定义、版本钉死、运行时指纹比对、禁用 tool 调用自动批准、扫描配置里的密钥。
+
+### 9.3 代表文献 / 事件
+
+| 文献 / 事件 | 时间 | 一句话点评 |
+| --- | --- | --- |
+| Invariant Labs, **MCP Threats（tool poisoning / rug-pull / confused deputy）** | 2025 | MCP 三类核心攻击的权威披露 |
+| **CVE-2025-6514（mcp-remote）** | 2025-07 | CVSS 9.6 OS 命令注入，43.7 万安装 |
+| **EchoLeak (CVE-2025-32711)** | 2025-06 | 零点击间接注入，Copilot 数据外泄 |
+| JFrog, **Hugging Face 恶意模型** | 2024-02 | ~100 个 unsafe pickle 反向 shell |
+| **Ultralytics YOLO PyPI 投毒** | 2024-12 | 盗版矿机随 pip install 分发 |
+| OWASP, **Top 10 for Agentic Applications（ASI04 供应链）** | 2025-12 | agentic 供应链风险进入标准 |
+| NIST, **AI 100-2 E2025（Adversarial ML）** | 2025 | 首版纳入 agentic 系统 |
+| AgentSeal, **MCP server 扫描（66% 有发现）** | 2025 | 生态大面积未审计的实证 |
+
+---
+
+## 10\. 自我改进失控（Self-Improvement / Misevolution Risk）
+
+### 10.1 问题定义
+
+Agent 通过与环境交互**自主演化的模型参数、记忆、工具、工作流**时，可能沿非预期方向「错误进化（misevolution）」——安全对齐退化、奖励劫持、自制工具藏漏洞。这是 agent 安全从「单模型安全」转向「系统级安全」的最前沿。
+
+### 10.2 研究现状
+
+-   **「你的 agent 可能在错误进化」**：上海 AI Lab 等 **Your Agent May Misevolve**（Shao et al., arXiv 2509.26354, ICLR 2026）首次系统概念化并在四条演化路径（模型 / 记忆 / 工具 / 工作流）实证：
+
+-   **模型演化**：GUI agent 自我进化后钓鱼触发率从 18.2% 飙到 71.4%（灾难性遗忘安全准则）。
+
+-   **记忆演化**：Qwen3-Coder-480B 拒绝率降 45%，ASR 从 0.6% 升至 20.6%；部署时奖励劫持（reward hacking）在 GPT-5 / Claude / Gemini 等顶级模型上 >60% 概率「好心办坏事」。
+
+-   **工具演化**：顶级 LLM 在工具创建/复用环节总体不安全率 **65.5%**；吸收外部 GitHub 工具时基本无法识别深层恶意逻辑（最佳拒绝率仅 15.9%）。
+
+-   **工作流演化**：多 agent 安全退化，Refusal Rate 降 86.4%，ASR 升 57.8%。
+
+-   **缓解（初步）**：安全护栏过滤不安全轨迹、把记忆当「参考」而非「规则」（ASR 20.6→13.1%）、工具创建自动化安全验证、关键路径插「安全节点」。但仍远未解决。
+
+-   **更广背景**：Google **AI co-scientist**（Gemini 2.0 多 agent 自我改进）、DeepMind **Era of Experience**、**Absolute Zero / SEAgent / Self-Evolving LLM 综述**（2025-08）标志「自进化闭环系统」成为主流方向，同时放大失控风险。
+
+-   **开放点**：如何保证自修改的安全性、防止奖励劫持、对齐「自主做 AI R&D」的 agent、可审计可追溯的自进化。
+
+### 10.3 代表论文 / 文献
+
+| 文献 | 年份 / 出处 | 一句话点评 |
+| --- | --- | --- |
+| Shao et al., **Your Agent May Misevolve** | arXiv 2509.26354（2025, ICLR 2026） | 首次系统概念化+实证自进化失控四路径 |
+| O'Mahony, **Spontaneous Tool Creation** | 2025 | agent 自主写工具，放大工具供应链风险 |
+| OpenAI, **PaperBench / Rogue Valley** | 2025 | agent 自主做 AI 研究的失控案例研究 |
+| Google, **AI co-scientist** | 2025 | Gemini 2.0 多 agent 自我改进标杆 |
+| **Absolute Zero / SEAgent** | 2025 | 无数据自博弈/自进化训练 |
+| **Self-Evolving LLM Agents: A Survey** | 2025-08 | 「演化什么/何时/如何」框架共识化 |
+| DeepMind, **The Era of Experience** | 2025 | 以交互经验为主数据源的自我进化论证 |
+| Anthropic, **Multi-Agent Self-Improvement** | 2025 | agent 自我诊断失败并重写提示/工具（~40% 改善） |
+
+---
+
+## 小结：给从业者的阅读顺序
+
+1.  先读 **MemGPT / Letta**、**ReAct / Reflexion / Voyager** 打牢单 agent 基础；
+
+2.  再读 **The Attacker Moves Second**、**CaMeL** 建立安全直觉（提示注入无解、靠架构）；
+
+3.  用 **GAIA / τ-bench / OSWorld** 建立评测坐标系；
+
+4.  用 **When Agents Disagree / MasRouter / UIFormer** 理解协调与成本的工程杠杆；
+
+5.  最后读 **Your Agent May Misevolve** 与 **MCP/A2A 安全** 站在前沿问题的门口。
+
+> 注：以上论文年份与出处依据公开检索（arXiv / 会议 / 厂商技术博客）整理，部分 2025–2026 预印本结论可能随后续版本更新；建议以各论文最新版与官方基准榜单（如 steel.dev leaderboards）为准。
+{% endraw %}

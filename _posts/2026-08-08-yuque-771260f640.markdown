@@ -1,0 +1,464 @@
+---
+title: "复变函数"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 物理, 数学物理方法]
+categories: [物理]
+yuque: true
+---
+
+{% raw %}
+# 复变函数
+
+-   基本概念
+
+一个复数 $z$ 可以表为某个实数 $x$ 与某个纯虚数 $\mathrm{i} y$ 的和,
+
+$$
+z=x+\mathrm{i} y,
+$$
+
+这称为复数的代数式, $x$ 和 $y$ 分别为该复数的实部和虚部, 并分别记作 $\operatorname{Re} z$ 和 Im $z$.
+
+改用极坐标 $\rho$ 和 $\varphi$ (图 $1-1$ ) 代替直角坐标 $x$和 $y$,
+
+$$
+\left\{\begin{array} { l } 
+{ \rho = \sqrt { x ^ { 2 } + y ^ { 2 } } , } \\
+{ \varphi = \operatorname { a r c t a n } ( y / x ) ; }
+\end{array} \quad \left\{\begin{array}{l}
+x=\rho \cos \varphi, \\
+y=\rho \sin \varphi .
+\end{array}\right.\right.
+$$
+
+![image.png](/img/yuque/物理/数学物理方法/assets/数学物理方法-1.png)
+
+则复数 $z$ 可表为三角式或指数式, 即
+
+$$
+z=\rho(\cos \varphi+\operatorname{isin} \varphi),
+$$
+
+或
+
+$$
+z=\rho \mathrm{e}^{\mathrm{i} \varphi} .
+$$
+
+$\rho$ 称为该复数的模, 记作 $|z| . \varphi$ 称为该复数的辐角, 记作 $\operatorname{Arg} z$。
+
+复数 “零” (即实部 $x$ 及虚部 $y$ 都等于零的复数) 的辐角没有明确意义.一个复数 $z$ 的共轭复数 $z^*$, 指的是对应的点对实轴的反映, 即
+
+$$
+z^*=x-\mathrm{i} y=\rho(\cos \varphi-\mathrm{i} \sin \varphi)=\rho \mathrm{e}^{-\mathrm{i} \varphi} .
+$$
+
+一个复数的辐角值不能唯一地确定, 可以取无穷多个值, 并且彼此相差 $2 \pi$ 的整数倍. 通常约定, 以 $\arg z$ 表示其中满足条件
+
+$$
+0 \leqslant \operatorname{Arg} z<2 \pi
+$$
+
+的一个特定值, 并称 $\arg z$ 为 $\operatorname{Arg} z$ 的主值, 或 $z$ 的主辐角. 于是有
+
+$$
+\varphi=\operatorname{Arg} z=\arg z+2 k \pi \quad(k=0, \pm 1, \pm 2 \cdots) .
+$$
+
+-   无限远点
+
+前面我们将模为有限的复数跟复数平面上的有限远点一一对应起来，在复 变函数论中，通常还将模为无限大的复数也跟复数平面上的一点相对应，并且 称这一点为无限远点关于无限远点，可作如下理解，把一个球放在复数平面 上，球以南极 S 跟复数平面相切于原点，如 图1-2所示。在复数平面上任取一点 A ,它 与球的北极 N 的连线跟球面相交于 A,这样， 复数平面上的有限远点跟球面上 N 以外的点 一一对应了起来。这种对应关系称为测地投 影，这个球称为复数球，设想A点沿着一根 下图 通过原点的直线向无限远移动，对应的点 A" 就沿着一根子午线（经线）向北极 N 逼近，如果A沿着另一根通过原点的直线 向无限远移动，则A沿着另一根子午线向北极N逼近，事实上，不管A沿着 什么样的曲线向无限远移动，A'总是相应地沿着某曲线逼近于N,因此，可以 将平面上的无限远看作一点，通过测地投影而跟复数球上北极N相对应，我 们将无限远点记作，它的模为无限大，它的辐角没有明确意义。
+
+![image.png](/img/yuque/物理/数学物理方法/assets/数学物理方法-2.png)
+
+# 常见复变函数的导数
+
+![image.png](/img/yuque/物理/数学物理方法/assets/数学物理方法-3.png)
+
+# 柯西-黎曼方程
+
+简单推导
+
+必须指出, 复变函数和实变函数的导数定义, 虽然形式上一样, 实质上却有很大的不同. 这是因为实变数 $\Delta x$ 只能沿着实轴逼近零, 复变数 $\Delta z$ 却可以沿复数平面上的任一曲线趋近零. 因此, 跟实变函数的可导相比, 复变函数可导的要求要严格得多.
+
+现在让我们比较 $\Delta z$ 沿平行于实轴方向逼近零和沿平行于虚轴方向逼近零的两种情形.
+
+先看 $\Delta z$ 沿平行于实轴方向逼近零的情形. 这时 $\Delta y \equiv 0$, 而 $\Delta z=\Delta x \rightarrow 0$,于是
+
+$$
+\begin{aligned}
+& \lim _{\Delta x \rightarrow 0} \frac{u(x+\Delta x, y)+\mathrm{i} v(x+\Delta x, y)-u(x, y)-\mathrm{i} v(x, y)}{\Delta x} \\
+= & \lim _{\Delta x \rightarrow 0}\left\{\frac{u(x+\Delta x, y)-u(x, y)}{\Delta x}+\mathrm{i} \frac{v(x+\Delta x, y)-v(x, y)}{\Delta x}\right\} \\
+= & \frac{\partial u}{\partial x}+\mathrm{i} \frac{\partial v}{\partial x} .
+\end{aligned}
+$$
+
+再看 $\Delta z$ 沿平行于虚轴方向逼近零的情形. 这时 $\Delta x \equiv 0$, 而 $\Delta z=\mathrm{i} \Delta y \rightarrow 0$,于是
+
+$$
+\begin{aligned}
+& \lim _{\Delta y \rightarrow 0} \frac{u(x, y+\Delta y)+\mathrm{i} v(x, y+\Delta y)-u(x, y)-\mathrm{i} v(x, y)}{\mathrm{i} \Delta y} \\
+= & \lim _{\Delta y \rightarrow 0}\left\{\frac{v(x, y+\Delta y)-v(x, y)}{\Delta y}-\mathrm{i} \frac{u(x, y+\Delta y)-u(x, y)}{\Delta y}\right\} \\
+= & \frac{\partial v}{\partial y}-\mathrm{i} \frac{\partial u}{\partial y} .
+\end{aligned}
+$$
+
+如果函数 $f(z)$ 在点 $z$ 可导, (1.3.1) 和 (1.3.2) 两个极限必须都存在而且彼此相等, 即
+
+$$
+\frac{\partial u}{\partial x}+\mathrm{i} \frac{\partial v}{\partial x}=\frac{\partial v}{\partial y}-\mathrm{i} \frac{\partial u}{\partial y} .
+$$
+
+这个等式两边的实部和虚部必须分别相等, 即
+
+$$
+\left\{\begin{array}{l}
+\frac{\partial u}{\partial x}=\frac{\partial v}{\partial y}, \\
+\frac{\partial v}{\partial x}=-\frac{\partial u}{\partial y} .
+\end{array}\right.
+$$
+
+这两个方程称为柯西 - 黎曼方程, 或柯西 - 黎曼条件 (简称 $\mathbf{C}-\mathbf{R}$ 条件),是复变函数可导的必要条件.
+
+# 复变函数的积分
+
+-   基本概念
+
+路径积分
+
+设在复数平面的某分段光滑曲线 $l$ 上定义了连续函数 $f(z)$. 在 $l$ 上取一系列分点 $z_0$ (起点 $A$ ), $z_1, z_2, \cdots z_n$ (终点 $B$ ), 将 $l$ 分成 $n$ 小段 (图 2-1). 在每一小段 $\left[z_{k-1}, z_k\right]$ 上任取一点 $\zeta_k$, 作和
+
+$$
+\sum_{k=1}^n f\left(\zeta_k\right)\left(z_k-z_{k-1}\right)=\sum_{k=1}^n f\left(\zeta_k\right) \Delta z_k .
+$$
+
+当 $n \rightarrow \infty$ 而且每 $-\Delta z_k$ 都趋于零时, 如果这个和的极限存在, 而且其值与各个 $\zeta_k$ 的选取无关, 则这个和的极限称为函数 $f(z)$ 沿曲线 $l$ 从 $A$到 $B$ 的路积分, 记作 $\int_l f(z) \mathrm{d} z$, 即
+
+$$
+\int_l f(z) \mathrm{d} z=\lim _{\max \left|\Delta z_k\right| \rightarrow 0} \sum_{k=1}^n f\left(\zeta_k\right) \Delta z_k
+$$
+
+![image.png](/img/yuque/物理/数学物理方法/assets/数学物理方法-4.png)
+
+路径积分示意图
+
+将 $z_k$ 和 $f(z)$ 都用实部和虚部表出,
+
+$$
+z_k=x_k+\mathrm{i} y_k, f(z)=u(x, y)+\mathrm{i} v(x, y),
+$$
+
+则
+
+$$
+\begin{aligned}
+\int_l f(z) \mathrm{d} z= & \int_l u(x, y) \mathrm{d} x-v(x, y) \mathrm{d} y \\
+& +\mathrm{i} \int_l v(x, y) \mathrm{d} x+u(x, y) \mathrm{d} y .
+\end{aligned}
+$$
+
+这样, 复变函数的路积分可以归结为两个实变函数线积分, 它们分别是路积分的实部和虚部. 因而实变函数线积分的许多性质也对路积分成立。
+
+## 单联通区域柯西定理
+
+单通连区域柯西定理 如果函数 $f(z)$ 在闭单连通区域 $\bar{B}$ 上解析, 则沿 $\bar{B}$上任一分段光滑闭合曲线 $l$ (也可以是 $\bar{B}$ 的边界), 有
+
+$$
+\oint_t f(z) \mathrm{d} z=0 .
+$$
+
+证明 按(2.1.2),
+
+$$
+\oint_t f(z) \mathrm{d} z \stackrel{+}{=} \oint_t u(x, y) \mathrm{d} x-v(x, y) \mathrm{d} y+\mathrm{i} \oint_l v(x, y) \mathrm{d} x+u(x, y) \mathrm{d} y .
+$$
+
+由于 $f(z)$ 在 $\bar{B}$ 上解析, 因而 $\frac{\partial u}{\partial x}, \frac{\partial u}{\partial y}, \frac{\partial v}{\partial x}, \frac{\partial v}{\partial y}$ 在 $\bar{B}$ 上连续, 对上式右端实部及虚部分别应用格林公式
+
+$$
+\oint_i P \mathrm{~d} x+Q \mathrm{~d} y=\iint_S\left(\frac{\partial Q}{\partial x}-\frac{\partial P}{\partial y}\right) \mathrm{d} x \mathrm{~d} y,
+$$
+
+将回路积分化成面积分, 有
+
+$$
+\oint_l f(z) \mathrm{d} z=-\iint_S\left(\frac{\partial v}{\partial x}+\frac{\partial u}{\partial y}\right) \mathrm{d} x \mathrm{~d} y+\mathrm{i} \iint_S\left(\frac{\partial u}{\partial x}-\frac{\partial v}{\partial y}\right) \mathrm{d} x \mathrm{~d} y .
+$$
+
+同样, 由于 $f(z)$ 在 $\bar{B}$ 上解析, 其实部 $u$ 和虚部 $v$ 在 $\bar{B}$ 上满足柯西 - 黎曼条件
+
+$$
+\frac{\partial u}{\partial x}=\frac{\partial v}{\partial y}, \frac{\partial v}{\partial x}=-\frac{\partial u}{\partial y} .
+$$
+
+因而两个积分均为零, 即得 (2.2.1).
+
+## 多联通区域柯西定理
+
+如果 $f(z)$ 是闭复连通区域上的单值解析函数, 则
+
+$$
+\oint_l f(z) \mathrm{d} z+\sum_{i=1}^n \oint_{l_i} f(z) \mathrm{d} z=0,
+$$
+
+式中 $l$ 为区域外边界线，诸 $l_i$ 为区域内边界线，积分均沿边界线的正方向进行.**证明**
+
+![image.png](/img/yuque/物理/数学物理方法/assets/数学物理方法-5.png)
+
+考虑上图 中以 $l, l_1, l_2, \cdots, l_n$ 为边界的复连通区域 (图中只画出$\left.l, l_1, l_2\right)$, 作割线连接内外边界线, 原来的复连通区域变成了以 $\overline{A B}, l_1, \overline{B^{\prime} A^{\prime}}, l$ 的 $\overline{A^{\prime} C}$ 段, $\overline{C D}, l_2$, $\overline{D^{\prime} C^{\prime}}$, 及 $l$ 的 $\overline{C^{\prime} A}$ 段为边界线的单连通区域, 而在这单连通区域上 $f(z)$ 是解析的, 按单连通区域柯西定理
+
+$$
+\begin{aligned}
+& \oint_l f(z) \mathrm{d} z+\int_{\overline{A B}} f(z) \mathrm{d} z+\oint_{l_1} f(z) \mathrm{d} z+\int_{\overline{B^{\prime} A^{\prime}}} f(z) \mathrm{d} z \\
+& +\int_{\overline{C D}} f(z) \mathrm{d} z+\oint_{l_2} f(z) \mathrm{d} z+\int_{\overline{D^{\prime} C^{\prime}}} f(z) \mathrm{d} z+\cdots=0 .
+\end{aligned}
+$$
+
+其中沿同一割线两边缘上的积分值相互抵消, 于是有
+
+$$
+\oint_l f(z) \mathrm{d} z+\oint_{l_1} f(z) \mathrm{d} z+\oint_{l_2} f(z) \mathrm{d} z+\cdots=0,
+$$
+
+即得(2.2.3).
+
+总结起来，柯西定理说的是总结起来，柯西定理说的是
+
+1.若f(z)在单连通域B上解析，在闭单连通域B上连续，则沿B上任一分段光滑闭合曲线(也可以是B的边界)的积分为零;1.若f(Z)在单连通域B上解析，在闭单连通域B上连续，则沿B上任一分段光滑闭合曲线(也可以是B的边界)的积分为零；
+
+2.闭复连通区域上的解析函数沿所有内外边界线正方向积分和为零;3．闭复连通区域上的解析函数沿外边界线逆时针方向积分等于沿所有内边界线逆时针方向积分之和.2.闭复连通区域上的解析函数沿所有内外边界线正方向积分和为零；3.闭复连通区域上的解析函数沿外边界线逆时针方向积分等于沿所有内边界线逆时针方向积分之和.
+
+从柯西定理又知道，对于某个闭单连通或闭复连通区域上为解析的函数，只要起点和终点固定不变，当积分路径连续变形(就是说不跳过“孔")时，函数的积分值不变.从柯西定理又知道，对于某个闭单连通或闭复连通区域上为解析的函数，只要起点和终点固定不变，当积分路径连续变形(就是说不跳过“孔”)时，函数的积分值不变.
+
+-   重要的积分
+
+$$
+\begin{aligned} & \frac{1}{2 \pi \mathrm{i}} \oint_l \frac{\mathrm{d} z}{z-\alpha}= \begin{cases}0 & (l \text { 不包围 } \alpha), \\ 1 & (l \text { 包围 } \alpha) .\end{cases} \\ & \frac{1}{2 \pi \mathrm{i}} \oint_l(z-\alpha)^n \mathrm{~d} z=0 \quad(n \neq-1) .\end{aligned}
+$$
+
+## 柯西公式
+
+若 $f(z)$ 在闭单连通区域 $\bar{B}$ 上解析, $l$ 为 $\bar{B}$ 的边界线, $\alpha$ 为 $\bar{B}$ 内的任一点,则有柯西公式
+
+$$
+f(\alpha)=\frac{1}{2 \pi \mathrm{i}} \oint_l \frac{f(z)}{z-\alpha} \mathrm{d} z .
+$$
+
+现在来证明柯西公式. 首先注意到, 由(2.3.4) 显然有
+
+$$
+f(\alpha)=\frac{f(\alpha)}{2 \pi \mathrm{i}} \oint_l \frac{1}{z-\alpha} \mathrm{d} z=\frac{1}{2 \pi \mathrm{i}} \oint_i \frac{f(\alpha)}{z-\alpha} \mathrm{d} z .
+$$
+
+将此式与(2.4.1) 比较, 可以看出, 为了证明(2.4.1), 只需证明
+
+$$
+\frac{1}{2 \pi \mathrm{i}} \oint_l \frac{f(z)-f(\alpha)}{z-\alpha} \mathrm{d} z=0 .
+$$
+
+由于 $z=\alpha$ 一般为被积函数 $[f(z)-f(\alpha)] /(z-\alpha)$ 的奇点, 因此, 以 $\alpha$ 为圆心, $\varepsilon$ 为半径作小圆 $C_{\varepsilon}$, 于是在 $l$ 及 $C_{\varepsilon}$ 所围复连通区域上 $[f(z)-f(\alpha)] /(z-\alpha)$单值解析. 按柯西定理,
+
+$$
+\oint_t \frac{f(z)-f(\alpha)}{z-\alpha} \mathrm{d} z=\oint_{C_e} \frac{f(z)-f(\alpha)}{z-\alpha} \mathrm{d} z .
+$$
+
+现在对 (2.4.2) 右端的值作一估计,
+
+$$
+\left|\oint_{c,} \frac{f(z)-f(\alpha)}{z-\alpha} \mathrm{d} z\right| \leqslant \frac{\max |f(z)-f(\alpha)|}{\varepsilon} 2 \pi \varepsilon,
+$$
+
+其中 $\max |f(z)-f(\alpha)|$ 是 $|f(z)-f(\alpha)|$ 在 $C_{\varepsilon}$ 上的最大值. 令 $\varepsilon \rightarrow 0$, 则 $C_{\varepsilon} \rightarrow \alpha$, 由于 $f(z)$ 的连续性, 因而有 $f(z) \rightarrow f(\alpha)$, 即 $\max |f(z)-f(\alpha)| \rightarrow 0$, 于是,
+
+$$
+\lim _{z \rightarrow 0}\left|\oint_{c_{\varepsilon}} \frac{f(z)-f(\alpha)}{z-\alpha} \mathrm{d} z\right| \leqslant \lim _{z \rightarrow 0} 2 \pi \cdot \max |f(z)-f(\alpha)|=0 .
+$$
+
+由于 (2.4.2) 左端与 $\varepsilon$ 无关, 故必有
+
+$$
+\oint_i \frac{f(z)-f(\alpha)}{z-\alpha} \mathrm{d} z=0 .
+$$
+
+从而柯西公式得证.
+
+  
+柯西公式将解析函数在任何一内点 $\alpha$ 的值 $f(\alpha)$ 用沿边界线 $l$ 的回路积分表示了出来. 这是因为解析函数在各点的值通过柯西 - 黎曼方程相互联系着.从物理上说, 解析函数紧密联系于平面标量场, 而平面场的边界条件决定着区域内部的场.因为 $\alpha$ 是任取的, 所以通常将 $\alpha$ 改记作 $z$, 积分变数改用 $\zeta$ 表示, 于是柯西公式 (2.4.1) 改写为
+
+$$
+f(z)=\frac{1}{2 \pi \mathrm{i}} \oint_t \frac{f(\zeta)}{\zeta-z} \mathrm{~d} \zeta .
+$$
+
+若 $f(z)$ 在 $l$ 所围区域上存在奇点, 这就需要考虑挖去奇点后的复连通区域. 在复连通区域上 $f(z)$ 解析, 显然柯西公式仍然成立. 只要将 $l$ 理解为所有边界线, 并且其方向均取正向.
+
+# 级数
+
+## 泰勒展开
+
+泰勒展开是唯一的
+
+定理 设 $f(z)$ 在以 $z_0$ 为圆心的圆 $C_R$ 内解析, 则对圆内的任意 $z$ 点, $f(z)$可展为幂级数,
+
+$$
+f(z)=\sum_{k=0}^{\infty} a_k\left(z-z_0\right)^k,
+$$
+
+其中
+
+$$
+a_k=\frac{1}{2 \pi \mathrm{i}} \oint_{C_{R_1}} \frac{f(\zeta)}{\left(\zeta-z_0\right)^{k+1}} \mathrm{~d} \zeta=\frac{f^{(k)}\left(z_0\right)}{k !},
+$$
+
+$C_{R_1}$ 为圆 $C_R$ 内包含 $z$ 且与 $C_R$ 同心的圆.**证明** 如图下图, 为了避免涉及级数在圆周 $C_R$上的收敛或发散问题, 作较 $C_R$ 小, 但包含 $z$ 且与 $C_R$同心的圆周 $C_{R_1}$. 应用柯西公式(2.4.1),
+
+$$
+f(z)=\frac{1}{2 \pi \mathrm{i}} \oint_{c_{k_1}} \frac{f(\zeta)}{\zeta-z} \mathrm{~d} \zeta .
+$$
+
+接下去的工作是将 $1 /(\zeta-z)$ 展为暴级数. 考虑到展开式应以圆心 $z_0$ 为中心, 先将 $1 /(\zeta-z)$ 改写为
+
+  
+
+$$
+\frac{1}{\zeta-z}=\frac{1}{\left(\zeta-z_0\right)-\left(z-z_0\right)}=\frac{1}{\zeta-z_0} \cdot \frac{1}{1-\frac{z-z_0}{\zeta-z_0}} .
+$$
+
+![image.png](/img/yuque/物理/数学物理方法/assets/数学物理方法-6.png)
+
+将这式右边第二个因子跟 (3.2.7) 比较, 可知
+
+$$
+\frac{1}{1-\frac{z-z_0}{\zeta-z_0}}=1+\frac{z-z_0}{\zeta-z_0}+\left(\frac{z-z_0}{\zeta-z_0}\right)^2+\cdots \quad\left(\left|\frac{z-z_0}{\zeta-z_0}\right|<1\right) .
+$$
+
+将这代人(3.3.2) 得
+
+$$
+\frac{1}{\zeta-z}=\frac{1}{\zeta-z_0} \cdot \sum_{k=0}^{\infty} \frac{\left(z-z_0\right)^k}{\left(\zeta-z_0\right)^k}=\sum_{k=0}^{\infty} \frac{\left(z-z_0\right)^k}{\left(\zeta-z_0\right)^{k+1}} .
+$$
+
+又将(3.3.3) 代人 (3.3.1) 并逐项积分,
+
+$$
+f(z)=\sum_{k=0}^{\infty}\left(z-z_0\right)^k \cdot \frac{1}{2 \pi \mathrm{i}} \oint_{C_{R_1}} \frac{f(\zeta)}{\left(\zeta-z_0\right)^{k+1}} \mathrm{~d} \zeta .
+$$
+
+根据柯西公式(2.4.7), 上式即为
+
+$$
+f(z)=\sum_{k=0}^{\infty} \frac{f^{(k)}\left(z_0\right)}{k !}\left(z-z_0\right)^k \quad\left(\left|z-z_0\right|<R\right) .
+$$
+
+(3.3.4) 式称为函数 $f(z)$ 的泰勒展开, 右端级数称为以 $z_0$ 为中心的泰勒级数。
+
+# 洛朗展开
+
+定理 设 $f(z)$ 在环形区域 $R_2<\left|z-z_0\right|<R_1$ 的内部单值解析, 则对环域上任一点 $z, f(z)$ 可展为幕级数
+
+$$
+f(z)=\sum_{k=-\infty}^{\infty} a_k\left(z-z_0\right)^k .
+$$
+
+  
+其中
+
+$$
+a_k=\frac{1}{2 \pi \mathrm{i}} \oint_c \frac{f(\zeta)}{\left(\zeta-z_0\right)^{k+1}} \mathrm{~d} \zeta,
+$$
+
+积分路径 $C$ 为位于环域内按逆时针方向绕内圆一周的任一闭合曲线.  
+证明 为避免沙及在圆周上函数的解析性及级数的收玫性同题. 今将外圆稍稍缩小为 $C_{R_1}^{\prime}$, 内圆稍稍扩大为 $C_{R_2}^{\prime}$ (图 3-3), 应用复连通区域上的柯西公式
+
+$$
+f(z)=\frac{1}{2 \pi \mathrm{i}} \oint_{c_{\kappa_1}} \frac{f(\zeta)}{\zeta-z} \mathrm{~d} \zeta+\frac{1}{2 \pi \mathrm{i}} \oint_{c_{\mathrm{R}_2}} \frac{f(\zeta)}{\zeta-z} \mathrm{~d} \zeta .
+$$
+
+下面将 $\frac{1}{\zeta-z}$ 展为㟟级数. 对于沿 $C_{R_1}^{\prime}$ 的积分, 可像(3.3.3) 那样展开 $\frac{1}{\zeta-z}$,
+
+$$
+\frac{1}{\zeta-z}=\sum_{k=0}^{\infty} \frac{\left(z-z_0\right)^k}{\left(\zeta-z_0\right)^{k+1}} .
+$$
+
+对于沿 $C_{R_2}^{\prime}$ 的积分, 考虑到 $\left|z-z_0\right|>\left|\zeta-z_0\right|$, 按以下方式将 $\frac{1}{\zeta-z}$ 展开,
+
+![image.png](/img/yuque/物理/数学物理方法/assets/数学物理方法-7.png)
+
+$$
+\begin{aligned}
+\frac{1}{\zeta-z} & =\frac{1}{\left(\zeta-z_0\right)-\left(z-z_0\right)}=-\frac{1}{z-z_0} \frac{1}{1-\frac{\zeta-z_0}{z-z_0}} \\
+& =-\frac{1}{z-z_0} \sum_{l=0}^{\infty} \frac{\left(\zeta-z_0\right)^l}{\left(z-z_0\right)^l}=-\sum_{i=0}^{\infty} \frac{\left(\zeta-z_0\right) l}{\left(z-z_0\right)^{l+1}} .
+\end{aligned}
+$$
+
+将(3.3.6) 及(3.3.7) 分别代人(3.3.5) 右边的两个积分, 并逐项积分,
+
+$$
+\begin{aligned}
+f(z)= & \sum_{k=0}^{\infty}\left(z-z_0\right)^k \cdot \frac{1}{2 \pi \mathrm{i}} \oint_{c_{k_1}} \frac{f(\zeta)}{\left(\zeta-z_0\right)^{k+1}} \mathrm{~d} \zeta \\
+& -\sum_{i=0}^{\infty}\left(z-z_0\right)^{-(l+1)} \cdot \frac{1}{2 \pi \mathrm{i}} \oint_{c_{k_2}}\left(\zeta-z_0\right)^l f(\zeta) \mathrm{d} \zeta .
+\end{aligned}
+$$
+
+在上式右边第二项中, 改用 $k=-(l+1)$ 代替 $l$ 作为求和指标, 并根据柯西定理(2.2.4) 将积分回路改为 $C_{R_1}^{\prime}$, 即得
+
+$$
+f(z)=\sum_{k=-\infty}^{\infty} a_k\left(z-z_0\right)^k,
+$$
+
+其中
+
+$$
+a_k=\frac{1}{2 \pi \mathrm{i}} \oint_{c_{k_1}} \frac{f(\zeta)}{\left(\zeta-z_0\right)^{k+1}} \mathrm{~d} \zeta .
+$$
+
+$$
+=\frac{1}{2 \pi \mathrm{i}} \oint_C \frac{f(\zeta)}{\left(\zeta-z_0\right)^{k+1}} \mathrm{~d} \zeta .
+$$
+
+$C$ 为环域内沿逆时针方向绕内圆一周的任一闭回线. (3.5.3) 称为 $f(z)$ 的洛朗展开, 其右端的级数称为洛朗级数.
+
+# 留数定理
+
+留数：洛朗级数展开的 -1 次项系数。
+
+首先以z0 为圆心，半径为0做洛朗展开
+
+$$
+f(z) = \sum_{k=-m}^{\infty}a_{k}(z-z_{0})^{k}
+$$
+
+按照柯西定理，并结合洛朗展开有
+
+$$
+\oint_{l}f(z) dz = \oint_{l_{0}}f(z)dz = \sum_{k=-m}^{\infty}a_{k}\oint_{l_{0}}(z-z_{0})^{k}dz
+$$
+
+上面除 -1 次项外，都是0。同时-1 对应的积分等于 $2\pi i$ 。所以
+
+$$
+\oint_{l}f(z)dz=2\pi i a_{-1}
+$$
+
+$a_{-1}$就是留数。
+
+留数定理：设 f(z) 在回路 l 所包围的区域 B 上除了有限个孤立奇点 b1,b2,... bn 外解析，在 闭区域除这些点外连续，则
+
+$$
+\oint_{l}f(z) = 2\pi i\sum_{j=1}^{n}Res f(b_{j})
+$$
+
+![image.png](/img/yuque/物理/数学物理方法/assets/数学物理方法-8.png)
+
+留数定理将回路积分归结为被积函数在回路所包围的区域上各奇点的留数之和。
+
+对于无限远点，利用 z=1/t，带入洛朗级数，也可以得到相同的结论。
+
+快速求留数：
+
+-   笨方法：做洛朗展开，缺点是知道了所有项，成本太高。
+-   快捷方法：利用下式，其中 z0 是m阶极点。
+
+-   $Resf(z_{0}) = \lim_{z\rightarrow z_{0}}\frac{1}{(m-1)!}\{\frac{d^{m-1}}{d_{z^{m-1}}}[(z-z_{0})^{m}f(z)  ]   \}$
+{% endraw %}

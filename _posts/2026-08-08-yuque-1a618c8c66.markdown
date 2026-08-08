@@ -1,0 +1,378 @@
+---
+title: "淘宝：Multi-Objective Personalized Product Retrieval in Taobao Search（2022）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 深度学习, Embedding]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+业界前沿做法可以基本是淘宝 2022《Multi-Objective Personalized Product Retrieval in Taobao Search》、京东 2023《Learning multi-stage multigrained semantic embeddings for e-commerce search》，将样本与工程细节连为一体
+
+# 淘宝：Multi-Objective Personalized Product Retrieval in Taobao Search（2022）
+
+[Multi-Objective Personalized Product Retrieval in Taobao Search](https://link.zhihu.com/?target=http%3A//arxiv.org/ftp/arxiv/papers/2210/2210.04170.pdf)
+
+MOPPR 魅力在于它的多目标样本构建，在这里反过来看，感觉京东2023 EBR 的论文有点像淘宝的MOPPR 了（都是电商场景）
+
+对淘宝 2021《Embedding-based product retrieval in taobao search》中提到MGDSPR 进行优化
+
+Poor relevance：指出原 MGDSPR 检索的item 相关性低于倒排索引的
+
+Weak personalization：指出在 impression、clicked 和 purchase item 集合中，检索的item 比词汇召回\\协同过滤要小（本质上通过添加样本得来，更多的交互）
+
+1.  提出多目标多正样本进行训练，每条训练样本中都有用户、query 特征以及多个样本
+
+1.  impression：曝光样本
+2.  under-impression：未曝光样本（在排序中未透出，并且排序top 150之后，通过日志回流系统收集）
+3.  random-negative：从item 语料库中随机选取L 个负样本，batch 内共享（就是每条样本都拼一些随机负样本，然后batch 内一起分享就ok了，比如需要L 个，batch为M，那就是每条样本都带 L/M 个随机负样本即可）
+
+2.  四个目标对应不同的样本组合
+
+1.  Relevance Label 相关性
+2.  Exposure Label 曝光
+3.  Click Label 点击
+4.  Purchase Label 购买
+
+以page view 为粒度构建样本
+
+曝光、未曝光、随机负样本数量分别为10、10、20480（20 × 1024）
+
+1.  使用in-batch negatives 发现不会提高performance（太容易学了，因此很容易训练，其实在全局随机负样本那已经够用了，就没必要引入有偏差信息的in-batch negatives）
+2.  尝试在样本中增加未曝光数量（10->30）离线Recall & nDCG 上涨
+3.  从历史曝光、未曝光中收集特定query 的item
+
+在样本侧的消融实验
+
+1.  删除展现未点击样本 Recall & nDCG 上涨，但是上线效果变差，并且分支平均ctr、cvr 都比基线要差（原因分析，展现未点击在点击Label 中起负例的作用，在曝光Label 中起正例的作用，有助于学习更多信息）
+2.  删除未曝光样本，所有指标下降
+
+对于四个目标，样本的组合来说，论文貌似没有写的很详细，个人猜测（对于购买侧的loss 个人不太确认，论文也没有特别提到，按照正常逻辑应该是这样的）
+
+曝光目标：正样本为page view 粒度的曝光，负样本为未曝光和batch 内共享全局随机负样本
+
+相关性目标：正样本为[曝光和未曝光] 与item 的相关性分数离线化为 1（即有个离线评估指标，i2i 相关性分数阈值判断，大于则为相关，小于则为不相关），负样本为 [曝光和未曝光] 离散化为0和batch 内共享随机负样本
+
+点击目标：正样本为点击，负样本为曝光未点击、未曝光和batch 内共享随机负样本
+
+购买目标：正样本为购买，负样本为曝光未购买 & 未点击、未曝光和batch 内共享随机负样本
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-1.png)
+
+对batch 内共享随机负样本数量L 的考量
+
+当 L 设置太小或者太大，效果都会受到影响，L 太小，模型无法准确学习，L 太大，**则许多用户曾经交互过的item 会包含在train 中**（会有 0.04% 的概率作为负样本，这也就对应了2020 年 Google 的 MNS 中为什么无脑扩大会有一定瓶颈了)），会作为noise 影响模型
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-2.png)
+
+其他：
+
+1.  在线检索和训练算分都使用内积操作作为评分函数
+2.  对于User embedding 的前三层都采用全连接层 + layer normalization + Leaky ReLU，最后一层采用全连接层。最后一层日常使用L2\_norm
+3.  Item embedding 同上
+4.  又提到了softmax 和hinge loss 的区别，softmax 能在整体上比较样本中的所有item，并且更好的性能，更快收敛
+5.  统计特征在排序/召回上起重要作用
+6.  离线评估指标采用 recall@K，nDCG@K，p\_good（前N 个检索item 多少与target 相关，验证模型相关性的能力）
+7.  80 ps & 1000 worker(20 CPU)
+8.  batch = 1024 & item dim & user dim = 128 & λ = 0.02 & adagrad & 初始learning rate = 0.01
+9.  做消融实验，删除四个目标中每个目标验证 Loss 有效性
+10.  向量检索，FLOAT32 量化到 INT8 作索引构建，返回topK，K=6000
+11.  A/B test 做了28 天 & 可应用在粗粒度粗排模型
+
+# 京东：Learning multi-stage multigrained semantic embeddings for e-commerce search（2023）
+
+[Learning multi-stage multigrained semantic embeddings for e-commerce search（2023）](https://link.zhihu.com/?target=https%3A//arxiv.org/pdf/2303.11009.pdf)
+
+称MMSE。这篇模型架构没啥好说的，精华在样本选择上，样本后面章节会展开讲到。也证明了双塔上模型架构侧的空间貌似已经到了天花板了，都没有太大的diff 与update 能促进指标上的提升。更多在于样本、训练细节上的优化。
+
+样本组成分为4对
+
+1.  loss 1：点击当作正样本，负样本为batch 内共享全局随机负样本，作softmax
+2.  loss 2：曝光未点击当作正样本，负样本为batch 内共享全局随机负样本，作softmax
+3.  loss 3：点击当作正样本，曝光未点击当作负样本，作triplet loss
+4.  loss 4：下单当作正样本，曝光未点击当作负样本，作bayesian personalized ranking loss
+
+比较复杂的正负样本组合对，并在训练过程进行博弈。呃... 那么复杂作为召回来说，是否在很多大规模场景下会呈现很好的效果，保持一定疑问。而且实现难度就变大了，在Loss 中两个temperature + margin 参数的调整也是比较麻烦的。
+
+Loss 上
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-3.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-4.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-5.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-6.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-7.png)
+
+1.  样本的艺术主要围绕 click/unclick/random/batch random/hard random 来单独/混合构成
+2.  loss 主要由softmax 统治（具有全局视角），triplet loss 居于次位（也多了个margin 参数）
+3.  sampled softmax 替换softmax
+4.  最后一层 embedding L2 Normlization + temperature（如果是MLP）
+5.  随机负样本大部分情况下是越多越好
+
+# Facebook：Embedding-based Retrieval in Facebook Search（2020）
+
+[Embedding-based Retrieval in Facebook Search（2020）](https://link.zhihu.com/?target=https%3A//arxiv.org/pdf/2006.11632.pdf)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-8.png)
+
+FaceBook EBR 发的比较早，所以架构采用传统的双塔的结构，没啥疑问，对用户历史行为进行训练，User-Query 侧的特征输入Query 塔，Item 侧得到特征输入 Item 塔，最后计算根据二者相似度进行拟合。此处需要注意的是这里的相似度评估方法为COSINE 距离（算二者向量空间的夹角大小），为了后续的triplet loss，Distance = 1 - COINSE
+
+众所周知，**排序靠特征，召回靠样本，特别是负样本。**双塔架构由于其时效性的优点，广泛应用于粗排、召回中，而在模型架构达到一定天花板的情况下，如何更进一步的核心关键，样本就显得额外重要的。**Garbage In,Garbage Out**
+
+样本 = 正样本 + 负样本，而艺术大部分都focus on 负样本当中
+
+1.  破除了召回沿用排序的样本逻辑，不能拿 pv/unclick 当负样本
+2.  提出easy negative/hard negative 的样本思路
+
+拿随机采样作easy 负样本，拿上一版本召回的bottom 100~500 作hard 负样本，二者easy:hard=100:1
+
+文章中指出，使用“曝光未点击”作为hard negative训练出来的hard model，离线指标好，但是线上没有效果。反而，使用挖掘出来的hard negative训练出来的hard model，与easy model融合的效果最好。
+
+Loss ：
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-9.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-10.png)
+
+# 淘宝：Embedding-based Product Retrieval in Taobao Search（2021）
+
+[Embedding-based Product Retrieval in Taobao Search（2021）](https://link.zhihu.com/?target=https%3A//arxiv.org/pdf/2106.09297.pdf)\--> MGDSPR(Multi-Grained Deep Semantic Product Retrieval)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-11.png)
+
+看图已经看到了淘宝模型已经变得十分复杂了，虽然那么复杂，但是为了在线实时性的使用，还是区分了双塔
+
+从左开始看起
+
+**User Tower**
+
+Query 根据不同语义进行不同分词的改写，分为1-gram、2-gram，最终三个Query 进行Transformer-Meaning Pooling 与用户历史交互Query 进行合并。
+
+用户历史行为特征区分实时性，分别为Real-time Behavior、Short-term Behavior（Real-time ~ 十天）、Long-term Behavior（十天 ~ 一个月）
+
+-   Real-time Behavior：接LSTM 收集所有表征信息。然后使用 multi-head self-attention 去聚合LSTM 的潜在信息，得到 R\_self\_att。并且在第一维度在加 0 向量，最后产出的表征为 ，与Query 内积之后输出向量为 H\_real
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-12.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-13.png)
+
+-   Short-term Behavior：拿到历史行为embedding 之后直接走multi-head self-attention，后续和Real-time 的一致
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-14.png)
+
+-   Long-term Behavior：部分与前面一致，不同在于Long-term 的组成包括click、collect、buy 行为，所以是三者的MSA 之后作mean pooling。并且特征组成也稍微不同，额外多了 brand、leaf category、shop 的行为信息
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-15.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-16.png)
+
+最终融合层（BERT 的东西来了），走MSA ，最后以 [CLS] 的output 作为 User Embedding
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-17.png)
+
+**Item Tower**
+
+没啥好说的，ID 和 title 分开建模，id 和往常一样，title 走transformer + mean-pooling 然后concatenate 一起
+
+1.  正样本 = 点击
+2.  每个训练batch 共享全局随机负样本集和每个训练样本独立不同全局随机负样本集的效果的一致的（结论和京东2020 EBR一致）
+3.  生成相关性增强的困难负样本，给定训练样本 ，其中 i- 为随机负采样的item embedding， qu 为User embedding， i+ 为正样本的 item embedding。使用 qu 去Item Pool 中选取点积最大的top-N 当作负样本集合：I\_hard ![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-18.png)
+
+应该是batch 内内积Top-N 困难负样本当作负样本，作softmax
+
+Loss 上：
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-19.png)
+
+目前向量召回的 Loss 的优化公式大部分集中于 triplet Loss 与 softmax 之间
+
+什么时候用triplet Loss，什么时候用softmax 呢？
+
+在淘宝 EBR 中提到，使用triplet loss 这种pairwise 作为训练目标，使训练和测试行为不一致。在推理的过程中，模型需要为候选集选择Top-K items 作为召回。要求有全局比较的能力，然而 triplet loss 只能进行局部比较，而softmax 赋予模型全局比较的能力，此外，triplet loss 引入的margin 对performance 有重大的影响，所以使用softmax 为训练目标，没有额外的超参数同时实现更好的收敛和更好的performance。并且传统的softmax 是一个计算昂贵的partition 函数，与items 数量呈线性比例，所以在实践中使用sampled softmax（softmax 的无偏近似值）
+
+# 京东：Towards personalized and semantic retrieval: An end-to-end solution for e-commerce search via embedding learning（2020）
+
+[Towards personalized and semantic retrieval: An end-to-end solution for e-commerce search via embedding learning（2020）](https://link.zhihu.com/?target=https%3A//arxiv.org/pdf/2006.02282.pdf)\--> DPSR (Deep Personalized and Semantic Retrieval)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-20.png)
+
+传统双塔就跟FaceBook 的一样，DPSR 就搞得“以量取胜”。Item 塔还是和从前一样，将特征拼接一起走MLP & Normalize 输出Item embedding。Diff 在于 Query 塔的实现，在图里，如果 Projection Matrix k=1，那就是一个普通的Query 塔，但在 K > 1的时候，就相当于Query 有了K 个embedding 表征以 "捕获Query 的不同意图"（论文写：这样可以捕获多义词的不同语义，如"Apple"，可以对product query 查找到手机，可以对brand query 查找到三星）
+
+不过带来了两个疑问，Loss 如何处理？离线Query Embedding 有K 个，线上怎么使用？
+
+-   Loss 如何处理？使用K 个Query Embedding 与 Item embedding 作内积之后的值作softmax 作为权重w，最后分数为每个Query Embedding 和 Item Embedding 内积并乘于 w
+-   离线Query Embedding 有K 个，线上怎么使用？Multi-head的attention仅在训练阶段计算，在线检索时，每个head将分别进行召回并通过内积分数截断同样数量的商品进行统一排序。意味着K 个都用
+
+搞样本：
+
+1.  负样本 = 全局随机负采样（batch 内共享负采样集）+ batch 内负采样
+2.  两种负样本进行按比例混合，α 为全局随机负样本比例，1 - α 为batch 内负采样比例（α 取值0.5 or 0.75）
+
+负采样的算法计算工作，大概在 O(n2) ,在京东 2019 全量的工作上，batch 大概在 64/128，所以计算量对比其它特征操作或者梯度计算，较小
+
+Loss 上：
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-21.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-22.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-23.png)
+
+  
+
+# 下面主要是搞样本
+
+# Sampling-Bias-Corrected Neural Modeling for Large Corpus Item Recommendations（2019）
+
+[Sampling-Bias-Corrected Neural Modeling for Large Corpus Item Recommendations](https://link.zhihu.com/?target=https%3A//storage.googleapis.com/pub-tools-public-publication-data/pdf/6c8a86c981a62b0126a11896b7f6ae0dae4c3566.pdf)
+
+1.  指出 in-batch negative 会有sampled bias（**流行度高的item 更容易被当做negative），对model 有损**
+2.  提出 streaming data 根据item 的频率来纠偏，来消除item频次对召回准确性的bias
+
+具体来讲，受sampled softmax 思想的影响，根据设计 p\_j 进行参数消偏。这里，p\_j 表示随机批次中item j的采样概率。pj 如何确定？类似 item\_id hash 一样，开一个大小为 [H] 的全局 hash space。A、B 大小和 hash space 大小一致。A 表示上次出现的step，B 表示上次预估概率并且推到本次概率。若有新的item产生。这里针对item使用hash函数做了一个映射。针对一个指定的候选item y，A表示 y 被采样最近一次步骤，B则表示 y 的预估频率。一旦候选item y在迭代步骤 t 中出现，即可以按照下面迭代公式更新B。这里A记录的是item y上一次出现的step，所以t-A[y]就是y最近一次的出现间隔。从而不断更新B，得到的就是y出现间隔的期望。frequency estimate就等于 1 / B[y]（所以，经常出现 t-A[y] 就小，frequency estimate 就大，详细解释还需要看论文的公式推导）论文中 [H] = 5000，m=1,2,4（hash function）（数据集百万级别）
+
+# Mixed Negative Sampling for Learning Two-tower Neural Networks in Recommendations（2020）
+
+[Mixed Negative Sampling for Learning Two-tower Neural Networks in Recommendations](https://link.zhihu.com/?target=https%3A//storage.googleapis.com/pub-tools-public-publication-data/pdf/b9f4e78a8830fe5afcf2f0452862fb3c0d6584ea.pdf)
+
+提出 Mixed Negative Sampling (MNS) 混合负样本，使用in-batch negative 和全局随机均匀采样组成，解决隐含 sampling bias
+
+1.  通过引入来自整个候选语料库的样本来减少sampling bias
+2.  通过改变语料库中额外负样本的数量来调整样本分布
+
+in-batch negative 缺点：selection bias：例如，没有用户反馈的item 将不会作为候选集包含在train-data中。因此，在分批负采样的情况下，它永远不会作为负采样。因此，该模型缺乏区分具有稀疏反馈的项目与其他项目的能力
+
+减少in-batch negative sampling 带来的偏差很重要，提升比较大。低质量的长尾item 因为在negative 出现频率不高，正例的出现频率也不高，因此没有训练好，处于随机状态。**但是全局随机负采样的数量不一定是越多越好，在一定数量下是越多越好，会达到瓶颈并且下降**，论文分析原因是导致更大的样本量，但是会导致采样分布过于接近均匀分布，偏离了期望的期望的serving time 分布，从而损害模型performance（但是后续淘宝也提到，这种现状的产生也有可能是因为随机负样本量太大了，和原始数据集正样本产生一定概率冲突），并且大的全局随机负样本会显著增加训练成本，因此需要设置合理的大小。通过调整全局随机负样本来实验不同样本分布
+
+实验结论证明在Google play 应用商店场景下，Training Batch Size 1024 + Index Data Batch Size 8192 达到最好效果，并且同样负采样数量下，混合负样本performance 大于in-batch negative sampling
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-24.png)
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-25.png)
+
+  
+
+1.  当softmax 训练multi-class 数据巨大产生训练成本（万/百万），需要用Hierarchical softmax 和 sampled softmax 降低成本
+2.  评估流程：训练三十天数据，第三十一天作为评估数据集
+3.  sampled softmax 实验用[1024, 128] 建模query
+4.  two-tower model 使用 [512, 128] 于双塔
+5.  负样本样本量为2048
+6.  Adagrad + lr=0.01 + ReLU（最后一层隐藏层不用激活函数）
+
+# 百度：MOBIUS: Towards the Next Generation of Query-Ad Matching in Baidu’s Sponsored Search（2019）
+
+[MOBIUS: Towards the Next Generation of Query-Ad Matching in Baidu’s Sponsored Search](https://link.zhihu.com/?target=http%3A//research.baidu.com/uploads/5d12eca098d40.pdf)
+
+百度 2019 的MOBIUS 样本逻辑，真的给我很怪的感觉，站在2024 的角度上”马后炮“看待该问题哈，这个架构貌似没有被普遍接受，应该是对过去matching-ranking 目标不一致作替换，取得的效果。但是对于漏斗形业界主流架构，并没有产出大一统的趋势。扯远了
+
+仔细看（这种间接性多目标融合（融合ctr 与相关性）并且扩充负样本的方式也是比较新颖的）
+
+-   将历史查询日志的点击数据搂回来（user query & ad pair 对）
+
+-   切分成：query set(m) & ad set(n)
+-   二者作cross join => 产出 m \* n 的样本对
+
+-   使用之前的matching 模型（相关性）对 m \* n 的样本对进行相关性预估
+
+-   对 relevance\_score < threashold 进行标记为 LowRelevanceAugmentData(低相关性生成data
+
+-   对 LowRelevanceAugmentData 送进ctr 预估模型（ranking）筛选出高ctr 并且低相关性的bad case
+
+-   也是对 ctr\_score > threashold 进行标记
+-   为了数据扩充平衡，所以实现采样器，对高ctr 分数低相关性进行采负样本
+
+-   对生成负样本 bad case 送进常规train 样本中
+-   模型训练
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-26.png)
+
+# Cross-Batch Negative Sampling for Training Two-Tower Recommenders（2021）
+
+[Cross-Batch Negative Sampling for Training Two-Tower Recommenders](https://link.zhihu.com/?target=https%3A//arxiv.org/pdf/2110.15154.pdf)
+
+类似对比学习的MoCo
+
+1.  提出 embedding stability（embedding 稳定性）。在encoder 预热过后，在embedding 的产出具有一定的稳定性，对于步长相距较近的样本可重复利用
+2.  对于 1 的结论，负样本的组成 = batch 内负样本 + 相距近的跨batch 外的负样本 = 128 + 1152（跨batch 队列长度为2432）
+
+对于cache memory 跨batch 外的负样本维护：first-in-first-out (FIFO)
+
+很简单的一个理论，机器资源不足以塞足够的batch 内负样本以增加负样本个数，通常解法有用全局随机负样本，batch 内共享，但是这也会和batch 一起进行计算，计算压力大，华为给的解法就是沿用之前batch 的样本，维护队列存储样本，并且不需要额外计算资源，以增加负样本个数。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-27.png)
+
+疑问一：embedding stability 理论如何证实
+
+如图所示，早期特征变化剧烈。随着学习率的降低，特征在大约 4 × 10^4 次迭代时变得相对稳定，因此可以合理地将它们重新用作有效负例。将这种现象称为“embedding stability”
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-28.png)
+
+疑问二：cache memory queue 如何维护
+
+每个batch 根据其随机分布塞一部分item 进来，FIFO 淘汰一部分item，队列长度设置为2432（太长跨度太大，可以看到随着M 的增加，离线效果是提升的）
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-29.png)
+
+  
+
+# 向量化召回的评估体系
+
+参考自：[https://zhuanlan.zhihu.com/p/661825617](https://zhuanlan.zhihu.com/p/661825617)
+
+最简单版：
+
+-   评估数据
+
+3000 个 query，每个 query 对应 40 个 doc，人工按照相关性进行标注，标注的 label 为 0-4 档。
+
+-   评估维度  
+      
+    
+
+1.  离线模型迭代指标
+2.  全量刷库后的召回指标
+
+-   评估指标  
+      
+    
+
+1.  离线模型迭代指标，主要利用评估数据集，由模型对标注的 query-doc 对进行打分，并利用分值进行排序，计算 NDCG 和 PAIR 指标
+2.  全量刷库建索引后的召回指标，通过用户日志每次抽取 30000 个 query，对比两版向量索引分别召回 top 10 的结果，过截断模型，统计截断后保留下来的 doc 数和分析保留下来的数据的特征分布，评估召回效果，如图一所示，我们会统计最终截断后还有数据的 query 的数量，最终保留下来的 doc 的数量，以及每个 query 下平均剩余的 doc 数量、同 query 下剩余的 doc 平均数量，从统计看新模型无论在保留下的 doc 数、query 数，还是在每个 query 下平均剩余 doc 数和同 query 下剩余的 doc 数都胜出线上的 base 模型。
+
+升级版：
+
+-   评估数据
+
+新标注一版 3000 个 query 左右，每个 query 下平均 doc 数为 40 的数据集，标注标注为综合满意度，综合满意度会考虑相关性、质量等多方面因素，标注 Label 为 0-4 档
+
+-   评估维度  
+      
+    
+
+1.  离线模型迭代指标
+2.  单片刷库召回指标
+
+-   评估指标
+-   R1/R2 召回指标，在模型离线迭代时，模型对每个 Query 与集合中所有的 Doc 进行打分，利用打分进行排序，选取 Top20，统计其中好结果在标注结果中的召回率（这不就 hitrate），R1 是指 Label 大于等于 1 的 Doc 的召回率，R2 是指 Label 大于等于 2 的 Doc 召回率，计算公式如图二所示  
+      
+    
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/U2I_召回-30.png)
+
+满意度模型打分平均分，我们从索引数据随机抽取了 5000 万的数据，并将标注数据混入到这 5000 万的数据中，构建大数据索引，并分别利用标注集的 query 和从用户日志随机抽取 10000 个 query 分别请求索引，对标注集合的 query 数据集我们计算召回数据中 Top20 的 R1/R2 指标，对于随机抽取的 10000 个 query 则计算满意度打分平均值，我们通过两个方面的分值比较模型效果
+
+  
+
+# CIKM23 向量检索相关论文
+
+[https://mp.weixin.qq.com/s/azpNzXXmGNYdnV7YrjZ56w](https://mp.weixin.qq.com/s/azpNzXXmGNYdnV7YrjZ56w)
+
+# Ref
+
+1.  [再思考双塔 Embedding-based Retrieval 工业界比对](https://zhuanlan.zhihu.com/p/676513444)
+{% endraw %}

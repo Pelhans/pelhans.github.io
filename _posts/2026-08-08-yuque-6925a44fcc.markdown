@@ -1,0 +1,426 @@
+---
+title: "改写"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 大模型, 4._大模型的应用进展]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# 改写
+
+[《LLM+搜索改写》10篇论文一览](https://mp.weixin.qq.com/s?__biz=MzkwNjYyMTk5Mg==&mid=2247483674&idx=1&sn=9a5c71f43a0ae7902bf8dff3878ecf87&chksm=c0e4e45df7936d4be180a142d79d1ae2d82701b8826e620e03d9268546aea43a812bdf807e9b&scene=21#wechat_redirect)
+
+LLM不同程度地影响着各个领域，搜索也不例外。本文整理了10篇较新的LLM应用于搜索改写的文章供大家学习参考。
+
+## **一、背景**
+
+信息检索（Information Retrival，IR）系统已不仅仅局限于网络上的各类搜索引擎，在对话机器人、问答系统、图像搜索系统等场景已有广泛的应用。大模型时代的各种技术方法对现有的文本搜索会产生什么样的影响？
+
+### **1.1搜索系统发展现状**
+
+搜索系统长期以来的发展可粗略进行以下划分:
+
+-   基于符号的方法：布尔模型、关键字匹配等。高效精准。
+-   基于统计语言模型的方法：TF-IDF、BM25等。捕捉术语间细微的语义关系。
+-   结合神经网络模型的方法：DNN、Transformers等。支持语义搜索、个性化搜索等。
+
+现在搜索系统仍面临着诸多挑战，比如模糊query、检索效率等。
+
+### **1.2 LLM的优势**
+
+LLM已成为引领各个领域变革的力量，总体来说，LLM的优势主要有下:
+
+-   出色的语义理解和生成能力
+-   随着规模的扩大出现涌向能力
+-   通过上下文学习适应各种任务
+
+在出色能力的加持下，已有诸多研究已将LLM应用于搜索系统。
+
+## **二、LLM赋能query理解的改写模块**
+
+### **2.1 什么是改写（Rewrite）？**
+
+改写（Rewrite）是指搜索系统根据用户的查询意图和搜索历史等信息，对查询进行改写，以提供更准确、更相关的搜索结果，是搜索系统中的关键模块，对于长尾query的搜索质量提升有非常大的帮助。搜索系统中常见的改写方法可以被分为以下两类：
+
+-   伪相关反馈（Pseudo Relevance Feedback，PRF）：将搜索结果中出现频率较高的词语作为新的查询条件，重新执行搜索。PRF易于实现且结果可控，但受第一次搜索结果影响较大，易受噪声影响。
+-   生成相关反馈（Generative Relevance Feedback，GRF）：通过生成式模型，根据用户query生成文本，提升搜索结果的质量。GRF效果好但实现复杂，且生成结果一定程度上是不可控的。
+
+LLM拥有出色的语义理解及生成能力，因此不管将其应用于PRF还是GRF都有很大的提升空间。下面介绍的研究方法也是围绕这两个方面进行的优化改进。
+
+### **2.2 让LLM写一个改写结果**
+
+最简单直接的思路，让LLM作为生成模型，根据用户的query写一段文本，将其作为改写结果送入后续的检索模块，以提高最终的检索质量。相关研究有下：
+
+-   Query2doc：Query2doc: Query Expansion with Large Language Models，微软
+-   Query Expansion by Prompting Large Language Models，谷歌
+-   LLMCS：Large Language Models Know Your Contextual Search Intent: A Prompting Framework for Conversational Search，人大
+-   GRM：GRM: Generative Relevance Modeling Using Relevance-Aware Sample Estimation for Document Retrieval
+-   Neural text generation for query expansion in information retrieval
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-1.png)
+
+Neural text generation for query expansion in information retrieval
+
+在LLM时代到来之前，就有不少研究利用各种生成式模型来对query进行改写。例如，《Neural text generation for query expansion in information retrieval》一文就利用gpt-2，根据query生成文本作为改写结果。文章整体思路非常简单，但是可以应用在各式各样的搜索系统上，效果也不错。另外，gpt-2模型体量不大，再加上cache等手段的运用，对于搜索系统整体没有什么额外负担。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-2.png)
+
+query2doc  
+  
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-3.png)
+
+Query Expansion by Prompting Large Language Models
+
+微软的Query2doc方法通过预定的prompt，根据用户的query生成一段文本，用于辅助后续的检索。相比之下，谷歌的研究有两点不同，一是没有利用上下文学习（ICL），二是要求LLM给出其答案的思维链。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-4.png)
+
+LLMCS
+
+上述两个方法可以应用于即席搜索（ad-hoc search）场景，而现代的搜索系统很多支持会话搜索（session search），类似于多轮对话，搜索结果会考虑一个会话中的前几次搜索信息。人大提出的LLMCS是一个支持会话搜索的框架，且针对于会话搜索场景下LLM输入长度增加的问题使用了滑窗方法进行优化。
+
+尽管LLM拥有出色的文本理解和生成能力，不可否认其还是会存在幻觉问题，导致其输出结果背离事实，引入无关噪声影响最终检索结果。针对这一问题，GRM训练了一个神经网络模型，对LLM生成的结果进行相关性打分，最后将得分作为每个生成结果的权重，以减轻无关信息对最终检索结果的影响。  
+  
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-5.png)
+
+GRM
+
+### **2.3综合利用PRF+GRF**
+
+以上研究都是利用LLM的生成结果作为改写结果的主要内容，我们可以将其看作是一种生成相关反馈（GRF），而不少研究也同时在模型生成或结果后处理阶段加入伪相关反馈（PRF）的方法来改进改写结果的质量。相关研究有下：
+
+-   HyDE：Precise Zero-Shot Dense Retrieval without Relevance Labels，CMU
+-   LameR：Large Language Models are Strong Zero-Shot Retriever，UTS
+-   Rewrite-Retrieve-Read：Query Rewriting for Retrieval-Augmented Large Language Models，上交
+-   PRF+GRF：Generative and Pseudo-Relevant Feedback for Sparse, Dense and Learned Sparse Retrieval
+-   InteR：Knowledge Refinement via Interaction Between Search Engines and Large Language Models，北大
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-6.png)
+
+HyDE
+
+与GRM相同，HyDE针对的主要问题也是LLM可能产生幻觉的问题。HyDE将LLM生成的结果进行编码，利用向量检索器，与真实的文档库中的候选文档进行相关性匹配，然后利用真实的文档作为改写的结果辅助查询。可以看出，该方法实质上就是利用LLM的输出结果而不是query去召回伪文档。相比传统的PRF方法，保证了第一次检索的伪文档的相关性；相比Query2doc等方法，又通过结合PRF避免了LLM可能产生幻觉的问题，保证了结果的高度真实性。类似地，LameR则是将PRF这一过程放到了LLM输入之前。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-7.png)
+
+LameR
+
+从LameR的流程图可以看出，系统首先根据query召回部分相关文档，再将这部分文档形成prompt输入LLM得到输出，作为query的改写结果。这一过程有点类似现在热门的检索增强LLM，只是任务限制在了query改写这一任务上。相关的，Rewrite-Retrieve-Read这一研究则是利用改写去加强检索增强LLM的效果。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-8.png)
+
+Rewrite-Retrieve-Read
+
+Rewrite-Retrieve-Read图中从左到右分别是：检索增强LLM、带有改写器的检索增强LLM、带有强化学习改写器的检索增强LLM。其中Rewrite-Retrieve-Read指的是第三个。可以看出，Rewrite-Retrieve-Read方法不仅利用LLM作为改写器增加了其检索增强的效果，还引入了强化学习，通过最终答案的反馈，来训练高质量LLM改写器。
+
+回到改写任务，HyDE相当于GRF前插了PRF，而LameR相当于PRF前插了GRF，还有研究综合利用了两者来得到改写结果。PRF+GRF直接结合PRF和LLM输出的结果，然后综合加权考虑两者的结果作为改写结果。而InteR则是一种搜索系统和LLM多轮交互框架，通过多次PRF、LLM输出，达到增强两过程效果的目的。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-9.png)
+
+PRF+GRF
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-10.png)
+
+InteR
+
+## **三、小结**
+
+至此对LLM赋能搜索改写的几篇论文进行了简单介绍，各类研究都是利用了LLM生成质量较高的特点对已有的搜索系统进行调整优化。以上论文有的出自微软、谷歌等大厂之手，质量有所保障，但仍有部分论文学术性质较强性，落地性未知，但仍提供了宝贵的思路供我们参考借鉴。
+
+感兴趣的可以根据后面参考列表继续进行深入了解。
+
+## **四、参考文献**
+
+1.  Wang L, Yang N, Wei F. Query2doc: Query Expansion with Large Language Models[J]. arXiv preprint arXiv:2303.07678, 2023.
+2.  Jagerman R, Zhuang H, Qin Z, et al. Query Expansion by Prompting Large Language Models[J]. arXiv preprint arXiv:2305.03653, 2023.
+3.  Mao K, Dou Z, Chen H, et al. Large Language Models Know Your Contextual Search Intent: A Prompting Framework for Conversational Search[J]. arXiv preprint arXiv:2303.06573, 2023.
+4.  Mackie I, Sekulic I, Chatterjee S, et al. GRM: Generative Relevance Modeling Using Relevance-Aware Sample Estimation for Document Retrieval[J]. arXiv preprint arXiv:2306.09938, 2023.
+5.  Vincent Claveau. 2022. Neural text generation for query expansion in information retrieval. In IEEE/WIC/ACM International Conference on Web Intelligence and Intelligent Agent Technology (WI-IAT '21). Association for Computing Machinery, New York, NY, USA, 202–209. [https://doi.org/10.1145/3486622.3493957](https://doi.org/10.1145/3486622.3493957)
+6.  Gao L, Ma X, Lin J, et al. Precise zero-shot dense retrieval without relevance labels[J]. arXiv preprint arXiv:2212.10496, 2022.
+7.  Shen T, Long G, Geng X, et al. Large Language Models are Strong Zero-Shot Retriever[J]. arXiv preprint arXiv:2304.14233, 2023.
+8.  Ma X, Gong Y, He P, et al. Query Rewriting for Retrieval-Augmented Large Language Models[J]. arXiv preprint arXiv:2305.14283, 2023.
+9.  Mackie I, Chatterjee S, Dalton J. Generative and Pseudo-Relevant Feedback for Sparse, Dense and Learned Sparse Retrieval[J]. arXiv preprint arXiv:2305.07477, 2023.
+10.  Feng J, Tao C, Geng X, et al. Knowledge Refinement via Interaction Between Search Engines and Large Language Models[J]. arXiv preprint arXiv:2305.07402, 2023.
+
+# 召回
+
+[《LLM+搜索召排》10篇论文一览](https://mp.weixin.qq.com/s?__biz=MzkwNjYyMTk5Mg==&mid=2247483705&idx=1&sn=80a0e48038c65e56adef263ee16abdab&chksm=c0e4e47ef7936d6844e99f4fecc9ed2f99ded5b4368c7559ae62e638c524593934dd77acf280&token=556582607&lang=zh_CN&scene=21#wechat_redirect)
+
+## 1.总览
+
+召回（retrive）是搜索系统中的核心模块，可分为基于统计算法的稀疏检索（Sparse Retriever）和基于神经网络的密集检索（Dense Retriever）。目前的检索仍存在以下问题：
+
+-   query短且模糊
+-   doc长且噪声多
+-   监督数据标注成本高
+-   PLM模型仍存在改进空间
+
+目前不少研究将LLM引入检索模块，可以粗略分为基于encoder的检索器以及基于生成式的检索器。
+
+### **1.1 基于encoder的LLM检索器**
+
+基于encoder的检索器指的是在密集检索中，使用LLM出色的语义能力获取query或doc的向量表示，用向量检索器进行检索召回。相关研究有下：
+
+-   cpt-text：Text and Code Embeddings by Contrastive Pre-Training
+-   GTR：Large Dual Encoders Are Generalizable Retrievers
+-   TART：Task-aware Retrieval with Instructions
+
+OpenAI在未标记的数据上使用带负采样的对比学习，将相邻的文本视为正样本，从头训练了四种参数级别的嵌入模型，命名为cpt-text，用以产生文本的高质量向量表示。这种结合预训练模型初始化、大批量对比学习和大规模训练的简单配方可以产生具有广泛能力的高质量文本向量，甚至会超越在领域内数据上微调后的语言模型。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-11.png)
+
+cpt-text
+
+但是对于大多数人来说，从头训练一个LLM的成本是非常高的。因此，有不少研究基于已有的LLM进行微调。GTR（Generalizable T5-based dense Retrievers）使用T5家族初始化双编码器模型参数，然后在数据集上进行微调。不管是cpt-text还是GTR，实验都表明，模型尺度越大，其无监督学习和文本搜索任务的迁移学习性能越好。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-12.png)
+
+GTR  
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-13.png)
+
+TART  
+  
+
+TART同样基于T5，设计了一个任务感知检索模型，可以对query的信息进行初步判断，以选取跟该query高度相关的任务指令。然后将query与指令一起利用LLM进行编码后再进行检索。与改写不同的是，LLM并没有参与到TART的指令生成中，而是以检索器的身份进行指令、query、doc的编码。
+
+### **1.3 基于生成式的LLM检索器**
+
+上面的研究都旨在利用LLM的强大语义编码能力对query、doc等内容进行编码。但在LLM崭露头角之前，就有不少研究致力于构建end2end式的检索模型，成为生成式检索器（Generative Retriever）。相比先编码再检索，生成式方法通过联合编码器和解码器，直接获取要检索的文档标识符，相关研究有下：
+
+-   DSI：Transformer Memory as a Differentiable Search Index
+-   LLM-URL：Large Language Models are Built-in Autoregressive Search Engines
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-14.png)
+
+DSI
+
+DSI就是一种典型的生成式检索模型，在检索数据集上微调T5模型，直接对query、doc进行编码，然后直接解码输出相关文档的id作为检索结果。而LLM-URL研究中发现，LLM生产的URL中包含90%以上的query的相关答案，他们利用这一点，设计合适的prompt获取LLM输出的URL，并将其作为生成式检索器的额外输入，直接获取文档相关id。这种方式相当于进行“改写”，只不过是基于生成式检索器之上的。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-15.png)
+
+# 排序
+
+## **1.1 微调LLM进行相似度计算**
+
+在gpt3等超大型参数模型出现之前，不少研究都利用PLM，将排序任务看作相似度计算任务来获得每个query和doc的相似度得分。RankT5就是这样一种模型，他基于T5直接计算查询-文档对的相关分数，并使用pairwise或listwise计算排名损失进行微调。
+
+-   RankT5：RankT5: Fine-Tuning T5 for Text Ranking with Ranking Losses，谷歌
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-16.png)
+
+RankT5
+
+如图，RankT5有两种得分计算方法，一种是encoder-decoder结构，另一种则是不需要解码直接根据encoder编码得到排序分数。作者实验证明，两种结构效果上各有胜负，这也侧面表明decoder作用其实不大，蒸馏等操作可以直接对encoder下手。类似的研究还有很多，只是把backbone换为BERT、BART、GPT等即可。
+
+### **1.2 提示LLM**
+
+对超大规模LLM进行微调存在成本昂贵的明显问题，不少研究选择利用LLM的提示能力得到query与doc是否相似的答案。相关研究有下：
+
+-   UPR：Improving Passage Retrieval with Zero-Shot Question Generation
+-   RankGTP：Is ChatGPT Good at Search? Investigating Large Language Models as Re-Ranking Agent
+-   LLR：Zero-Shot Listwise Document Reranking with a Large Language Model
+-   PRP：Large Language Models are Effective Text Rankers with Pairwise Ranking Prompting
+-   Co-Prompt：Discrete Prompt Optimization via Constrained Generation for Zero-shot Re-ranker'
+
+排序的实质是进行query和doc间的相似度计算，这一分数也可以看作是根据query获得doc的概率。UPR利用这一过程的逆向思路，利用prompt提示LLM，针对每一个doc，逐一计算query中各个token的生成概率，并将这一概率作为query和doc的相似度分数。该过程可以用以下公式表示：  
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-17.png)
+
+简单理解，就是用LLM根据prompt对每个doc生成对应的query，称为假query。然后将生成后的假query和原query送入语言模型进行打分，计算两者的一个“相似度”。这里的相似度并不是我们熟知的向量相似度，而是“假query复原原query”的概率，其过程如上面公式所示。最后，对这个得分进行排序以获取最终的排序结果。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-18.png)
+
+UPR
+
+这一过程可以看作是point-wise的，也就是LLM要对每个doc进行假query的生成。而RankGPT和LLR都采用类似list-wise的方式来获取LLM的排序结果。相比point-wise，list-wise的场景下LLM能够关注到更多的doc信息，直接输出文档id的排序结果，且不需要打分模型的参与。为了解决list-wise场景下输入的doc过长的问题，RankGPT采用了滑动窗口的方法，指定k大小的窗口来获取最终top-k的排序结果。顺便一提RankGPT也获得了EMNLP23的outstanding paper。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-19.png)
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-20.png)
+
+rankgpt
+
+有了point-wise、list-wise，自然还有pair-wise的方法。PRP的作者认为相比其他两种方式，LLM的对比理解能力更强。而且pairwise的方式既支持生成式模型，又支持打分模型，且因为要比较两个对象，可选择的排序算法较多，如堆排序、冒泡排序、快速排序等，整体方式方法较为灵活。关于三种提示LLM进行排序的方法总结如下表所示。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-21.png)
+
+PRP
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-22.png)
+
+三种方法比较
+
+在以上方法中，prompt都是人工设计的，并不是最优的。Co-prompt方法将soft prompt条件生成技术应用至point-wise的LLM排序任务，将PLM作为生成器生成soft prompt，然后通过LLM作为鉴别器鉴别，来条件生成最优的prompt。这一方法可以同样被应用于其他提示LLM的任务中，有效提升LLM的提示效果。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-23.png)
+
+Co-prompt
+
+### **1.3 小结**
+
+本文对LLM赋能搜索召排的几篇论文进行了简单介绍。
+
+同样说一说落地的问题，不同于之前的改写，召排因为可能要结合用户特征无法进行离线结果的缓存，如果单从query角度考虑的话还是可以进行离线计算缓存的。再者，不少方法通过双阶段蒸馏等方法进行模型的瘦身和缩减，以便可以进行实时的线上推理，这时候T5其实是一个不错的选择。
+
+最后还是那句话，虽然很多文章学术性质较强，但很多宝贵的思路可以供我们借鉴，感兴趣的可以根据后面参考列表继续进行深入了解。
+
+### **1.4 参考文献**
+
+-   Neelakantan A, Xu T, Puri R, et al. Text and code embeddings by contrastive pre-training[J]. arXiv preprint arXiv:2201.10005, 2022.
+-   Ni J, Qu C, Lu J, et al. Large dual encoders are generalizable retrievers[J]. arXiv preprint arXiv:2112.07899, 2021.
+-   Asai A, Schick T, Lewis P, et al. Task-aware retrieval with instructions[J]. arXiv preprint arXiv:2211.09260, 2022.
+-   Tay Y, Tran V, Dehghani M, et al. Transformer memory as a differentiable search index[J]. Advances in Neural Information Processing Systems, 2022, 35: 21831-21843.
+-   Ziems N, Yu W, Zhang Z, et al. Large Language Models are Built-in Autoregressive Search Engines[J]. arXiv preprint arXiv:2305.09612, 2023.
+-   Zhuang H, Qin Z, Jagerman R, et al. Rankt5: Fine-tuning T5 for text ranking with ranking losses[C]//Proceedings of the 46th International ACM SIGIR Conference on Research and Development in Information Retrieval. 2023: 2308-2313.
+-   Sachan D S, Lewis M, Joshi M, et al. Improving passage retrieval with zero-shot question generation[J]. arXiv preprint arXiv:2204.07496, 2022.
+-   Sun W, Yan L, Ma X, et al. Is ChatGPT Good at Search? Investigating Large Language Models as Re-Ranking Agent[J]. arXiv preprint arXiv:2304.09542, 2023.
+-   Ma X, Zhang X, Pradeep R, et al. Zero-Shot Listwise Document Reranking with a Large Language Model[J]. arXiv preprint arXiv:2305.02156, 2023.
+-   Qin Z, Jagerman R, Hui K, et al. Large language models are effective text rankers with pairwise ranking prompting[J]. arXiv preprint arXiv:2306.17563, 2023.
+-   Cho S, Jeong S, Seo J, et al. Discrete Prompt Optimization via Constrained Generation for Zero-shot Re-ranker[J]. arXiv preprint arXiv:2305.13729, 2023.
+
+# 数据增强
+
+[《LLM+搜索数据增强》10篇论文一览，附一点个人经验](https://zhuanlan.zhihu.com/p/672982980)
+
+在之前两篇分享[《LLM+搜索改写》10篇论文一览 (qq.com)、](https://link.zhihu.com/?target=http%3A//mp.weixin.qq.com/s%3F__biz%3DMzkwNjYyMTk5Mg%3D%3D%26mid%3D2247483674%26idx%3D1%26sn%3D9a5c71f43a0ae7902bf8dff3878ecf87%26chksm%3Dc0e4e45df7936d4be180a142d79d1ae2d82701b8826e620e03d9268546aea43a812bdf807e9b%26scene%3D21%23wechat_redirect)[《LLM+搜索召排》10篇论文一览 (qq.com)](https://link.zhihu.com/?target=https%3A//mp.weixin.qq.com/s%3F__biz%3DMzkwNjYyMTk5Mg%3D%3D%26amp%3Bmid%3D2247483705%26amp%3Bidx%3D1%26amp%3Bsn%3D80a0e48038c65e56adef263ee16abdab%26amp%3Bchksm%3Dc0e4e47ef7936d6844e99f4fecc9ed2f99ded5b4368c7559ae62e638c524593934dd77acf280%26token%3D556582607%26lang%3Dzh_CN%26scene%3D21%23wechat_redirect)中，分享了LLM应用于搜索领域的一些方法。
+
+在两篇的文末，我们都讨论了LLM在整个搜索系统中部署的问题。相比在搜索系统中直接或间接地应用，离线使用LLM进行搜索数据的增强、在低数据生成成本下获取更高质量的标注数据实为一个不错的方法。同时，这一策略在面对领域内数据缺少时非常有效，即利用开放领域（open-domain）的LLM缓解特殊领域（in-domain）数据稀少问题。
+
+已经有不少一线大厂内的朋友向我透露，在一些问题上使用LLM进行数据增强已经有了有效的落地并产生了不错的效果。今天我们分享前段时间一些相关的，利用LLM进行数据增强的论文。
+
+## 一、非搜索领域
+
+-   SuperGen：Generating Training Data with Language Models: Towards Zero-Shot Language Understanding
+-   DARE：DARE: Data Augmented Relation Extraction with GPT-2
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-24.png)
+
+supergen
+
+利用LLM进行数据增强的方法非常简单直接，根据任务设计好prompt，然后对应的地方填上数据即可。这种情况下，可以直接用现有的很多LLM在线服务对当前prompt和结果进行初步观察。如SuperGen就利用NLG模型生成数据质量高的优势，结合NLU模型理解能力强的优势，在多个GLUE任务上起到了不错的效果。
+
+如果模型体量较小，还可以考虑将模型在目标任务领域数据上进行微调。这里举例一篇20年发布的较早的论文，DARE。DARE用gpt2先在领域内数据上微调，然后用生成的训练数据来提升BERT类模型在关系抽取任务上的效果。这一思路其实是和SuperGen思路是相同的，只是gpt2的模型体量更小，在相关领域上微调后生成的数据质量可能反而更好。
+
+## **二、LLM帮我造句**
+
+对搜索数据进行数据增强就是获取更多的“query-doc”对。一种方法是根据query生成假doc，而另一种是根据doc生成假query。相关研究有下：
+
+-   InPars: Data Augmentation for Information Retrieval using Large Language Models
+-   InPars-v2: Large Language Models as Efficient Dataset Generators for Information Retrieval
+-   InPairs-Light：Cost-Effective Unsupervised Training of Efficient Rankers
+-   Promptagator：Few-shot Dense Retrieval From 8 Examples
+-   UDAPDR: Unsupervised Domain Adaptation via LLM Prompting and Distillation of Rerankers  
+      
+    
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-25.png)
+
+inpairs
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-26.png)
+
+InPairs利用LLM的上下文学习能力，结合给出的示例，给doc生成了大量的假query，然后通过微调后的语言模型进行结果“过滤”。在inPairs-V2版本中，一个较大的变化是，其利用在检索数据集上微调的T5-3B模型来过滤生成的查询，而不是简单的通过概率进行过滤，以此来提升生成数据的可靠性。而后续的inPairs-Light版本也对“过滤器”进行了瘦身，参数从30亿降至2亿。
+
+PROMPTAGATOR 利用inPairs中“生成-过滤”这一过程，在生成的样本上微调检索器，然后使用该检索器过滤生成的样本。重复这两个步骤直到收敛，以产生高质量的训练集。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-27.png)
+
+UDAPDR
+
+在inPairs-V2版本中，研究者意识到请求LLM如chatgpt、gpt4的API进行数据增强会带来高额的成本，开始采用开源的LLM替换API请求方式，但可能会导致增强数据的质量下降。UDAPDR 针对这一问题，先用高质量LLM根据doc生成高质量query，然后用高质量doc-query送入低成本LLM扩充数量，兼顾了成本和效果问题，其过程如图所示。
+
+以上方法都通过预制的prompt获取LLM的输出，且模型的参数都是固定的。SPTAR基于以上研究，结合soft prompt相关技术，进一步提高了生成数据的质量。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-28.png)
+
+SPTAR
+
+相反地，除了根据doc生成假query，也有研究根据query生成假doc。ChatGPT-RetrievalQA利用LLM生成doc做bert排序模型的数据增强，并将结果与人工编写的进行对比实验。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-29.png)
+
+ChatGPT-RetrievalQA
+
+## 三、LLM帮我标注
+
+除了对“query-doc”数据对进行增强，还可以利用LLM获取query与doc的假label，即让模型帮我判断这条数据是不是正样本，是正样本的概率是多少？相关研究有：
+
+-   ART：Questions Are All You Need to Train a Dense Passage Retriever
+-   ExaRanker：Explanation-Augmented Neural Ranker
+-   ChatGPT-RetrievalQA：Generating Synthetic Documents for Cross-Encoder Re-Rankers: A Comparative Study of ChatGPT and Human Experts
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-30.png)
+
+ART
+
+ART的过程如上图所示。先将query经过向量编码，然后通过向量检索器选出相关文档，再让模型给每个文档与query的相关性进行打分。这一打分被作为soft label，反馈给之前的passage encoder和question encoder进行更新训练。类似地，ExaRanker 使用 GPT-3.5 为检索数据集生成解释，随后训练一个 seq2seq 排名模型来生成相关标签以及给定查询-文档对的相应解释。
+
+![image.png](/img/yuque/计算机/大模型/4._大模型的应用进展/assets/4.1_大模型在搜索中的应用-31.png)
+
+ExaRanker
+
+## **四、个人一点经验**
+
+利用LLM进行数据增强在实际应用中有着不错的落地空间，哪怕是在之前的模型不变的情况下，用增强的数据对模型进行增量训练，或者联合原始数据进行重新训练，一般都能使模型获得部分提升。
+
+在实际业务中，我尝试过利用LLM进行query NER任务的数据增强，背景：
+
+-   模型祖传不易大改。模型整体非常轻量，线上耗时要求高。
+-   数据质量较差。打听了一下，之前由人工标注的，不知道怎么标的错误率接近10%。
+-   数据量较多。大概十几万条NER句子。
+
+这种情况下，为了修正部分NER数据，我尝试用LLM进行数据增强。结合中文数据背景，本地尝试了GLM2-6b、Baichuan-13b，线上API尝试了GPT4、GPT3.5、文心一言、轩辕（也是百度千帆的，选这个因为是免费）。在详细的prompt、几条示例的加持下，测试了大概一二百条数据。以下结果基于本人的观察和体验总结得到：
+
+效果上，GPT4和GPT3.5是最好的，但是仍有小部分领域内数据没有标注正确。相比下，本地尝试的glm和baichuan的结果不忍直视，甚至都不能按照指定的输出格式进行数据输出。在尝试优化了多次prompt模板后，能勉强按照格式输出，但是基本的标注结果仍有很多错误。文心一言、轩辕介于两者中间，遇到一个明显的问题是，越到后面的输出部分，这两个模型越容易产生文字飘逸的问题（开始胡乱输出，或者NER全标为一个标签）。
+
+成本上，glm6b、baichuan13b分别用1、2张V100加载的，环境配置有点麻烦但不用写什么代码，也没有使用成本（有卡的情况下）。gpt4 api我是某宝买的api，只买了少量的，算了下如果十几万数据标下来，公司不给我报销我是吃不消的。gpt3.5也是某宝，算了下价格大概在几百块。文心一言大概接近一百。轩辕是免费的。
+
+时间上，试了一二百条，速度没有明显差异，算了下十几万数据标完不中断大概一到两天时间。
+
+综合多种原因，最终还是放弃了，改用了别的非LLM的方法。原因主要还是效果问题，哪怕是最好的gpt4，面对领域内数据仍有很多标注错误的。最后提出几点建议：
+
+-   可以对数据进行远程监督、或者综合多个模型结果，过滤出关键数据进行数据标注。
+-   可以利用langchain等框架结合领域内数据、字典进行领域内数据增强或者标注。
+-   本地的话，也可以考虑利用lora等方法在领域内数据上微调小体量模型，感觉上应该有用，实际没试过。
+
+本节介绍到的更多详细内容可参考文末参考文献。
+
+## **五、LLM+搜索总结**
+
+至此对该系列做个总结。尽管LLM已经在搜索系统各模块中崭露头角，但因其固有特点导致应用还存在一些问题:
+
+### **5.1模型体量大、推理耗时高**
+
+众所周知LLM具有超大的身材，这意味着模型本身的线上部署和推理存在着很大的挑战。而不同于信息抽取、文本分析等NLP任务，搜索场景本身对线上延时的要求非常高，这对于LLM在工业场景中的实际落地带来了很大困难。对于该问题，有大概三种思路：
+
+-   **对LLM进行瘦身**。从PLM时代以来，模型的压缩就已经是工业界模型落地必不可少的环节之一，其中不少方法都可以迁移至LLM上。在保留其中绝大部分知识的情况下，尽可能地减少模型体积能有效降低其部署及推理成本。常见的模型压缩方法有：裁剪、量化、蒸馏。
+-   **退而求其次，选择小体量LLM**。在上述的研究中，大多方法在一开始都考虑到了模型的部署、推理等问题，选择了体量较小的模型作为其backbone（如T5）。小体量LLM不仅部署简单、速度快，而且可以针对域内数据做针对性微调，相比大体量LLM甚至能达到更好的效果。
+-   **应用至离线任务**。可以将LLM应用至离线任务，间接支持线上任务。如doc总结、数据增强等等。
+
+不少研究方法没有以实际落地为目标，为保证其效果，仍选择调用高耗时API、请求低推理速度超大模型，以达到刷新公开数据集指标的效果。虽然这些研究没能实际落地，但仍为工业界提供了宝贵的思路。
+
+### 5.2 **结果评估存在偏差**
+
+在搜索领域，各子模块与搜索系统的整体一直存在着评估一致性偏差。而在LLM时代，这一问题将被放大，如何正确评估LLM在整个搜索系统中的作用，将对合理应用LLM产生指导作用。
+
+### 5.3 **模型幻觉**
+
+尽管是超大规模参数的LLM，也存在一定的幻觉现象，这也是LLM中一大热门问题。尤其是在开放领域搜索系统中，LLM幻觉问题、不可控性等缺点可能会对搜索系统产生消极影响，影响用户体验。现有的主流缓解幻觉的方法主要有外部知识增强、提高数据质量、后处理干预等手段，更多方法还在探索之中。
+
+本系列浅薄地介绍了LLM在搜索任务上的一些相关研究与应用，这些研究给LLM时代的搜索系统演变优化提供了宝贵的思路和经验，但是也面临着更大的挑战。LLM时代的搜索系统仍在前进和改变的道路上，未来的搜索引擎会是什么样的？会不会对传统的搜索架构产生颠覆影响？这些问题等着我们一起见证。
+
+-   Meng Y, Huang J, Zhang Y, et al. Generating training data with language models: Towards zero-shot language understanding[J]. Advances in Neural Information Processing Systems, 2022, 35: 462-477.
+-   Papanikolaou Y, Pierleoni A. Dare: Data augmented relation extraction with gpt-2[J]. arXiv preprint arXiv:2004.13845, 2020.
+-   Bonifacio L, Abonizio H, Fadaee M, et al. Inpars: Data augmentation for information retrieval using large language models[J]. arXiv preprint arXiv:2202.05144, 2022.
+-   Jeronymo V, Bonifacio L H, Abonizio H, et al. InPars-v2: Large Language Models as Efficient Dataset Generators for Information Retrieval. CoRR abs/2301.01820 (2023)[J]. 2023.
+-   Boytsov L, Patel P, Sourabh V, et al. InPars-Light: Cost-Effective Unsupervised Training of Efficient Rankers[J]. arXiv preprint arXiv:2301.02998, 2023.
+-   Dai Z, Zhao V Y, Ma J, et al. Promptagator: few-shot dense retrieval from 8 examples (2022)[J]. arXiv preprint arXiv:2209.11755, 2022.
+-   Saad-Falcon J, Khattab O, Santhanam K, et al. UDAPDR: Unsupervised Domain Adaptation via LLM Prompting and Distillation of Rerankers[J]. arXiv preprint arXiv:2303.00807, 2023.
+-   Singh Sachan D, Lewis M, Yogatama D, et al. Questions Are All You Need to Train a Dense Passage Retriever[J]. arXiv e-prints, 2022: arXiv: 2206.10658.
+-   Ferraretto F, Laitz T, Lotufo R, et al. ExaRanker: Explanation-Augmented Neural Ranker[J]. arXiv preprint arXiv:2301.10521, 2023.
+-   Askari A, Aliannejadi M, Kanoulas E, et al. Generating Synthetic Documents for Cross-Encoder Re-Rankers: A Comparative Study of ChatGPT and Human Experts[J]. arXiv preprint arXiv:2305.02320, 2023.
+{% endraw %}

@@ -1,0 +1,101 @@
+---
+title: "L3_·_唯象、自然性与信号(细读)"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 物理, 粒子物理导论, CERN_2026年1–7月_arXiv_产出深度拆解_粒子物理全景与超对称专题, 超对称与弦论·知识点细读索引(2023–2026_综述配套)]
+categories: [物理]
+yuque: true
+---
+
+{% raw %}
+> 破缺后的粒子谱如何被对撞机/暗物质实验探测。每个小节：是什么 / 公式 / 为什么重要 / 误区 / 关联论文。
+
+## 3.1 fine-tuning 度量
+
+-   **是什么**：定量衡量"不自然程度"：$\Delta=\max_i|\partial\ln m_Z^2/\partial\ln p_i|$。$\Delta\lesssim{\cal O}(10)$ 算自然。
+
+-   **为什么重要**：衡量一个 SUSY 模型好不好；LHC 没看到轻超伴子把 $\Delta$ 推大，是 SUSY 危机的核心。
+
+## 3.2 little hierarchy 问题
+
+-   **是什么**：stop 必须重到几百 GeV~TeV 以压 Higgs 质量与满足 LHC，但又不能太重否则 reintroduce 等级问题——留出一个"小等级"。
+
+-   **关联论文**：SUSY 综述 §1（HL-LHC 下弦景观自然性 2601.01066）。
+
+## 3.3 stop 混合
+
+-   **是什么**：左右手 stop 通过 $A_t$ 与 $\mu/\tan\beta$ 混合，停止质量本征态 $m_{\tilde t_{1,2}}$ 受 $X_t=A_t-\mu\cot\beta$ 强烈影响。
+
+-   **为什么重要**：停止圈对 $m_h$ 贡献最大；大 $X_t$ "聚焦"可降低 fine-tuning。这是 Higgs 质量（125 GeV）与自然的权衡点。
+
+## 3.4 自然 SUSY（Natural SUSY）
+
+-   **是什么**：只要求第三 gen 超伴子（stop/sbottom）与 higgsino 轻（~TeV 内），第一二代可重——降低 fine-tuning 同时躲过 LHC。
+
+-   **关联论文**：SUSY 综述 §1（higgsino 盲点 2607.05648、NLO higgsino–核子散射相消 2607.20588）。
+
+## 3.5 压缩谱（Compressed Spectra）
+
+-   **是什么**：LSP 与 NLSP 质量差很小（$\Delta m\ll m_Z$），衰变产物软（低能），触发阈值难达、背景大。
+
+-   **为什么重要**：2601.06358 的核心主题——"稀有且具挑战性信号"多源于压缩/半压缩区间（§3.1）。
+
+-   **误区**：压缩不是"粒子轻"，是"质量差小"——二者信号难度完全不同。
+
+## 3.6 消失径迹（Disappearing Track）
+
+-   **是什么**：chargino 几乎与 neutralino 简并，chargino 长寿命、衰变前只飞极短就变不可见 → 径迹"消失"。
+
+-   **关联论文**：2601.06358 §3.3.1。
+
+## 3.7 软双轻子（Soft Dilepton）
+
+-   **是什么**：NLSP 衰变给 LSP + 软 $e/\mu$ 对；双轻子横动量很低。
+
+-   **关联论文**：2601.06358 §3.3.2。
+
+## 3.8 软位移径迹（Soft Displaced Track）
+
+-   **是什么**：长寿命 NLSP 在探测器内位移后衰变，留下 displaced vertex / displaced track。
+
+-   **关联论文**：2601.06358 §3.3.3。
+
+## 3.9 RPV 三项（λ / λ' / λ''）
+
+-   **是什么**：超势加 RPV 项：
+
+$$
+W_{\rm RPV}=\mu_i L_i H_u + \frac12\lambda_{ijk}L_iL_j\bar e_k + \lambda'_{ijk}L_iQ_j\bar d_k + \frac12\lambda''_{ijk}\bar u_i\bar d_j\bar d_k
+$$
+
+-   $\lambda,\lambda&#39;$：轻子数破坏（LLE/LQD）→ 多轻子、单光子远区信号。
+
+-   $\lambda&#39;&#39;$：重子数破坏（UDD）→ 多喷注（CMS 8 TeV 四喷注解释 2509.09062）。
+
+-   **关联论文**：2601.06358 §4；SUSY 综述 §2（ABC-of-RPV 系列、MCMC 拟合）。
+
+## 3.10 双线性 μᵢ（Bilinear RPV）
+
+-   **是什么**：$\mu_i L_i H_u$ 项混合 neutrino 质量、使中性微子带轻子数，NLSP 变轻长寿命。
+
+-   **关联论文**：2601.06358 §4.1（带轻子 RPV）。
+
+## 3.11 长寿命 NLSP
+
+-   **是什么**：RPV 极小时，NLSP 寿命可到探测器尺度甚至更长 → ANUBIS 等远区探测器最灵敏。
+
+-   **关联论文**：2605.21065（轻长寿命中性微子单光子远区信号，ANUBIS 最灵敏）。
+
+## 3.12 暗物质候选（neutralino/gluino/higgsino）
+
+-   **是什么**：R 宇称守恒时 neutralino LSP 是热退耦 DM；wino/higgsino 有准确 relic 预言。gluino 也可在 RPV 下不稳定。
+
+-   **关联论文**：SUSY 综述 §1、§3；2603.04664 §5.1（SUGRA 暗物质）；LZ 压 higgsino 截面出现盲点（2607.05648）。
+
+## 3.13 可观测性指标 A×ε
+
+-   **是什么**：$A$（接受度）× $\varepsilon$（效率）= 实验能"看见"某信号的概率。压缩谱下 $A\times\varepsilon\ll1$ 才是难探测本质。
+
+-   **关联论文**：2601.06358 §3.4.3（灵敏度与 A×ε）。
+{% endraw %}

@@ -372,23 +372,35 @@
       if (!currentPath || !currentSha) return;
       setStatus(els.status, '保存中…');
       els.save.disabled = true;
-      api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encodeURIComponent(currentPath), {
-        method: 'PUT',
-        body: {
-          message: 'docs(' + currentPath + '): update via online editor',
-          content: window.btoa(unescape(encodeURIComponent(els.text.value))),
-          sha: currentSha,
-          branch: cfg.branch
+      var doPut = function (sha) {
+        return api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encodeURIComponent(currentPath), {
+          method: 'PUT',
+          body: {
+            message: 'docs(' + currentPath + '): update via online editor',
+            content: window.btoa(unescape(encodeURIComponent(els.text.value))),
+            sha: sha,
+            branch: cfg.branch
+          }
+        });
+      };
+      doPut(currentSha).then(function (r) {
+        if (r.ok) return r.json();
+        // sha 冲突（409）时自动重新拉取最新 sha 重试一次
+        if (r.status === 409) {
+          return api('/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encodeURIComponent(currentPath) + '?ref=' + cfg.branch)
+            .then(function (rr) { return rr.json(); })
+            .then(function (d) { currentSha = d.sha; return doPut(d.sha); });
         }
-      }).then(function (r) {
-        if (!r.ok) throw new Error('save');
-        return r.json();
+        return r.json().then(function (body) {
+          var msg = (body && body.message) ? body.message : ('HTTP ' + r.status);
+          throw new Error('保存失败（GitHub: ' + msg + '）');
+        }, function () { throw new Error('保存失败（HTTP ' + r.status + '）'); });
       }).then(function (data) {
-        currentSha = data.content.sha;
+        if (data && data.content && data.content.sha) currentSha = data.content.sha;
         setStatus(els.status, '已同步到 GitHub ✓ 稍后站点重新构建即可见', 'ok');
         setTimeout(closeEditor, 1400);
-      }).catch(function () {
-        setStatus(els.status, '保存失败（权限不足或冲突，请重试）', 'err');
+      }).catch(function (err) {
+        setStatus(els.status, (err && err.message) ? err.message : '保存失败（权限不足或冲突，请重试）', 'err');
         els.save.disabled = false;
       });
     });

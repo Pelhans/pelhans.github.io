@@ -1,0 +1,346 @@
+---
+title: "排行榜"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 深度学习, Embedding]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# 排行榜
+
+[huggingface 排行榜](https://huggingface.co/spaces/mteb/leaderboard) 上查看最新的模型 和表现
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-1.png)
+
+hugging face 23年12月排行榜
+
+# 总结
+
+-   BERT 作为基座是够用的
+-   最新版本都是两阶段，第一阶段是对比学习（有监督/无监督都有），第二阶段是有监督对比学习
+-   对比学习负采样有讲究，包含 batch 内大量的负采样和交叉负采样（doc 间负采样）。三元组形式样本目前有逐渐流行的趋势。较难的负样本也是必需品
+-   最终输出使用 mean pooling 和 CLS 都有，mean pooling 效果好的更多些
+-   更多的训练数据和更大的模型都能提升最终表现
+-   如果下游想适配更多的任务，使用 instruction 是有必要的
+
+# GTE：Towards General Text Embeddings with Multi-stage Contrastive Learning
+
+1.  [https://arxiv.org/abs/2308.03281](https://arxiv.org/abs/2308.03281)
+
+2\. [https://huggingface.co/thenlper/gte-large-zh](https://huggingface.co/thenlper/gte-large-zh)
+
+3\. [https://zhuanlan.zhihu.com/p/652472924](https://zhuanlan.zhihu.com/p/652472924)
+
+这是阿里巴巴团队提出了一种基于多阶段对比学习的通用句向量模型。通过显著增加预训练跟finetune阶段的训练数据，最终获得一个明显超越当时sota模型E5的句向量模型。注意重点，GTE主要特色是显著增加训练数据，大力出奇迹。
+
+GTE采用了Transformer encoder，有3种不同模式尺寸，分别以MiniLM-small, BERT-BASE跟BERT-LARGE作为模型初始化。训练时采用双塔模型结构，将语言模型所生成的所有位置的最后一层隐状态的均值作为句子表征，即句向量。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-2.png)
+
+训练时，通过对比学习让模型产生高质量的句子表征，每个训练样本（q,d+,d-）都包括三部分，第一部分是query，第二部分是跟query正相关的d+，第三部分是跟query不相关的d-。不同于传统对比学习所采用infoNCE loss作为优化目标，GTE采用了一个进阶版的对比损失Improved Contrastive Loss。其实就是对负样本做了更多扩充，（假设同个batch里query跟对应的正样本分别为qi跟di）第一部分的负样本是将qi当作为query，q跟同个batch里的其他dj（i不等于j）互为负样本（传统对比学习里的负样本），第二部分的负样本就是将di作为query，di跟同个batch里其他dj(i不等于j)互为负样本，详情可见下面公式。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-3.png)
+
+GTE的训练过程也分为预训练跟微调两个阶段，**两个阶段采用的都是对比学习**，优化目标都是前面所提及的Improved contrastive Loss。在预训练阶段，为了保证句向量模型的覆盖面尽可能多样，研究人员收集了各种领域的跟文本相应性相关开源数据，包括网页搜索，科学文献，社区问答，社交，维基百科，代码仓库等，共有接近8亿的文本对（query，positive document），这些数据无需额外的人工标注就能被用于句向量模型的无监督训练。在具体训练时，由于不同源头的数据量显著不同，需要采用特定的抽样策略来维持平衡，并且要保证同个batch里的数据都是来源于同个任务，防止模型通过学习到不同任务特性来判断这些数据，从而走上一条不归路。在这一个阶段**由于缺乏hard negative信息，为例保证模型效果，需要使用较大的batch size**。
+
+在finetune阶段，研究人员以少量的人工标注的数据集（query，positive document）为基础，利用额外的检索器获得相应的hard negative数据，从而构造出相应的文本相关性三元组（query, positive document, negative document）数据，约300万条，从而让模型在这个高质量数据上做进一步微调。在finetune阶段，由于数据集原本的强监督信息跟hard negative，batch size就没有必要设置的特别大。
+
+实验结果：
+
+-   在MTEB榜单上，GTE表现超过instructor,E5等模型，取得非常不错的效果。
+-   通过消融实验，发现了模型性能跟训练数据数量（无论预训练还是微调），以及模型本身餐数量存在正相关关系，同时也验证了预训练跟微调对于句向量模型的必要性，两者缺其一都会影响最终模型的性能。
+
+从方法上，GTE并没有什么太多新颖之处，主要大力出奇迹，通过堆训练数据，让模型得到进一步的蜕变，论文实验结论也验证了这点。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-4.png)
+
+骨架模型为
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-5.png)
+
+# BGE ：C-Pack: Packaged Resources To Advance General Chinese Embedding
+
+1.  [https://huggingface.co/BAAI/bge-large-zh-v1.5](https://huggingface.co/BAAI/bge-large-zh-v1.5)
+
+2\. [https://arxiv.org/pdf/2309.07597.pdf](https://arxiv.org/pdf/2309.07597.pdf)
+
+BGE的训练过程分为两阶段，第一阶段是采用RetroMAE方法的预训练过程进行自重建任务，第二阶段就是利用对比学习的微调过程，跟之前的方法不同之处在于，微调时会在检索任务中为query单独添加对应的instruction。
+
+-   整体网络结构和 RetroMAE 相同。
+-   预训练数据使用悟道、Pile 两个大规模语料集。
+-   微调时构建了大量的text pair数据，论文称之C-MTP(Chinese Massive Text Pairs)，数据量总计**100M**，涵盖多种任务：
+
+-   C-MTP（unlabeled）: 数据来源于open web content 和 public Chinese dataset。包括Wudao Corpora、知乎、百科、CSL、CMRC等公开数据集，使用(title, passage)等构建成text pair；为了保证数据quality，使用Text2Vec-Chinese（预训练的中文embedding模型），过滤掉得分低于0.43的pair数据。最终数据量共计100M。
+-   C-MTP（labeled）: 数据来源于下游任务的标注数据集，包括DuReader、mMARCO、NLI-Zh等，涵盖retrieval、ranking、similarity comparison等任务，数据量共计838K。
+
+## 预训练 -- RetroMAE方法
+
+该方法出自于于EMNLP2022的文章，是一种基于自动编码的方法，可以为检索模型提供了一个强力的初始化模型。
+
+目前主流的语言模型的预训练任务都是token级别的，比如MLM或者Seq2Seq，但是这种训练任务难以让模型获得一个高质量的基于句子级别的句向量，这限制了语言模型在检索任务上的潜力。针对这个弊端，目前有**两种针对检索模型的预训练策略**，第一种是**self-contrastive learning**，这种方式往往受限于数据增强的质量，并且需要采用非常庞大数量的的负样本。另一种基于auto-encoding，一种**自重建方法**，不受数据增强跟负样本采样策略的影响，基于这种方法的模型性能好坏有两个关键因素，其一是重建任务必须要对编码质量有足够的要求，其二是训练数据需要被充分利用到。
+
+基于此，研究人员提出了RetraoMAE，它包括**两个模块**，其一是一个**类似于BERT的编码器，用于生成句向量，其二是一个一层transformer的解码器，用于重建句子**。算法具体细节如下
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-6.png)
+
+-   Encoding：给定一个句子输入X，随机mask掉其中一小部分token后得到 $\tilde{X}_{enc}$ ，这里通常会采用中等的mask比例（15%～30%），从而能保留句子原本大部分的信息，然后利用一个编码器 $\Phi_{enc}(*)$ 对进行编码，得到对应的的句向量 $h_{\tilde{x}} \leftarrow \Phi_{enc}(\tilde{X}_{enc})$ 。由于采用了类似BERT的编码器，最终将[CLS]位置最后一层的隐状态作为句子向量。
+-   Decoding：给定一个句子输入X，随机mask掉其中一部分token得到 ，这里通常会采取比encoder部分更加激进的mask比例（50%～70%），利用mask后的文本跟encoder生成的句向量对文本进行重建。$H_{\tilde{X}_{dec}} \leftarrow [h_{\tilde{X}}, e_{x1}+p1, ......, e_{xN}+p_{N}]$，其中 $e_{xi}$ 表示 xi 的词向量，pi则是对应的位置向量。最终解码器会利用 $H_{\tilde{X}_{dec}}$ 来重建原文本，相应的训练目标就是 $L_{dec} = \Sigma_{xi \in masked}CE(xi | \Phi_{dec}   (H_{\tilde{X}_{dec}} ) )$。在解码器部分采用了及其简单的网络结构跟非常激进的mask比例，从而使得解码任务变得极具挑战性，迫使encoder去生成高质量的句向量才能最终准确地完成原文本重建。
+-   Enhanced Decoding：前面提及的解码策略有一种缺陷，就是训练信号只来源于被mask掉的token，而且每个mask掉的token都是基于同一个上下文重建的。于是研究人员提出了一种新的解码方法，Enhanced Decoding，具体做法如下。
+
+-   a)首先生成两个不同的输入流H1(query)跟H2(context)
+
+-   $H_{1} \leftarrow [h_{\tilde{X}} + p_{0},  ......,h_{\tilde{X}} + p_{N}]$
+-   $H_{2} \leftarrow [h_{\tilde{X}} , e_{x1} + p_{1},   ......,  e_{xN} + p_{N}]$
+
+-   b) 通过attention机制得到新的输出A，这里的M是一个mask矩阵，第i个token所能看得到的其他token是通过抽样的方式决定的（当然要确保看不到自身token，而且都要看得见第一个token，也就是encoder所产出CLS句向量的信息）
+
+-   $Q=H_{1}W^{Q},~~~K=H_{2}W^{K},~~~V = H_{2}W^{V}$
+-   $M_{ij} = 是 mask 矩阵$
+-   $A = softmax(\frac{Q^{T}K}{\sqrt{d}} + M)V$
+
+-   c)最终利用A跟H1去重建原文本，这里重建的目标不仅仅是被mask掉的token，而是全部token。
+
+-   最终RetroMAE的损失由两部分相加得到，其一是encoder部分的MLM损失，其二是deocder部分自重建的交叉熵损失。
+
+实验结论
+
+-   RetroMAE预训练得到的模型的zero-shot性能远超其他模型，验证了这种预训练模型的迁移能力。
+-   RetroMAE预训练模型finetune过后在领域数据也表现出色，说明RetroMAE预训练模型可以作为一个强力的检索模型初始化。而基于token级别的预训练任务的像BERT之类的模型在检索任务就不太行，基于自我对比学习的模型则会因为缺乏监督信号从而也表现不佳。
+-   通过消融实验验证了Enhanced decoding的优越性，以及encoder跟decoder之间最佳的mask比例。只有相对激进的mask比例才能提高这个任务的难度，从而迫使encoder产生高质量的句向量。
+
+## 微调 finetune
+
+1\. general-purpose fine-tuning阶段在C-MTP(unlabeled)上进行，该阶段在100M的text pairs上训练，可以视作一种大规模的弱监督学习过程，可初步学习出通用embedding model
+
+2\. task-specific fine-tuning阶段在C-MTP(labeled)上进行，通过在少而精的下游任务labeled data上微调，在保证通用性的同时，强化模型在具体任务上的表现。
+
+主要通过**对比学习和Instruction Tuning的思想：**
+
+-   输入数据的格式：模型接受三元组格式的数据作为输入，包括一个查询（query），一个正例（positive），和一个反例（negative，也可以是多个）。
+-   in-batch negatives 策略：除了上述三元组中的反例外，他们还采用了“in-batch negatives”策略，意思是在同一个批次的数据中，采样其他数据作为额外的反例。
+-   cross-device negatives sharing method：这是一种在不同的GPU之间共享反例的方法，目的是大大扩充反例的数量。
+-   训练硬件和参数：使用了48个A100(40G)的GPU进行训练。批次大小为32,768，因此每个query在批次中有65,535个反例。使用了AdamW优化器，学习率为1e-5。对比损失的温度为0.01。
+-   训练中为检索任务的查询添加instruction。 对于英语，指令是Represent this sentence for searching relevant passages: ; 对于中文，指令是为这个句子生成表示以用于检索相关文章：. 在评测中，针对段落检索任务的任务需要在查询中添加指令，但不需要为段落文档添加指令。
+-   Extentions: 使用faiss和model在候选集中找一些困难负样本
+-   reranker阶段：数据格式同finetune阶段，训练一个二分类模型，区分正例和负例。
+
+# M3E ： Moka Massive Mixed Embedding
+
+M3E 是 Moka Massive Mixed Embedding 的缩写，没找到论文，只看到代码 [M3E hugging face 链接](https://huggingface.co/moka-ai/m3e-base)：
+
+-   Moka，此模型由 MokaAI 训练，开源和评测，训练脚本使用 [uniem](https://github.com/wangyuxinwhy/uniem/blob/main/scripts/train_m3e.py) ，评测 BenchMark 使用 [MTEB-zh](https://github.com/wangyuxinwhy/uniem/tree/main/mteb-zh)
+-   Massive，此模型通过**千万级** (2200w+) 的中文句对数据集进行训练
+-   Mixed，此模型支持中英双语的同质文本相似度计算，异质文本检索等功能，未来还会支持代码检索
+-   Embedding，此模型是文本嵌入模型，可以将自然语言转换成稠密的向量
+
+M3E 使用 in-batch 负采样的对比学习的方式在句对数据集进行训练，为了保证 in-batch 负采样的效果，我们使用 A100 80G 来最大化 batch-size，并在共计 2200W+ 的句对数据集上训练了 1 epoch。训练脚本使用 [uniem](https://github.com/wangyuxinwhy/uniem/blob/main/scripts/train_m3e.py)**。**
+
+-   中文训练集，M3E 在大规模句对数据集上的训练，包含中文百科，金融，医疗，法律，新闻，学术等多个领域共计 2200W 句对样本，数据集详见 [M3E 数据集](https://huggingface.co/moka-ai/m3e-base#M3E%E6%95%B0%E6%8D%AE%E9%9B%86)
+-   英文训练集，M3E 使用 MEDI 145W 英文三元组数据集进行训练，数据集详见 [MEDI 数据集](https://drive.google.com/file/d/1vZ5c2oJNonGOvXzppNg5mHz24O6jcc52/view)，此数据集由 [instructor team](https://github.com/HKUNLP/instructor-embedding) 提供
+-   指令数据集，M3E 使用了 300W + 的指令微调数据集，这使得 M3E 对文本编码的时候可以遵从指令，这部分的工作主要被启发于 [instructor-embedding](https://github.com/HKUNLP/instructor-embedding)
+-   基础模型，M3E 使用 hfl 实验室的 [Roberta](https://huggingface.co/hfl/chinese-roberta-wwm-ext) 系列模型进行训练，目前提供 small 和 base 两个版本，大家则需选用
+-   ALL IN ONE，M3E 旨在提供一个 ALL IN ONE 的文本嵌入模型，不仅支持同质句子相似度判断，还支持异质文本检索，你只需要一个模型就可以覆盖全部的应用场景，未来还会支持代码检索
+
+# **E5：** Text Embeddings by Weakly-Supervised Contrastive Pre-training
+
+[https://arxiv.org/pdf/2212.03533.pdf](https://arxiv.org/pdf/2212.03533.pdf)
+
+E5是由微软在22年提出的一系列具有强大泛化能力的句向量模型，无论是在zero-shot场景下，还是经过进一步微调，都能展现出强大的性能，在MTEB评测集上足以媲美那些参数量是E5数十倍的模型。一种基于弱监督预训练+对比学习的Embedding模型
+
+-   数据：
+
+-   微软的研究人员自建一个庞大且高质量的来自互联网的文本匹配数据集CCPairs，该数据集提供了各种各样的训练信息，能够让模型迁移到各种下游任务。
+
+-   研究人员从网上搜集到多种多样的半结构化数据，每个数据(q,p)代表一个文本对，q表示query，p表示与之相关的passage，这里的p可以是任意长度，既可以是短文本，也可以是文章的一个段落，或者一个长文档。这里的数据包括来自Reddit的（帖子，评论），来自Stackexchange的（问题，答案），来自英文Wikipedia的（实体+章节名，段落），来自Scientific的（文章标题，摘要），来自Commom Crawl的（标题，段落）以及多种多样的新闻语料。通过简单的规则例如过滤掉psaage长度超过4096个字符或者困惑度太高的数据等自动挖掘的方式后，总共获得了13亿的文本对数据。
+-   Consistency-based filter（一致性过滤）：为了进一步提升数据质量，从而让训练更佳可控，研究人员提出了一种一致性过滤（Consistency-based filter）的方法。先让模型在13亿的噪声数据上进行训练，然后利用训练好的模型给每个数据对（q,p）排序，候选池里包括一百万个passage，如果p能落在top\_k个候选结果中，就保留该数据对，否则则移除该数据对。换言之，就是希望模型的预测能跟训练数据保持一致。在文中作者将k设置为2，通过这种方式最终获得包括2.7亿文本对数据的数据集CCPairs。
+
+-   训练：跟sentence-T5和GTR类似，E5也采用了两阶段的训练方式。**第一阶段在没有人工标注的CCPairs数据上通过对比学习训练，在训练时在双塔模型的两侧q跟p会分别加上前缀“query：”跟“passage:”**(有点像INSTRUCTOR中instruction的弱化版)。在**第二阶段时，会在一个相对量级较小的高质量人工标注数据集（M S-MARCO, NQ, NLI）上作进一步训练**，从而提高生成的句向量质量。训练方法依旧包括对比学习，但是这里的负样本不再是同个batch其他样本的数据，而都是hard negative。另外，**训练损失除了对比学习损失外，还有一项蒸馏学习损失，训练时引入了cross encoder作为teacher模型（？），为bi-encoder的优化提供更多信号**。
+-   模型：E5有三种不同模型尺寸，small，base跟large，相应的模型初始化分别来自于MiniLM，bert-base-uncased跟bert-large-uncased-whole-word-masking。在第一阶段训练中，采用的batch\_size是32768，而在第二阶段的训练过程中，采用的batch\_size是256。
+-   实验结论：
+
+-   在MTEB评测集上，随着模型规模的增加，模型性能也逐步提升，并且足以媲美其他同量级模型。3亿模型参数的E5-large效果超过了参数量达48亿的GTR-xxl跟Sentence-T5-xxl。
+-   BERT-FT-base跟E5-base的差别在于后者多了一个在CCPairs数据集预训练的阶段，**两者性能之间的显著差异也论证了在CCPairs数据进行对比学习预训练的价值。**
+-   **高质量的预训练数据对于整体性能体现明显，对网上搜集到的数据做进一步过滤是E5非常关键的一步。**虽然神经网络对于数据噪声有一定的鲁棒性，但是数据过滤依旧能提升训练效率跟模型质量。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-7.png)
+
+# **sentence-T5：**Scalable Sentence Encoders from Pre-trained Text-to-Text Models
+
+[https://arxiv.org/pdf/2108.08877v2.pdf](https://arxiv.org/pdf/2108.08877v2.pdf)
+
+Encoder-decoder结构的T5虽然在seq2seq的任务中表现优异，但是如何从T5中获取合适的句向量依旧未知。于是就有研究尝试了几种从T5中获取句向量的方式，具体如图所示:
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-8.png)
+
+-   a）Encoder-only first，利用T5 最后一层encoder第一个token的特征输出作为句向量。不同于Bert，**T5模型没有CLS 的token。所以拿第一个token的输出来当句向量看起来就不靠谱。**
+-   b) Encoder-only mean，利用T5最后一层encoder所有token的特征输出平均值作为句向量。
+-   c) Encoder-Decoder first，利用T5最后一层decoder的第一个token的输出作为句向量。为了获得这个token的输出，需要将input文本输入encoder，还需要将代表start的token喂给decoder。
+-   **T5 Encoder-only mean的效果明显优于BERT系列，大部分数据集上也优于其余两种T5句向量变体，在更多数据上finetune能给模型带来巨大的提升，从而解决模型T5的句向量坍塌问题。**（作者猜测encoder-decoder结构里，encoder更倾向于生成通用性的表征，更具泛化能力，而decoder更聚焦于针对下游任务优化。
+-   在大部分任务上，**增加T5模型的规模可以进一步提升性能。**
+-   除此之外，还发现了实验中训练过程使用了巨大的batch size，第一阶段的batch size是2048，第二阶段的batch size是512，远超simcse实验中的最佳参数配置64。
+
+**利用的前面提及的几种句向量变种可以获得固定长度的句子表征，在加上一个全连接层跟Normalization层就可以得到归一化的句向量。训练采用的是双塔模型结构，但是左右两边共用同一个模型跟参数。**
+
+**训练方法采用的是常见的对比学习**，同一个batch内，希望同个instance（sentence1, sentence2）的两个相关句子之间的距离足够接近（分子部分），不同instance里的不相关句子之间的距离足够疏远。如果同个instance还有强不相关的sentence，也希望不相关的句子之间距离足够疏远。同时了，为了研究增加额外训练数据的影响，**采用了两阶段的训练方式**，第一个阶段现在通用领域的问答数据训练（Community QA）,第二阶段才在人工标注的数据（NLI）训练。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-9.png)
+
+# **GTR：**Large Dual Encoders Are Generalizable Retrievers
+
+https://arxiv.org/pdf/2112.07899.pdf
+
+还是sentence T5的那批人，**发现T5的encoder-only mean产生的句向量效果还不错后，就继续在这上面做进一步研究，进一步探索这种句向量模型在检索任务上的迁移能力。**
+
+-   模型没变，**训练数据把第二阶段换成了另外的检索相关的数据集**，MS Macro(Bing的搜索数据)跟Natural Questions(常用于检索的问答数据集)。
+-   训练方法虽然还是用的对比学习，但是具体计算过程跟simcse有所差异，由于每一个instance都包含(query, pos, neg)，pos跟neg分别是query对应的相关文档positive跟强不相关文档hard negative，对应的对比学习的损失由两部分：
+-   同一个instance里的query跟pos是正样本，query跟同个batch里的所有neg之间都是负样本。
+-   同一个instance里的pos跟query是正样本，pos跟同个batch里其他instance的query之间都是负样本。
+
+结论：
+
+-   随着模型规模的增加，在领域外的性能提升明显，换言之，更大的模型具有更强大的泛化能力。同时，也发现GTR对于数据的利用非常高效，在MS Macro数据集上只使用10%的数据也能达到很不错的效果。
+-   做完两阶段训练的GTR强于只做第一阶段或者第二阶段训练的模型，在领域内跟领域外的表现都比较一致，随着模型规模增加也有一定的提升，同时也说明了第二阶段的高质量数据对于模型的帮助。
+
+# instructor：One Embedder, Any Task: Instruction-Finetuned Text Embeddings
+
+https://arxiv.org/pdf/2212.09741.pdf
+
+目前的大模型，在给定instruction后会按照指令生成相应的内容，那么对于句向量模型而言，同样一句话，可以通过给定模型不同的instruction，让模型生成适合下游任务的句向量嘛？instructor就实现了这个设想。在输入中加入跟任务跟领域相关的instruction，来指导语言模型生成适配下游任务的句向量，而不需要进行额外的训练，在MTEB榜单的表现可以媲美openai最新的text-embedding-ada-002模型。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-10.png)
+
+-   模型：**Instructor采用了前面的GTR作为初始模型，训练方法也依旧保持**
+-   数据：**原本的模型接受文本作为输入，instructor同时接受instruction跟文本作为输入，从而生成符合指令的句向量。**Instructor的训练数据是一个数据集集合MEDI，里面包含330个来自SuperNaturalInstructions的数据集跟30个现存的用于句向量训练的数据集。每个数据集都包括对应的instruction，数据集中的每个instance都是如下格式：
+
+-   Instance = {“query”: [instruction\_1, sentence\_1], “pos”:[instruction\_2, sentence\_2], “neg”:[Instruction\_2, sentence\_3]}
+-   如果是类似句子相似度的对称类任务，那就只有一个instruction，示例中的instruction\_1跟instruction\_2就是同一个，如果是类似检索的非对称任务，那么query跟doc都各有一个instruction，instruction\_1跟instruction\_2就是两个不同的instruction。Sentence\_2表示是跟sentence\_1相关的文本，而sentence\_3则是不相关的文本。通过这种数据集构造，可以保证每个instance都有自身的hard negative，以及同个batch内其他instance充当简单负样本。在训练过程过程，为了提高难度，会保证同个batch里所有instance都来自于同个数据集。
+
+部分结论如下：
+
+a) Instructor在三个榜单的平均表现最佳，在多个不同任务上的呈现出强大的通用能力。
+
+b) 加上instruction的模型训练，让模型在对称类任务跟非对称类任务上都取得明显提升。
+
+c) 训练数据加入了330来自SUPERNATURALINSTRUCTION数据集的多个instruction使得模型具备处理不同类型跟风格的instruction的能力，帮助模型更好的能泛化到新领域。同时，instruction的内容越详细丰富，instructor效果越好。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-11.png)
+
+instruction的引入，使得句向量模型能更好地迁移到新的任务跟领域，而不需要额外的训练。从Instructor的演化进程，不难看出从encoder-deocder模型中选择Encoder-only mean方法，生成的句向量效果明显优于Bert系列的方案，猜测这是由于其中的encoder更倾向于生成更通用的特征，而不是针对下游任务。同时也可以看到虽然还是沿用的对比学习方案，但是训练数据也逐渐从之前的（query，pos）pair对转换为(query, pos, neg)的三元组，通过设置较大的batch，既能保证训练难度，也能保证训练效率。
+
+Instructor看起来还是蛮吸引人的，不由联想到语言模型的instruction tuning工作，有点异曲同工之意。
+
+# OpenAI ： text-embedding-ada-002 （没论文说咋得到的）
+
+-   [https://openai.xiniushu.com/docs/guides/embeddings](https://openai.xiniushu.com/docs/guides/embeddings)
+
+# text2vec-large-chinese
+
+是用CoSENT方法训练，基于hfl/chinese-macbert-base在中文STS-B数据训练得到，并在中文STS-B测试集评估达到较好效果，运行[examples/training\_sup\_text\_matching\_model.py](https://github.com/shibing624/text2vec/blob/master/examples/training_sup_text_matching_model.py)代码可训练模型，模型文件已经上传HF model hub，中文通用语义匹配任务推荐使用
+
+# Sentence Bert：Sentence Embeddings using Siamese BERT-Networks
+
+[https://arxiv.org/pdf/1908.10084.pdf](https://arxiv.org/pdf/1908.10084.pdf)
+
+Bert虽然当时在很多下游任务都达到SOTA的效果，但是原生的Bert生成的句向量效果（句子相似度等任务）并不好。直接用原生的Bert生成的不同文本之间的句向量去计算相似度的效果并不好，甚至不及使用Glove向量生成的。造成这种现象的原因主要是是Bert句向量空间的各向异性，Bert生成的词向量在空间分布不均匀，受频率影响，高频词相对集中，更靠近远点，低频词由于训练不够充分相对分散，远离原点。所以词向量之间的距离不能很好的表示词之间的相关性，而句向量仅仅是词向量的平均池化，所以通过它计算出来的相似度是有问题的。至于为什么会有这种情况，个人认为是由于训练目标造成的，我们知道原生的Bert预训练的任务只有MLM跟NSP（next sentence prediction）,在下游任务计算句子相似度时，也是把两个句子通过[CLS]拼接到一起输入Bert，将Bert输出的结果传入一个全连接层计算相应概率值做一个二分类任务，所以原生的Bert一开始就没有考虑到怎么去生成一个适合向量搜索或者相似度计算的句向量。
+
+既然知道原生的Bert不适合句向量生成，那么接下来就看下若干在Bert基础上做改进的句向量生成方法。
+
+Sentence Bert的想法也很直观，既然原生Bert的训练任务中没有句子相似度计算，那么在原生的Bert基础上做finetune，在finetune阶段把句向量生成相关的相似度任务加进去不就可以嘛，这样Bert就可以学到句向量生成的能力了。
+
+具体训练过程见上图，对于分类任务见左图，借助于孪生网络，左右两个Bert共享权重，将sentence A生成的句向量u跟sentence B生成的句向量v以及两者之间的差值|u-v|拼接再一次，输入一个全连接层做一个二分类任务，使用交叉墒损失函数作为优化的目标函数。对于回归任务见右图，通过计算句向量u跟v之间的余弦相似度，作为句子相似度输出，利用均方损失函数作为优化的目标函数。
+
+具体推理过程见右图，利用训练好Bert对句子进行编码，然后计算句向量之间的余弦相似度即可以得到句子之间的相似度。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-12.png)![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-13.png)
+
+分类任务 自回归任务
+
+结论：
+
+-   使用各个token的输出向量的平均值作为句向量效果最好。
+-   在分类任务训练上，向量差值|u-v|对效果影响最大。
+
+# Bert-flow：On the Sentence Embeddings from Pre-trained Language Models
+
+[https://arxiv.org/pdf/2011.05864.pdf](https://arxiv.org/pdf/2011.05864.pdf)
+
+Bert-flow认为既然原生的Bert句向量效果不好是由于句向量分布不均匀不平滑，那么利用标准化流（Normalizing Flows）将Bert的句向量分布变换成一个光滑的各向同性的标准高斯分布就可以解决这个问题了。Bert-flow在Bert的基础上增加一个flow可逆变换，可以实现将一个标准的高斯分布转化成一个Bert的句向量embedding分布，那么它的逆变化就可以将一个Bert的句向量embedding分布转化成一个标准高斯分布了。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-14.png)
+
+具体训练过程保持Bert的参数不变，学习一个用来模拟上述可逆变换的神经网络参数，该可逆反应变换可以实现将Bert的句向量映射到一个标准高斯分布，同时没有信息损失。推理过程就是在将Bert的句向量输出到这个训练好的可逆变换flow做转换，就可以得到分布均匀的句向量。作为一种无监督训练的方法，效果明显优于原生的bert和glove。（假设太强。。。不通用）
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-15.png)
+
+# Bert-whitening
+
+[https://arxiv.org/pdf/2103.15316.pdf](https://arxiv.org/pdf/2103.15316.pdf)
+
+Bert-whitening跟Bert-flow一样也是想直接对Bert生成的句向量做转换，但是Bert-whiltening更加简单明了，直接对语料数据求特征值分解，将当前坐标系变换到标准正交基下，进而实现句向量空间的各向同性。Bert-whitening在效果上可以媲美Bert-flow。
+
+# TSDAE：Using Transformer-based Sequential Denoising Auto-Encoder for Unsupervised Sentence Embedding Learning
+
+[https://arxiv.org/abs/2104.06979](https://arxiv.org/abs/2104.06979)
+
+TSDAE的思想很直观，什么是好的句向量? 从Bert编码的到的句向量，应该可以还原句子本身的文本。TSDAE（Transformer-based Sequential Denoising Auto-Encoder）模型使用纯句子作为训练数据来无监督训练句子向量。在训练期间，TSDAE 将加了噪声的句子编码为固定大小的向量，并要求decoder从这个句子表征中重建原始句子。为了获得良好的重建质量，必须在encoder的句子向量中很好地捕获语义。在后续推理时，我们只使用encoder来创建句子向量。encoder部分就是将带噪音的文本进行编码。控制变量实验发现，以“删除词语”的方式加入噪音、噪音比率在0.6效果的最好的。然后将encoder的输出进行pooling，控制变量实验发现，以mean的方式pooling效果最好
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-16.png)
+
+decoder使用的是 cross-attention，其中s是encoder输出pooling后的句子表征，H 是 decoder 第 k 层的隐层。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-17.png)
+
+TSDAE基本超过了其他无监督的方法，但离有监督的Sentence Bert，效果还有所差距。
+
+# Simcse：Simple Contrastive Learning of Sentence Embeddings
+
+[https://arxiv.org/pdf/2104.08821.pdf](https://arxiv.org/pdf/2104.08821.pdf)
+
+Simcse的想法是将对比学习的方法引进Bert的句向量生成。它希望表征相同语义的句向量之间的距离足够靠近，表征不同语义的句向量距离尽可能疏远。
+
+Simcse的训练方式分为无监督跟有监督两种。对于无监督训练，正样本是同一个文本输进去Bert两次得到的两个句向量（训练过程由于Bert中dropout层的随机性，Bert对同一个文本编码多次会得到不同的句向量）。负样本是一个文本跟同一个batch里的其他负样本得到的句向量。对于有监督训练，正样本跟负样本就是对应数据集中的正负例句子对。优化的目标函数就是对比学习基本的损失函数，简单理解就是希望正样本之间的距离尽可能接近，负样本之间的距离尽可能疏远。大幅刷新了有监督和无监督语义匹配SOTA，更让人惊叹的是，无监督SimCSE的表现在STS基准任务上甚至超越了包括SBERT在内的所有有监督模型。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-18.png)
+
+# Consert：**A Contrastive Framework for Self-Supervised Sentence Representation Transfer**
+
+[https://arxiv.org/pdf/2105.11741.pdf](https://arxiv.org/pdf/2105.11741.pdf)
+
+Consert的思路也是将对比学习引进Bert的句向量生成任务，不同与之前提到的simcse, simcse通过dropout层在transformer每一层都增加扰动，把差异性放大，提升任务难度，而Consert则聚焦在词嵌入层跟池化层的扰动，认为把扰动放在网络越前面的部分，扰动越会被放大。
+
+数据增强方式为：
+
+-   增加对抗扰动
+-   字符打乱
+-   阶段
+-   dropout
+
+具体训练过程是对于同一个文本，通过对数据增强（见上），得到两个不同增强版本的embedding，将得到的embedding输入到Bert得到相应的句向量，这里的正样本就是同一个文本不同增强版本的embedding对应句向量，负样本就是不同文本之间句向量。优化的目标函数就是对比学习基本的损失函数，简单理解就是希望正样本之间的距离尽可能接近，负样本之间的距离尽可能疏远。损失函数的分子部分是正样本之间的相似度，分母部分就是负样本之间的相似度之和。
+
+# PromptBert： Improving BERT Sentence Embeddings with Prompts
+
+[https://arxiv.org/pdf/2201.04337.pdf](https://arxiv.org/pdf/2201.04337.pdf)
+
+22年10月 以simcse为基础，通过选择合适的prompt（“This sentence:"[X]" means [MASK] ”）,然后以最后一层[MASK]位置的向量表征作为句向量。具体训练过程跟其他对比学习方法相似，主要有2个区别。第一点是句向量的生成方式不同，PromptBert通过预先定义好的模版将文本填入[X]的位置然后输入到Bert，得到对应[MASK]位置的输出向量作为句向量。第二点是句子相似度计算过程加入了消除有关prompt模版影响的部分。但缺点也很明显，prompt模版的选择对于最终效果的影响太大。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-19.png)
+
+# PromptEOL： Scaling Sentence Embeddings with Large Language Models
+
+[https://arxiv.org/pdf/2307.16645.pdf](https://arxiv.org/pdf/2307.16645.pdf)
+
+23年7月份提出的方法，语言模型使用的是OPT跟LLaMA（真正意义上的大模型），由于采用的是decoder-only的结构，所以构建了另一个新的prompt,"This sentence:”[X]” means in one word:"，以下一个生成token的隐层状态作为text embedding（这个prompt是精心设计的，其中"in one word"是期望将模型输出压缩到一个token，从而保证text embedding的质量，而prompt最后的分号是为了避免模型生成的下一个token是无实质意义的标点符号）。另外，还引入了in-context learning，为每个语言模型找到了一个最佳的demonstration，从而指导语言模型生成更符合要求的text embedding。同时为了进一步提升性能，可以采用对比学习的方式作进一步的finetune，最终在STS这类任务的性能能超过sentence-T5。
+
+# openai Embedding Text and Code Embeddings by Contrastive Pre-Training
+
+[https://arxiv.org/pdf/2201.10005.pdf](https://arxiv.org/pdf/2201.10005.pdf)
+
+在本论文中，OpenAI团队尝试在大规模无监督数据上对GPT系列模型做对比预训练(Contrastive Pre-Training)，得到的CPT-text模型在文本匹配、语义搜索等任务上取得了优异的zero-shot性能。
+
+本文提出可以对文本中相邻的片段做对比，即将相邻片段作正样本，而负样本则通过批内负采样得到，这一思路与BERT中的NSP任务有些类似。在模型训练过程中，给定一个训练样本(x,y)(x, y)，编码器首先独立地编码xx和yy，并将[EOS][\\text{EOS}]对应的低维稠密向量作为文本的表示，将v\_x和vyv\_y的余弦相似度作为相关性打分。loss 用交叉熵损失。最终就得到了完全无监督的文本嵌入模型，作者将其称之为cpt-text。
+
+![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-20.png)![image.png](/img/yuque/计算机/深度学习/Embedding/assets/Text_Embedding_综述-21.png)
+{% endraw %}

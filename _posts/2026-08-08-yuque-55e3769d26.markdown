@@ -1,0 +1,574 @@
+---
+title: "3._上下文工程_从片段拼装到_AGENTS.md"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版), Codex_Agent_Harness_深度解剖_·_系列索引]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+> 一句话：**"模型"决定下限，"上下文工程"决定上限。** 一个 coding agent 好不好用，往往不取决于底层 LLM 多聪明，而取决于 harness 每一轮把"什么"塞进了模型那块有限的上下文窗口。
+
+---
+
+## 把上下文窗口想成"工作台面"
+
+你每次问模型一个问题，模型看到的**全部文字**就是"上下文"。对 coding agent 来说，它包含四类东西：
+
+```plain
+上下文 = 系统提示词(角色/规则) + 会话历史(聊天+工具结果) + 工具描述(能调什么) + 动态片段(环境/AGENTS.md/权限…)
+```
+
+类比：你给一位远程工程师布置工作，他手头能看的就四样——**岗位手册**（系统提示词）、**你们之前的聊天记录**（历史）、**他能用的工具清单**（工具描述）、以及你随时贴给他的**临时便签**（动态片段：当前目录结构、报错、项目说明书）。
+
+模型有个**有限且昂贵**的"注意力窗口"（context window）。把它想象成工程师的**工作台面**：
+
+-   台面太小，资料铺不开，他干不好活；
+
+-   台面被一堆无关废纸堆满，他会"看不见"重要指令（业内叫 **context rot / 上下文腐烂**：窗口越满，模型越容易忘掉早期指令、越容易出错）；
+
+-   所以你得**主动管理台面**：该放的放上来（相关性）、不该放的清走（有界性）、重复的别贴第二遍（增量与去重）。
+
+Anthropic 的官方经验："context window 是最重要的资源。" 填得越快，性能下降越明显——这就是为什么所有成熟 agent 都有压缩、有界、去重机制。上下文工程要达成的，就是下面这三件事：
+
+| 目标 | 含义 | 反面 |
+| --- | --- | --- |
+| **该有的要出现** | 相关信息及时进入上下文 | 模型不知道项目约定，瞎改 |
+| **不该出现的要剪掉** | 无关/过期内容被识别剔除 | 窗口被垃圾填满，性能下降 |
+| **重复/过期的要去重** | 同一信息只发一次，可识别可重放 | 反复注入，浪费 token |
+
+> 关键心智模型：**上下文不是"一段字符串"，而是"一份需要主动设计的状态"。** 好的 agent 像管理工作台面一样管理上下文：稳定内容放前面（缓存友好）、动态内容放后面、垃圾及时清走。
+
+---
+
+## Codex 怎么做：两条装配线，以及"只发变化"的哲学
+
+朴素做法是"每轮把一大坨文本拼起来发给模型"，但这样 token 爆炸、且无法重放。Codex 把上下文拼装拆成两条流水线：
+
+-   **静态装配线**：系统提示词 + 历史 + 工具描述 → 打包成 `Prompt`（`build_prompt`，turn.rs:1148）。这部分相对稳定。
+
+-   **动态装配线**：每一轮重新计算 `WorldState`，渲染出一组"动态片段"，追加进请求。AGENTS.md、权限、token 预算、环境状态都在这条线上。
+
+动态线最聪明的设计是 **只发"变化的部分"**：
+
+-   `WorldState` 的每个 section 保存一个结构化快照（Snapshot）；
+
+-   下一轮只把"相对上一轮快照的变化"渲染成片段（用 RFC 7386 merge-patch）；
+
+-   用 SHA1 指纹去重。
+
+好处：① **省 token**（不变的背景不再重发）；② **可重放**（任意一轮的上下文都能从快照重建，利于评测/复盘）。
+
+> 这直接呼应 Anthropic 的 prompt caching 经验：把稳定内容（系统提示词、工具、CLAUDE.md）放前面、动态内容（对话、工具结果）放后面，前缀匹配命中缓存，延迟和成本骤降。Codex 的"diff 只发变化"是同一思想的强类型实现。
+
+所有动态片段都带一对**起止标记**（markers），比如 `<external_shell_snapshot> ... </external_shell_snapshot>`。模型只看到普通文本，但 harness 能用标记**精准反查"这是我之前注入的哪一条"**——这是后续去重、历史重放、安全裁剪的前提。把"系统注入的可信上下文"和"用户真实输入"在数据结构层面区分开，压缩时不会误删系统片段。
+
+> 实测两个入口：首轮装配与压缩后的重注入走 `build_initial_context_with_world_state`，其中调用 `world_state.render_full()`（session/mod.rs:3505）把所有 section 整段重发；稳态的每轮增量走 `record_step_world_state_if_changed`，其中调用 `world_state.render_diff(&previous_snapshot)`（session/mod.rs:2995-2996）。两条路共享同一组 section，区别只在"是否带上一轮快照"。
+
+---
+
+## 把拼装落进代码：片段契约与 WorldState
+
+### 片段契约：`ContextualUserFragment` trait
+
+所有"可注入 user/developer 消息的上下文增量"都实现同一个 trait（`context-fragments/src/fragment.rs:46`）：
+
+```rust
+pub trait ContextualUserFragment {
+    fn role(&self) -> &'static str;                 // "user" 或 "developer"
+
+    /// 是否必须独占一条响应消息
+    fn requires_separate_message(&self) -> bool { false }
+
+    fn markers(&self) -> (&'static str, &'static str);   // 起止标记
+
+    fn body(&self) -> String;
+
+    /// 类型级别的标记，供无实例时反向识别（matches_text 用）
+    fn type_markers() -> (&'static str, &'static str)
+    where Self: Sized;
+
+    /// 默认实现：用 type_markers 在历史文本里做首尾匹配
+    fn matches_text(text: &str) -> bool
+    where Self: Sized { /* matches_marked_text(start, end, text) */ }
+
+    /// 默认实现：start_marker + body + end_marker（两侧标记都为空则只发 body）
+    fn render(&self) -> String { /* … */ }
+
+    fn into(self) -> ResponseItem { /* 转成 protocol 的 Message */ }
+}
+```
+
+几个容易被忽略但很关键的设计点：
+
+-   `render()` **不自动加分隔符**。源码注释明确写道：实现方若需要标签间的空白，必须自己写进 `body()`（`fragment.rs:41-44`）。这与"把标记的精确边界交给实现者"一致——标记既是给模型看的语义边界，也是给 harness 看的定位锚。
+
+-   `type_markers()` **与** `markers()` **分离**。前者是无实例也能调用的类型级标记，供 `matches_text` 这类"拿到一段文本、判断是不是我注入的"场景使用；后者是实例级（理论上可因内容微调，但多数片段直接返回 `type_markers()`）。
+
+-   **类型擦除注册表**。`FragmentRegistration` + `FragmentRegistrationProxy<T>`（`fragment.rs:9,31`）让一个统一函数 `matches_text` 判断"这是 harness 注入的片段而非用户真实输入"，无需构造具体类型。这点对安全极重要：压缩、重放、历史裁剪都要先分清"谁写的这条"。
+
+### markers 反向查找实战：`matches_text` 如何在历史里定位"我注入的"
+
+这是原文最该补深的一处。"只发变化"和"安全裁剪"都建立在一个能力上：**给定一段历史消息文本，能判断它是否某类系统片段**。看两个真实实现。
+
+通用实现 `matches_marked_text`（`fragment.rs:121`）：
+
+```rust
+pub(crate) fn matches_marked_text(start_marker: &str, end_marker: &str, text: &str) -> bool {
+    if start_marker.is_empty() || end_marker.is_empty() {
+        return false;                       // 无标记片段永不匹配任意文本，避免误伤
+    }
+    let trimmed = text.trim_start();
+    let starts_with_marker = trimmed
+        .get(..start_marker.len())
+        .is_some_and(|c| c.eq_ignore_ascii_case(start_marker));
+    let trimmed = trimmed.trim_end();
+    let ends_with_marker = trimmed
+        .get(trimmed.len().saturating_sub(end_marker.len())..)
+        .is_some_and(|c| c.eq_ignore_ascii_case(end_marker));
+    starts_with_marker && ends_with_marker
+}
+```
+
+它做首尾前缀匹配、忽略大小写、先 `trim`——所以哪怕历史里那条消息前后被拼了空格，也认得。注意"两侧标记都为空则返回 `false`"的兜底：无标记片段（如 `AdditionalContextDeveloperFragment`）**主动声明自己不可被 markers 定位**，于是不会被误判为别的系统片段，也不会去匹配用户自由文本。
+
+而 `AdditionalContextUserFragment` 重写了 `matches_text`（`additional_context.rs:37`），因为这类片段的标记是 `<external_{key}> ... </external_{key}>` 这种带 key 的结构：
+
+```rust
+fn matches_text(text: &str) -> bool {
+    let trimmed = text.trim();
+    let Some(rest) = trimmed.strip_prefix(ADDITIONAL_CONTEXT_START_MARKER_PREFIX) else { return false; };
+    let Some((key, _)) = rest.split_once(ADDITIONAL_CONTEXT_END_MARKER_PREFIX) else { return false; };
+    value_and_close.ends_with(&format!("</external_{key}>"))
+}
+```
+
+也就是说，它先确认以 `<external_` 开头、中间出现过 `>`，再校验结尾是 `</external_{key}>`——\*\*只有 key 对得上才算"。这解释了为什么"统一 key/value + 标记识别"比"为每种来源建 enum"更利于扩展：新增一类上下文只要选个新 `key`，反向识别逻辑天然成立。
+
+这套反向查找为什么对安全关键？压缩（compact）会改写历史，但必须保证"系统注入的可信片段"不被当成可丢弃的用户聊天删掉、也不被重复重发。WorldState 在重放时正是用 `matches_retained_fragment` / `matches_legacy_fragment`（`mod.rs:387-417`）遍历保留下来的历史，判断"这条 section 的旧片段还在不在"，再决定本轮要不要重发——这正是 `matches_text` 在生产路径上的用武之地。
+
+### context-fragments crate 的角色
+
+它很"薄"，是**片段抽象层**而非"来源枚举"，只导出：trait + 注册机制 + 两个通用片段 `AdditionalContextUserFragment` / `AdditionalContextDeveloperFragment`（`additional_context.rs:10,56`）。
+
+`AdditionalContext*` 是 key/value 万能片段：`MAX_ADDITIONAL_CONTEXT_VALUE_TOKENS = 1_000` 且做**中间截断**（`additional_context.rs:5,86`）：
+
+```rust
+fn additional_context_body(key: &str, value: &str) -> String {
+    let value = truncate_middle_with_token_budget(value, MAX_ADDITIONAL_CONTEXT_VALUE_TOKENS).0;
+    format!("{key}>{value}</external_{key}")
+}
+```
+
+文件内容、目录树、命令输出、图片等都通过不同 `key`（如 `<external_shell_snapshot>`、`<external_image>`）注入。"统一 key/value + 标记识别"比"为每种来源建 enum"更利于扩展。注意 `AdditionalContextDeveloperFragment` 的标记是 `("", "")`（`additional_context.rs:77`）——它刻意放弃 markers，所以只能由其它机制（如权限 section 的 `has_retained_fragment_matcher`）去识别。
+
+> 关于"单条 ≤10K token"：源码中**未见**统一 10K 常量。有界性分散在各片段内部（AdditionalContext 1K 截断、AGENTS.md 字节截断、WorldState 只发 diff、tools 片段 4K 字节上限 `tools.rs:11`）。若别处看到 10K 说法，Codex 本仓未采纳。
+
+### 动态上下文集合：`WorldState` 与 `WorldStateSection`
+
+`WorldState`（`context/world_state/mod.rs`）是上下文工程的心脏。`WorldStateSection` trait（mod.rs:205）：
+
+```rust
+pub(crate) trait WorldStateSection: Send + Sync + 'static {
+    const ID: &'static str;                 // 持久化在 rollout 里，必须稳定
+    type Snapshot: DeserializeOwned + Serialize;
+
+    fn snapshot(&self) -> Self::Snapshot;   // 仅放"判断下轮要告诉模型什么"所需的比对数据
+
+    fn should_persist(&self) -> bool { true }          // 是否进持久化快照
+    fn matches_legacy_fragment(_role: &str, _text: &str) -> bool { false }
+    fn has_retained_fragment_matcher() -> bool { false }
+    fn matches_retained_fragment(_role: &str, _text: &str) -> bool { false }
+
+    /// 相对上一轮状态，渲染本节的增量片段（无变化返回 None）
+    fn render_diff(&self, previous: PreviousSectionState<'_, Self::Snapshot>)
+        -> Option<Box<dyn ContextualUserFragment>>;
+}
+```
+
+注释里一句很关键的话（mod.rs:200-202）："`Snapshot` should contain only the comparison data needed to decide what the model must be told next, and must not serialize to null because merge-patch nulls represent deletion." 换句话说，**快照是"给 diff 用的比对数据"，不是给人看的完整文本**；而且绝不能序列化成 null，因为 RFC 7386 里 null 就是"删除"语义（见下节）。这也是 `ErasedWorldStateSection::snapshot`（`mod.rs:78`）为什么要先 `remove_null_object_fields` 再拒绝 null。
+
+`build_world_state_for_step`（`session/world_state.rs:26`）按固定顺序把各 section 装进 `WorldState::sections`（一个 `IndexMap`，顺序即注入顺序）：
+
+```rust
+world_state.add_section(ModelInstructionsState::new(/* … */));            // model
+if features.enabled(Personality) { world_state.add_section(PersonalityState::new(/* … */)); }
+if token_budget { world_state.add_section(ContextWindowGuidanceState::new(guidance)); }
+world_state.add_section(RealtimeState::new(/* … */));
+world_state.add_section(AgentsMdState::new(step_context.loaded_agents_md.as_deref())); // :104
+if include_permissions { world_state.add_section(PermissionsState::new(/* … */)); }
+// … collaboration_mode / environments / environments_instructions /
+//    apps_instructions / plugins_instructions / tools / multi_agent_mode
+for contributor in extensions.context_contributors() {
+    for section in contributor.contribute_world_state(/* … */).await {
+        world_state.add_extension_section(section);     // 扩展 section，如 host_skills
+    }
+}
+```
+
+注意顺序本身是有意义的：`AgentsMdState::new` 在 `session/world_state.rs:104`，排在权限、工具等之前；扩展 section 还会被特殊排序——`add_extension_section`（`mod.rs:308`）里，`id == "host_skills"` 时会被 `shift_insert` 到 `PermissionsState` **之前**，确保宿主技能目录在权限提示之前可见。
+
+---
+
+## WorldStateSection 全清单：每个 section 贡献了什么
+
+这是原文最该补的深度。下面按装配顺序列出全部 13 个内置 section + 一类典型扩展，逐一给出 `ID`、贡献内容、注入 role、快照类型 / diff 行为，以及源码位置。
+
+| `ID` | 贡献内容 | 注入 role | Snapshot 类型 / diff 行为 | 行号 |
+| --- | --- | --- | --- | --- |
+| `model` | 仅当模型切换时发"模型切换指令"；不变则静默 | developer | `String`（模型名）；`model_changed` 才发 | `model.rs:25` |
+| `personality` | 仅当人格变更时发人格指令；模型内置则首轮不重发 | developer | `PersonalitySnapshot{model, personality}` | `personality.rs:63` |
+| `context_window_guidance` | token 预算将耗尽时的"该压缩了"提醒 | developer | `String`（提示语） | `context_window_guidance.rs:21` |
+| `realtime` | 实时会话开始/结束指令（开始带可选引导） | developer | `RealtimeSnapshot{active: bool}` | `realtime.rs:47` |
+| `agents_md` | 项目说明书全文（AGENTS.md） | **user** | `AgentsMdSnapshot{directory, text}` | `world_state/agents_md.rs:35` |
+| `permissions` | 权限/审批规则（来自权限档案+执行策略） | developer | `WorldStateHash`（整段指纹） | `permissions.rs:47` |
+| `collaboration_mode` | 协作模式开发者指令 | developer | `ModeKind`（枚举） | `collaboration_mode.rs:31` |
+| `environments` | 环境上下文：cwd/状态/shell/网络/文件系统/子代理 | **user** | `EnvironmentsSnapshot`（结构化） | `environment.rs:75` |
+| `environments_instructions` | 通用执行环境使用引导（开关量） | developer | `bool` | `environments_instructions.rs:19` |
+| `apps_instructions` | Apps 使用引导（有可用 App 才发） | developer | `bool` | `apps_instructions.rs:19` |
+| `plugins_instructions` | 插件使用引导（有可用插件才发） | developer | `bool` | `plugins_instructions.rs:19` |
+| `tools` | 延迟工具命名空间，逐个"新增/移除"提示 | developer | `BTreeMap<String,String>`（对象，便于逐条 patch） | `tools.rs:43` |
+| `multi_agent_mode` | 多智能体模式指令（hint ≤400 token） | developer | `Self`（整段） | `multi_agent_mode.rs:34` |
+| `host_skills`* | 宿主技能目录（扩展贡献，排在 permissions 前） | developer | 扩展 `WorldStateSectionContribution` | `mod.rs:315` |
+
+几个值得单独点出的设计权衡：
+
+-   **开关量 section（**`*_instructions`**、**`environments`**）把** `bool` **当快照**：`render_diff` 在"本就不可用 / 上一轮已知为 true / 上一轮未知但本可用"等组合下精细决定发不发（`apps_instructions.rs:38`、`plugins_instructions.rs:38`、`environments_instructions.rs:38`）。`Unknown` 分支尤其讲究——若上一轮历史里找不到该片段（`has_retained_fragment_matcher`），就按 `Absent` 处理重发；否则跳过，避免重复。
+
+-   `tools` **用对象而非字符串做快照**（`tools.rs:44` 注释直言："Object-valued entries let RFC 7386 patches add and remove namespaces individually"）。于是新增/移除某个命名空间时，merge-patch 只动那一条 key，而不是整段替换。片段本身还有 4K 字节上限，`render_diff` 对 added/removed 分别列出，超出预算的行用"N additional namespaces omitted"省略（`tools.rs:139`）。
+
+-   `permissions` **把整段渲染指纹当快照**（`permissions.rs:15,38`）：`snapshot` 字段就是 `WorldStateHash::from_fragment(&instructions)`。于是"是否变化"退化为"指纹是否相等"，`render_diff` 只比较 `previous == &self.snapshot`（`permissions.rs:70`）。这是把"去重"下沉到 section 内部的典型做法。
+
+-   `environments` **做结构化逐环境 diff**（`environment.rs:102`）：对仍存在的环境比较 cwd/状态/shell，对消失的环境发 `Unavailable`，对全局量（current\_date/timezone/network/filesystem）做整体比较。单环境且全为 Current 时走 legacy 简写路径（`is_legacy_single`），多环境才包 `<environments>` 标签。
+
+---
+
+## diff 机制的真相：RFC 7386、SHA1 指纹与 prompt caching
+
+"只发变化"不是一句口号，而是两层去重 + 一份可持久化的补丁。
+
+### 第一层：section 内部自决（`render_diff`）
+
+每个 section 拿到 `PreviousSectionState`（mod.rs:187）：`Absent`（无历史）、`Unknown`（历史里有但拿不到 typed 快照）、`Known(&T)`（精确快照）。它自己决定要不要发、发什么。多数 section 的套路是：比较当前与 `previous`，相同就 `return None`。`agents_md` 还做了更细的语义（见后文"AGENTS.md 注入"）：上一轮有说明、这轮也有，就前缀 **"These AGENTS.md instructions replace all previously provided AGENTS.md instructions."**；上一轮有、这轮没了，就发 **"The previously provided AGENTS.md instructions no longer apply."**（`world_state/agents_md.rs:9-11, 66-77`）。这种"显式声明替换/撤销"正是 diff 注入对模型友好的体现——模型不会在脑子里把新旧说明书叠在一起。
+
+### 第二层：merge-patch 快照（`WorldStateSnapshot`）
+
+每轮 `world_state.snapshot()` 把所有 section 的快照聚合成一个 `BTreeMap<ID, Value>`（mod.rs:266）。`WorldStateSnapshot::merge_patch_from` 用 RFC 7386 算法算出"从旧快照推进到新快照"的补丁（mod.rs:276）：
+
+```rust
+fn create_merge_patch(previous: &Value, current: &Value) -> Option<Value> {
+    if previous == current { return None; }          // 完全没变 → 无补丁
+    let Value::Object(current) = current else { return Some(current.clone()); };
+    let previous = previous.as_object();
+    let mut patch = Map::new();
+    if let Some(previous) = previous {
+        for key in previous.keys() {
+            if !current.contains_key(key) { patch.insert(key.clone(), Value::Null); } // 删除
+        }
+    }
+    for (key, current_value) in current {
+        let Some(previous_value) = previous.and_then(|p| p.get(key)) else {
+            patch.insert(key.clone(), current_value.clone()); continue;               // 新增
+        };
+        if let Some(value_patch) = create_merge_patch(previous_value, current_value) {
+            patch.insert(key.clone(), value_patch);                                    // 递归 diff
+        }
+    }
+    Some(Value::Object(patch))
+}
+```
+
+这条 `create_merge_patch`（`mod.rs:431`）就是 RFC 7386 的字面实现：旧有、新无的 key → `null`（merge-patch 里 null = 删除）；新增的 key → 整值；都有的嵌套对象 → 递归。补丁被包成 `WorldStateItem::patch` 记进 rollout（session/mod.rs:2992-2994），于是任意一轮都能从"基线快照 + 一串 patch"精确重建当时的上下文状态——这就是"可重放"的来源。`apply_merge_patch_value`（`mod.rs:463`）是反向操作，用于把 patch 应用到本地基线。
+
+而 `render_diff`（`mod.rs:344`）专门消费精确快照：对每个 section，若 `previous.sections` 里有该 ID 就给 `Known`，否则 `Absent`。还有第三条路径 `render_history_diff`（`mod.rs:355`）：当没有精确持久化快照、但保留下来的历史里能 `matches_retained_fragment` 找到该 section 的旧片段时，仍按 `Known` 处理；若旧片段已被压缩裁掉（`has_retained_fragment` 返回 false），则降级为 `Absent` 重发。这就是前面说的 `matches_text` 在生产路径上的真正用途。
+
+### 第三层：SHA1 指纹去重（`WorldStateHash`）
+
+某些 section（典型 `permissions`）直接把"整段渲染文本的指纹"当作快照。指纹计算（mod.rs:241）：
+
+```rust
+pub(crate) fn from_fragment(fragment: &(impl ContextualUserFragment + ?Sized)) -> Self {
+    let mut hasher = Sha1::new();
+    hasher.update(b"codex-world-state-fragment-v1\0");   // 带版本盐，避免跨格式碰撞
+    hash_component(&mut hasher, fragment.role());
+    hash_component(&mut hasher, &fragment.render());
+    Self(format!("{:x}", hasher.finalize()))
+}
+```
+
+`hash_component`（mod.rs:251）先把 `\r\n` 归一化成 `\n`，再写"长度前缀 + 字节"——长度前缀保证"AB"与"A"+"B"不会因拼接而混淆。于是：同一段权限文本 → 同一指纹 → `render_diff` 判定无变化 → 不重发；文本哪怕改一个字 → 指纹不同 → 重发。这一层去重和 merge-patch 互补：前者是"整段是否变"，后者是"结构化字段是否变"。
+
+### 为什么"只发变化"对 prompt caching 友好
+
+回到这一节的标题。Prompt caching（以 Anthropic 的经验为准）靠**前缀命中**：请求开头那一长串稳定内容如果和上一轮逐字节相同，就命中缓存、不计费不重算。Codex 的 diff 设计恰好让"稳定前缀"保持字节稳定：
+
+-   系统提示词、工具描述、`WorldState` 的首轮全量片段都在请求**靠前**位置发出；稳态时这些片段里"没变的部分"根本不重发，前缀字节纹丝不动 → 缓存命中。
+
+-   真正每轮变的是会话历史、工具结果，它们天然在**靠后**位置。
+
+-   即使 WorldState 有变化，也只追加"变化 diff"，不打乱前面的稳定前缀。
+
+证据散落在代码里：压缩时若仍超窗，会"从开头删最旧项以保缓存（前缀式）"（`compact.rs:311` 注释原文：`Trim from the beginning to preserve cache (prefix-based) and keep recent messages intact`）。`build_initial_context_with_world_state` 里 TokenBudgetContext 被 `push` 到 developer 段**末尾**、多智能体 usage hint 在它之后渲染（session/mod.rs:3503 注释：`Render the active mode after the usage hint so it can override that hint`）——这些"谁在前谁在后"的注释，都是把缓存友好与提示工程当成硬约束来排布。
+
+---
+
+## developer vs user 角色：角色即提示工程
+
+前面表格里每个 section 都标了注入 role，但"角色是谁决定的"值得点透：**角色不是装配阶段拍脑袋分的，而是每个 section 在** `render_diff` **返回的片段类型里写死的。** 比如权限用 `PermissionsInstructions`（role = developer），AGENTS.md 用 `UserInstructions`（role = user），环境用自带 `role() -> "user"`（`environment.rs:154`）。装配函数只做一件事：按 `fragment.role()` 把文本丢进对应桶。
+
+看 `build_initial_context_with_world_state` 的归桶循环（session/mod.rs:3505-3519）：
+
+```rust
+for fragment in world_state.render_full() {
+    match fragment.role() {
+        "developer"
+            if fragment.markers().0 == ModelSwitchInstructions::type_markers().0 => {
+            // 换模型指令必须排在所有 developer 上下文最前
+            developer_sections.insert(0, fragment.render());
+        }
+        "developer" if fragment.markers().0 == MULTI_AGENT_MODE_OPEN_TAG => {
+            initial_multi_agent_mode = Some(fragment);   // 暂存，稍后放在 usage hint 之后
+        }
+        "developer" => developer_sections.push(fragment.render()),
+        "user"      => contextual_user_sections.push(fragment.render()),
+        _ => {}
+    }
+}
+```
+
+这里有两条值得玩味的**排序即提示工程**的细节：
+
+1.  **模型切换指令** `insert(0, …)`：换模型的那句提示被强行插到 developer 段**最前面**，注释写"must precede the rest of the developer context"。因为模型身份变了，所有后续规则都应基于新模型理解，所以必须最先说。
+
+2.  **多智能体模式片段被暂存**：它先不进 developer 段，等 `multi_agents::usage_hint_text` 算出使用提示后，再把它放在 hint 之后渲染（session/mod.rs:3503、3538 起），让模式指令能"覆盖"通用 hint。
+
+最终三桶分别成消息（session/mod.rs:3525-3550）：`developer_sections` 合成一条 developer 消息；`separate_developer_sections`（来自 `requires_separate_message()` 为 true 的片段）每条独占一条 developer 消息；`contextual_user_sections` 合成一条 user 消息。这条"独占消息"的判定在 `merge_contextual_fragments`（updates.rs:19）：
+
+```rust
+for fragment in fragments {
+    let group = if fragment.requires_separate_message() {
+        MessageGroup::Standalone
+    } else {
+        MessageGroup::Mergeable
+    };
+    // 仅当"上一条同 role + 上一条可合并 + 本条也可合并"才并入同一条消息
+    match messages.last_mut() {
+        Some((prev_role, prev_group, sections))
+            if *prev_role == role && *prev_group == Mergeable && group == Mergeable =>
+        { sections.push(text); }
+        _ => messages.push((role, group, vec![text])),
+    }
+}
+```
+
+也就是说，可合并的同 role 片段会被**连续拼接进同一条消息**（减少消息条数、利于前缀稳定），而要求独立的片段（如某些需要被单独识别/撤回的系统提示）则独占一条。`build_developer_update_item` / `build_contextual_user_message`（updates.rs:11,15）只负责按 role 组装 `ResponseItem::Message`。
+
+> 小结："规则进 developer，背景进 user"不是注释里的一句话，而是**类型里就焊死的契约**。AGENTS.md、环境上下文作为"用户侧背景"进 user；权限、预算、模型/人格切换、模式指令作为"内部 steering"进 developer。模型对 developer 与 user 的注意力权重不同，所以角色选择本身就是提示工程。
+
+---
+
+## AGENTS.md 的发现、缓存与注入
+
+核心在 `agents_md.rs` 与 `agents_md_manager.rs`。
+
+Codex 找 AGENTS.md 的规则：
+
+```plain
+AGENTS.override.md  >  AGENTS.md  >  可配置的 fallback 文件名
+```
+
+-   从项目根（由 `project_root_markers` 上溯，默认 `.git`）一路向下到当前目录，收集所有匹配文件；
+
+-   `AGENTS.override.md` 优先于 `AGENTS.md`（本地覆盖团队约定）；
+
+-   按字节**截断**上限（默认由 `project_doc_max_bytes` 控制），防止超大文件撑爆窗口；
+
+-   结果缓存（`AgentsMdManager`），只在环境选择变化时重新扫描磁盘。
+
+具体源码：
+
+-   **发现**：`load_project_instructions`（`agents_md.rs:53`）遍历每个环境，`read_agents_md` 经 `agents_md_paths` 从项目根到 cwd 收集；候选顺序在 `candidate_filenames`（`agents_md.rs:234`）里构建：`LOCAL_AGENTS_MD_FILENAME`（`agents_md.rs:40`，即 `AGENTS.override.md`）→ `DEFAULT_AGENTS_MD_FILENAME`（`agents_md.rs:38`，即 `AGENTS.md`）→ 用户配置的 `project_doc_fallback_filenames`。并发探测上限 `MAX_CONCURRENT_ANCESTOR_PROBES = 256`（`agents_md.rs:49`），用 `.buffered(256)` 并发扫各祖先目录（agents\_md.rs:224）。
+
+-   **字节截断**：`read_agents_md`（`agents_md.rs:89`）里 `let max_total = config.project_doc_max_bytes;`（agents\_md.rs:95），逐文件 `data.truncate(remaining)` 做**中间不截断、尾部截断**，跨多文件共享同一 `remaining` 预算（agents\_md.rs:106-143），超出预算时打 warn 日志。注意 `max_total == 0` 直接返回 `None`（agents\_md.rs:97）——这是"有界性"的硬开关。
+
+-   **结构**：`LoadedAgentsMd`（`agents_md.rs:253`）持 `user_instructions` 与有序 `entries`（`InstructionProvenance::{Project, Internal}`）。多环境时 `text()` 走 `environment_labeled_text` 给每个环境打 `for \`{id}\` with root {cwd} `标签（agents_md.rs:347）；单环境走` legacy\_text`，仅在"从 user/internal 过渡到 project"时插入分隔符` AGENTS\_MD\_SEPARATOR = "\\n\\n--- project-doc ---\\n\\n"\`（agents\_md.rs:44, 333）。
+
+-   **缓存**：`AgentsMdManager`（`agents_md_manager.rs:11`）缓存 `Arc<LoadedAgentsMd>`，`refresh` 只在 `selections`（环境选择）变化时才重扫磁盘（agents\_md\_manager.rs:32-45）——**选择性失效**，避免每轮扫盘。
+
+-   **注入点**：`build_world_state_for_step` 中 `AgentsMdState::new(...)`（`session/world_state.rs:104`）把加载结果包成 `AgentsMdState`；该 section 的 `render_diff` 产出 **user 角色**片段（通过 `LoadedAgentsMd::contextual_user_fragment()`，`agents_md.rs:392`，返回 `ContextUserInstructions { directory, text }`）。即：**AGENTS.md 作为"用户侧背景"注入，而非塞进 system**。
+
+`AgentsMdState` 的 diff 语义前面提过，这里再给完整逻辑（`world_state/agents_md.rs:52-79`）：
+
+```rust
+let previous_may_contain_instructions = match previous {
+    Known(p) => p.text.is_some(),
+    Unknown  => true,           // 历史里可能有，保守假设有
+    Absent   => false,
+};
+let instructions = match (&self.instructions, previous_may_contain_instructions) {
+    (Some(i), true)  => UserInstructions { text: format!("{REPLACEMENT_NOTICE}\n\n{}", i.text), .. },
+    (Some(i), false) => i.clone(),                                  // 首次出现，无需"替换"措辞
+    (None,    true)  => UserInstructions { text: REMOVAL_NOTICE.into(), .. },
+    (None,    false) => return None,                                // 本来就没有，无需声明
+};
+```
+
+"`Unknown` 时假设历史里有"是一种**保守正确性**取舍：宁可多发一句"以下替换先前的"，也不让模型保留过期的项目约定。这是 diff 注入相对"每轮全量重发"更细腻的地方——全量重发反而容易让模型把多份说明书叠加。
+
+---
+
+## prompts crate：系统提示词的"补丁库"
+
+`prompts/src/lib.rs` 不存主系统提示词（主提示词在 `model_info.base_instructions`），而是存**可注入的指令片段与模板**（lib.rs:9-26）：
+
+| 导出 | 用途 | 源码 |
+| --- | --- | --- |
+| `APPLY_PATCH_TOOL_INSTRUCTIONS` | apply_patch 工具用法 | `apply_patch.rs:3`（`include_str!("../templates/apply_patch_tool_instructions.md")`） |
+| `SUMMARIZATION_PROMPT` / `SUMMARY_PREFIX` | 上下文压缩摘要与前缀 | `compact.rs:1-2` |
+| `continuation_prompt` / `budget_limit_prompt` / `objective_updated_prompt` | 目标驱动的长程作业 | `goals.rs:7,15,22`（`Template::parse(include_str!(…))`） |
+| `PermissionsInstructions` / `ApprovalPromptContext` | 审批/权限引导 | `permissions_instructions.rs`（含 `include_str!` 一整套 approval_policy / sandbox_mode 模板） |
+| `REVIEW_PROMPT` / `review_prompt` | 代码评审 | `review_request.rs:9` |
+| `START_INSTRUCTIONS` / `END_INSTRUCTIONS` / `BACKEND_PROMPT` | realtime 会话 | `realtime.rs` |
+
+模板用 `include_str!("../templates/...")` 内联进二进制，需参数化处经 `codex_utils_template::Template::parse(...).render(...)`（如 `goals.rs`、`permissions_instructions.rs`、`review_exit.rs` 均 `use codex_utils_template::Template`）。"指令即数据"：提示词与代码分离、可被模型消息覆盖，便于迭代与 A/B，不必改 Rust。
+
+上下文压缩由 `compact.rs` 驱动，复用 `prompts::SUMMARIZATION_PROMPT`（compact.rs:54, 122）；动态线提供窗口追踪片段 `TokenBudgetContext`（带 `thread_id / window_id`，见 session/mod.rs:3492），超限时由 `ContextWindowGuidance` 给出"该压缩了"的 developer 提示（context\_window\_guidance.rs）。压缩如何与 WorldState 联动，见下节。
+
+---
+
+## 压缩如何与 WorldState 联动
+
+压缩（compact）不是"把历史清空重来"，而是"改写历史 + 重置 WorldState 基线"，让下一轮自然回到全量重发。
+
+机制在 `compact.rs` 的 `run_compact_task_inner_impl`：它算出摘要文本，构造替换历史 `new_history`，然后决定要不要把"规范初始上下文"重新注入（compact.rs:361-366）：
+
+```rust
+let (initial_context, world_state_baseline) =
+    build_compaction_initial_context(sess.as_ref(), &initial_context_injection).await;
+if !initial_context.is_empty() {
+    new_history = insert_initial_context_before_last_real_user_or_summary(new_history, initial_context);
+}
+```
+
+关键在于 `InitialContextInjection` 这个枚举（compact.rs:67）：
+
+-   `DoNotInject`（预回合/手动压缩）：替换历史时把 `reference_context_item` 置 `None`、且 `world_state_baseline` 为 `None`（compact.rs:103, 367-372）。注释明说："the next regular turn will fully reinject initial context after compaction."
+
+-   `BeforeLastUserMessage`（回合中途压缩）：因为模型被训练成"压缩摘要应出现在历史最后一条真实用户消息之后"，所以把初始上下文注入到该用户消息之前（compact.rs:564 `insert_initial_context_before_last_real_user_or_summary`，按"最后真实用户消息 > 最后摘要 > 最后 compaction 项"的优先级选插入点）。
+
+无论哪种，下一轮 `record_step_world_state_if_changed`（mod.rs:2981）会重新 `build_world_state_for_step` 并 `snapshot()`。由于压缩后历史里**没有上一轮的 WorldState 基线**（`world_state_baseline` 为 `None` 或被 `set_world_state_baseline` 清空，mod.rs:3007），`render_diff(&previous_snapshot)` 拿到的 `previous` 为空 → 等价于 `render_full`：**所有 section 整段重发**，模型重新拿到完整的环境、权限、AGENTS.md 等背景。这正是"基线清空 → 下一轮全量重发"的字面含义。
+
+还有一个缓存细节：压缩本身若触发 `ContextWindowExceeded`（`compact.rs:309`），会从**开头**删最旧项（`history.remove_first_item()`）以"preserve cache (prefix-based)"——再次印证前缀稳定是贯穿全流程的硬约束。压缩后 harness 还会发一条警告："长线程与多次压缩会降低准确性，尽量开新线程"（compact.rs:388-391），这是对"上下文腐烂"的工程化兜底。
+
+---
+
+## 与 Claude Code / CLAUDE.md 对照
+
+| 维度 | Codex（AGENTS.md） | Claude Code（CLAUDE.md） |
+| --- | --- | --- |
+| 注入通道 | **user 角色**片段（背景） | 主要进 **system prompt** |
+| 多目录层次 | 项目根→cwd 全量拼接，环境标签分隔；`override > 默认 > fallback` | 各级 CLAUDE.md 沿路径叠加/import |
+| 增量机制 | `WorldState` 的 section diff + RFC 7386 merge-patch + SHA1 指纹 | 主要靠全量重读，上下文隔离靠子 agent |
+| 角色分离 | developer（规则/预算/steering）与 user（背景）在类型里焊死 | system（项目知识）与对话分离 |
+| 压缩 | `compact` + 摘要提示 + 窗口追踪；基线清空后 `render_full` 重发 | `/compact` + 子 agent 隔离上下文 |
+| 扩展 | 扩展 section 经 `add_extension_section` 接入（如 `host_skills` 插到 permissions 前） | 插件/钩子扩展 |
+
+**共识**：上下文窗口是 agent 的"工作记忆"，要像管理状态一样主动设计。Codex 用 `WorldState` 的 diff 把它工程化进类型系统；Claude Code 更依赖 CLAUDE.md + 子 agent 的上下文隔离。殊途同归：都把"喂什么"当一等公民。
+
+---
+
+## 可迁移经验
+
+1.  **把上下文当"状态"而非"字符串"**：为动态上下文设计结构化快照，可 diff（`render_diff`）、可重放（merge-patch rollout）、可去重（`WorldStateHash`），远胜每次拼一大坨文本。
+
+2.  **用 markers 让片段能被反向识别**：`matches_text` 在历史里精准定位"这是我注入的"——安全裁剪、历史重放、避免重复注入的前提。无标记片段主动声明不可被定位（`additional_context.rs:77`），避免误伤。
+
+3.  **三层去重各管一段**：section 内部自决（`render_diff` 返回 `None`）、结构化快照 merge-patch（跨轮补丁）、整段 SHA1 指纹（如 `permissions` 把指纹当快照）。不要只靠其中一种。
+
+4.  **有界性落在片段内部，而非依赖全局上限**：AdditionalContext 1K 截断、AGENTS.md 字节截断、WorldState 只发 diff、tools 4K 上限，更可控。
+
+5.  **user / developer 角色分离是提示工程，且应焊进类型**：规则进 developer，背景进 user；角色由片段 `role()` 决定，装配只分桶。
+
+6.  **排序即提示工程**：模型切换指令 `insert(0)` 置顶、多智能体指令置于 usage hint 之后、TokenBudgetContext 置 developer 段尾——谁前谁后都有注释依据，且都为了前缀缓存稳定。
+
+7.  **压缩 = 改写历史 + 清基线，不是清空重来**：基线清空后下一轮自然 `render_full` 重发；重注入位置按"最后真实用户消息"精确放置；裁剪从开头删以保缓存。
+
+8.  **项目记忆可发现性 = 约定文件名 + 清晰层级 + 缓存失效策略**：`override > 默认 > fallback`、`project_root_markers` 上溯、按环境选择缓存，都是可复用套路。
+
+9.  **提示词与代码分离**：模板 + `include_str!` 管理指令，便于迭代，不必改 Rust。
+
+> 一句话：在 coding agent 里，"模型"决定下限，"上下文工程"决定上限。Codex 用 `ContextualUserFragment` + `WorldState` 把上下文工程做成可验证、可重放、强类型的子系统——这是它最值得借鉴的架构纪律。
+
+---
+
+## 自测题（检验你是否真懂）
+
+1.  用"工作台面"类比解释：为什么上下文窗口满了，模型性能会下降？
+
+2.  静态装配线和动态装配线分开，最大的好处是什么？（提示：prompt caching 与 `render_full` / `render_diff` 两个入口）
+
+3.  "只发 diff 不发全量"在 Codex 里有几层去重？分别由什么机制实现？（提示：section 自决 / merge-patch / SHA1 指纹）
+
+4.  `matches_text` 如何在一段历史文本里判断"这是不是我注入的片段"？为什么 `AdditionalContextDeveloperFragment` 的标记是空字符串？这对安全有什么意义？
+
+5.  `WorldStateSnapshot::merge_patch_from` 用的是什么算法？为什么快照里不能出现 null？`create_merge_patch` 对"旧有、新无"的 key 填什么值？
+
+6.  `permissions` section 为什么把 `WorldStateHash` 当快照？`tools` section 为什么用 `BTreeMap` 而非字符串？这两个选择各解决什么问题？
+
+7.  角色（developer / user）是谁在什么时候决定的？`build_initial_context_with_world_state` 的归桶循环里，哪两类 developer 片段被特殊排序？为什么？
+
+8.  压缩后为什么下一轮会自动全量重发 WorldState？`InitialContextInjection` 的两种取值分别如何影响"重注入位置"？
+
+9.  Codex 把 AGENTS.md 注入 user 角色、Claude Code 把 CLAUDE.md 放进 system，这两种取向各有什么权衡？
+
+---
+
+## 延伸阅读（结合网络讲解）
+
+-   **Effective Context Engineering for AI Agents**（"最小的、高信号 token 集合"原则）：cc.deeptoai.com/docs/en/best-practices/effective-context-engineering-for-ai-agents
+
+-   **Claude Code 最佳实践**（CLAUDE.md 怎么写、context window 是头号资源、给 agent 验证方式）：code.claude.com/docs/zh-CN/best-practices
+
+-   **Lessons from building Claude Code: Prompt caching is everything**（静态在前动态在后、别中途改 prompt）：claude.com/blog/lessons-from-building-claude-code-prompt-caching-is-everything
+
+-   **Context Engineering for Claude: How to Train It on Your Codebase**（CLAUDE.md 定位、上下文预算、质量自测）：claudeguide.io/context-engineering-claude
+
+-   **ReAct 论文**（上下文工程的"行动-观察"思想源头）：Yao et al., 2022
+
+-   **RFC 7386 – JSON Merge Patch**（Codex WorldState 快照 diff 的底层算法）：tools.ietf.org/html/rfc7386
+
+---
+
+## 关键符号速查
+
+| 符号 | 位置 |
+| --- | --- |
+| `ContextualUserFragment` trait | `codex-rs/context-fragments/src/fragment.rs:46` |
+| `FragmentRegistration` / `FragmentRegistrationProxy<T>` | `codex-rs/context-fragments/src/fragment.rs:9,31` |
+| `matches_marked_text` | `codex-rs/context-fragments/src/fragment.rs:121` |
+| `AdditionalContextUserFragment` / `AdditionalContextDeveloperFragment` | `codex-rs/context-fragments/src/additional_context.rs:10,56` |
+| `MAX_ADDITIONAL_CONTEXT_VALUE_TOKENS` | `codex-rs/context-fragments/src/additional_context.rs:5` |
+| `WorldStateSection` trait | `codex-rs/core/src/context/world_state/mod.rs:205` |
+| `WorldStateHash::from_fragment` (SHA1) | `codex-rs/core/src/context/world_state/mod.rs:241` |
+| `WorldStateSnapshot::merge_patch_from` / `create_merge_patch` | `codex-rs/core/src/context/world_state/mod.rs:276,431` |
+| `render_full` / `render_diff` / `render_history_diff` | `codex-rs/core/src/context/world_state/mod.rs:339,344,355` |
+| `add_extension_section`（`host_skills` 排序） | `codex-rs/core/src/context/world_state/mod.rs:308` |
+| `build_world_state_for_step` | `codex-rs/core/src/session/world_state.rs:26` |
+| `AgentsMdState::new` | `codex-rs/core/src/session/world_state.rs:104` |
+| `merge_contextual_fragments` | `codex-rs/core/src/context_manager/updates.rs:19` |
+| `record_step_world_state_if_changed`（`render_diff` 调用点） | `codex-rs/core/src/session/mod.rs:2981,2995` |
+| `build_initial_context_with_world_state`（`render_full` 调用点） | `codex-rs/core/src/session/mod.rs:3336,3505` |
+| `load_project_instructions` / `read_agents_md` / `agents_md_paths` | `codex-rs/core/src/agents_md.rs:53,89,155` |
+| `candidate_filenames`（`override > 默认 > fallback`） | `codex-rs/core/src/agents_md.rs:234` |
+| `MAX_CONCURRENT_ANCESTOR_PROBES` | `codex-rs/core/src/agents_md.rs:49` |
+| `LoadedAgentsMd` / `contextual_user_fragment` | `codex-rs/core/src/agents_md.rs:253,392` |
+| `AgentsMdState`（`REPLACEMENT_NOTICE` / `REMOVAL_NOTICE`） | `codex-rs/core/src/context/world_state/agents_md.rs:9,35` |
+| `AgentsMdManager`（`refresh` 按环境选择失效） | `codex-rs/core/src/agents_md_manager.rs:11,32` |
+| `build_prompt` | `codex-rs/core/src/session/turn.rs:1148` |
+| `capture_step_context` | `codex-rs/core/src/session/turn.rs:188` |
+| `SUMMARIZATION_PROMPT` / `Template` 渲染 | `codex-rs/prompts/src/lib.rs:10`；`codex-rs/prompts/src/goals.rs:7` |
+| `InitialContextInjection` / 压缩基线清空 | `codex-rs/core/src/compact.rs:67,361` |
+| `insert_initial_context_before_last_real_user_or_summary` | `codex-rs/core/src/compact.rs:564` |
+{% endraw %}

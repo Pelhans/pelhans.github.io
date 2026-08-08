@@ -1,0 +1,15 @@
+---
+title: "1.2_向量化召回"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, NEXT, 4._酒店业务, 1._酒店召回优化]
+categories: [NEXT]
+yuque: true
+---
+
+{% raw %}
+1.  q2i 召回
+2.  u2i 召回
+3.  i2i 召回
+{% endraw %}

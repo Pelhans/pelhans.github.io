@@ -1,0 +1,106 @@
+---
+title: "论文解读：More Agents Is All You Need（2024）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版), Agent_Harness_重要论文解读_·_索引]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# 论文解读：More Agents Is All You Need（2024）
+
+> 一句话总结：本文发现用"采样 N 个独立 agent + 投票（Agent Forest）"这种极简方法，LLM 性能会随 agent 数量单调提升，且该方法与现有复杂技巧正交——换句话说，"用更多 agent 换算力"可以成为放大模型能力的通用杠杆。
+
+## 1\. 背景与动机
+
+LLM 单次生成有采样方差，答案质量不稳定。自洽性（Self-Consistency, Wang et al. 2023）已在链式推理里证明"多采样取多数"有效，但那局限于推理题。当时社区的主流信念是"要更强就得更大模型"。本文想把这一思想推广到更一般的问题：能否仅仅通过"实例化更多 agent 并投票"，就在广泛任务上系统地提升性能？如果能，那"agent 数量"就成为一种可购买的、正交于模型权重的能力缩放维度。
+
+## 2\. 核心问题
+
+1.  LLM 性能是否会随 agent（ensemble）数量的增加而稳定提升？提升是否单调？
+
+2.  这种"采样-投票"方法是否与 Chain-of-Thought、自我反思、工具调用等现有增强技巧正交、可叠加？
+
+3.  弱模型 + 大量 agent，能否在总体表现上超过单个强模型？
+
+## 3\. 方法与架构
+
+方法名为 **Agent Forest**：把同一个任务交给 N 个互相独立、仅随机种子/提示不同的 agent 副本，各自产生一个答案，最后用\*\*多数投票（majority vote）\*\*聚合。agent 之间不通信、不辩论。
+
+```plain
+        任务
+         │
+   ┌─────┴─────┬──────┬──────┬─────┐
+   ▼           ▼      ▼      ▼     ▼
+ Agent_1    Agent_2  ...  Agent_N     (独立采样，仅种子不同)
+   │           │      │      │
+   a1          a2     ...    aN
+   └─────┬─────┴──────┴──────┘
+         ▼
+   Majority Vote（多数投票）→ 最终答案
+```
+
+其有效性有统计基础：当各 agent 独立且单 agent 准确率 p > 0.5 时，多数投票的错误率随 N 增大指数下降（Condorcet 陪审团定理）。关键在于"独立"与"略优于随机"两个前提。论文强调该方法与 CoT、Reflection、ToT 等正交，可叠加使用。
+
+## 4\. 关键实验与结论
+
+在 GPT-3.5/4、Llama-2-13B/70B 等多模型、多基准（GSM8K、HumanEval、MMLU、翻译、网页浏览等）上验证，ensemble size 最大到 40：
+
+-   **GSM8K（数学推理）**：Llama-2-70B 单 agent **54%** → 40 agent **74%**；当 ensemble size 达到 15 时，Llama-2-70B 已与单 agent 的 GPT-3.5-Turbo（73%）相当。
+
+-   **HumanEval（代码生成）**：Llama-2-70B 单 agent **24%** → 40 agent **33%**；GPT-3.5-Turbo **67%** → **73%**。
+
+-   **弱胜强（关键结论）**：增强后的 Llama-2-13B × 40 agent 在 GSM8K 上达到 **59%**，超过单 agent 的 Llama-2-70B（**54%**）。即"更多弱 agent"可以打败"单个强 agent"。
+
+-   **统计显著性**：对 ensemble size ∈ {1,10,20,30,40} 做单因素 ANOVA，p 值均 < 0.05，确认性能随数量上升并非噪声。
+
+## 5\. 贡献与创新点
+
+-   提出了一条**通用的 LLM 性能缩放定律**：性能随 agent 数量单调上升，且与模型规模、任务类型无关地成立。
+
+-   方法极简（采样 + 投票），无需训练、无需 agent 间通信，且与所有现有 prompt 工程技巧正交、可叠加。
+
+-   提供了"用推理算力替代模型参数"的实证：为"小模型大 ensemble"的低成本部署路线打开想象空间，是后续大量"采样缩放 / test-time compute"工作的铺垫。
+
+## 6\. 局限与争议 / 后续工作
+
+-   **成本线性增长**：40 个 agent 意味着约 40 倍推理开销；在困难任务上增益会衰减（论文 6.2 节承认高固有难度时收益递减）。
+
+-   **独立性假设脆弱**：若 agent 高度相关（同一提示、同一失败模式），多数投票会"集体翻车"（groupthink）。这正是后续工作指出的协调/选择瓶颈（见 When Agents Disagree）。
+
+-   **只适用于有客观正确答案的离散任务**：开放生成、偏好类任务难以简单投票。
+
+-   后续：Self-Consistency 的扩展、Mixture-of-Agents（arXiv:2406.04692）、Rethinking MoA（arXiv:2502.00674）、以及本文集第 3、4 篇对其"无条件缩放"结论的修正。
+
+## 7\. 与 Agent Harness 的关系
+
+Agent Forest 给 harness 工程师一个**随手可用的可靠性旋钮**：把"并行采样 + 聚合"作为标准能力暴露出来。
+
+1.  **把 ensemble size 设计成可调参数**：对推理/代码等有标准答案的任务，默认开 N 路并行 + 多数投票，用算力换准确率；但要显式核算成本。
+
+2.  **保证 agent 多样性与独立性**：避免所有副本共享同一提示与失败路径，否则投票退化为单点失败；可微调 prompt、温度、种子来制造独立误差。
+
+3.  **开放生成任务改用"选择"而非"投票"**：当没有唯一正确答案时，多数投票失效，应改为"生成多个候选 + 选择器挑最优"（见 when-agents-disagree.md 的选择瓶颈），与本文互补。
+
+## 8\. 原文与资源
+
+-   论文（arXiv）：[https://arxiv.org/abs/2402.05120](https://arxiv.org/abs/2402.05120)
+
+-   代码仓库（AgentForest）：[https://github.com/MoreAgentsIsAllYouNeed/AgentForest](https://github.com/MoreAgentsIsAllYouNeed/AgentForest)
+
+-   PDF 原文：[https://arxiv.org/pdf/2402.05120](https://arxiv.org/pdf/2402.05120)
+
+## 9\. BibTeX
+
+```plain
+@article{li2024more,
+  title={More Agents Is All You Need},
+  author={Li, Junyou and Zhang, Qin and Yu, Yangbin and Fu, Qiang and Ye, Deheng},
+  journal={arXiv preprint arXiv:2402.05120},
+  year={2024},
+  note={Published at Transactions on Machine Learning Research (TMLR)}
+}
+```
+{% endraw %}

@@ -67,3 +67,58 @@
     - title: David Silver 强化学习
       prefix: [deepRL-ch, deepRL]
       tag: [Reinforment Learning]
+
+# ===== 语雀备份导入（来自 /Users/pelhans/Downloads/语雀备份）=====
+- slug: yuque-computer
+  title: 计算机
+  icon: "💻"
+  desc: 来自语雀备份：计算机相关知识与笔记
+  groups:
+    - title: 传统机器学习
+      tag: [传统机器学习]
+    - title: 大模型
+      tag: [大模型]
+    - title: 技术调研
+      tag: [技术调研]
+    - title: 杂
+      tag: [杂]
+    - title: 深度学习
+      tag: [深度学习]
+    - title: 知识图谱
+      tag: [知识图谱]
+    - title: 编程
+      tag: [编程]
+    - title: 未分类
+      tag: [语雀]
+
+- slug: yuque-physics
+  title: 物理
+  icon: "🔭"
+  desc: 来自语雀备份：物理学习笔记
+  groups:
+    - title: 数学物理方法
+      tag: [数学物理方法]
+    - title: 其它
+      tag: [物理]
+    - title: 粒子物理导论
+      tag: [粒子物理导论]
+    - title: 未分类
+      tag: [语雀]
+
+- slug: yuque-next
+  title: NEXT
+  icon: "🚀"
+  desc: 来自语雀备份：NEXT 工作笔记
+  groups:
+    - title: 八股文
+      tag: [1._八股文]
+    - title: 地标业务
+      tag: [3._地标业务]
+    - title: 酒店业务
+      tag: [4._酒店业务]
+    - title: 大模型项目
+      tag: [5._大模型项目]
+    - title: 其它
+      tag: [NEXT]
+    - title: 未分类
+      tag: [语雀]

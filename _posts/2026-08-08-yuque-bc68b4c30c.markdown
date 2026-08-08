@@ -1,0 +1,445 @@
+---
+title: "SUSY 理论进展综述（2023–2026）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 物理, 粒子物理导论, CERN_2026年1–7月_arXiv_产出深度拆解_粒子物理全景与超对称专题]
+categories: [物理]
+yuque: true
+---
+
+{% raw %}
+# SUSY 理论进展综述（2023–2026）
+
+> 覆盖时间：2023 年初至 2026 年夏（约三年半）。  
+> 范围：超对称（SUSY）/超引力（SUGRA）的**理论**进展——现象学与自然性、超对称破缺、R 宇称破坏、超引力与宇宙学、引力微子与轴子、弦紧致化与 Swampland，以及形式理论（振幅、可积性、天琴全息、规范理论对偶、共形自举）。  
+> 资料来源：arXiv 预印本、INSPIRE-HEP、JHEP/PRD/JCAP 等期刊记录，经摘要页逐条核对。每条均附 arXiv 编号（少数已见刊但无确认 arXiv 号的论文在正文注明）。
+
+---
+
+## 0\. 这一时期的总基调
+
+2023–2026 年的 SUSY 理论，呈现出一条清晰的"收缩—重构—转向"主线：
+
+-   **参数空间在收紧，但远未关闭。** LHC 的直接搜索与 LZ、Fermi 等间接实验把传统 wino/higgsino 暗物质窗口逼到极限，却也反向催生了"怎样才算自然"的判据重估。
+
+-   **自然性从口号变成可计算的统计问题。** Baer 等人把电弱精细调节判据与弦景观的统计权重结合，论证景观其实*偏好*电弱自然模型，而非 split SUSY。
+
+-   **超对称成为量子引力的"探针"而非仅是 BSM 粒子。** de Sitter 构造、Swampland、引力微子质量下限、以及"由正性自举出超引力"等形式结果，把 SUSY 与量子引力一致性牢牢绑在一起。
+
+-   **形式理论迎来"从猜想走向定理"的收获期。** amplituhedron 的 BCFW 剖分、fishnet 积分的 Calabi–Yau 几何、双拷贝的离壳代数化，纷纷在三年间被严格证明。
+
+下面按子领域展开。
+
+---
+
+## 1\. 自然性、超对称破缺与现象学约束
+
+### 1.1 自然性判据的重构与弦景观
+
+-   `[2305.16125]` Baer, Barger, Martinez, Salam — *On practical naturalness and its implications for weak scale supersymmetry*. => 系统比较 ΔEW / EENZ-BG / 高标度 / stringy 四类自然性判据，指出后三者对精细调节的高估可达 1000 倍以上，主张以 ΔEW 为准。
+
+-   `[2402.17859]` Baer, Barger, Martinez, Salam — *Weak scale supersymmetry emergent from the string landscape*. (Entropy, Frampton 80 寿辰专刊) => 景观中软项的幂律分布加"原子原理"人择选择，使电弱自然模型的参数体积远大于 split/high-scale SUSY，从而统计上更可能出现。
+
+-   `[2405.00872]` Baer — *Beyond the Standard Model: An overview*. (会议综述) => 重估电弱精细调节后允许 higgsino 类 LSP 与远超 LHC 现有限制的自然性上界；景观预言 m\_h≈125 GeV 伴随超出当前限制的超粒子。
+
+-   `[2507.03073]` Greljo, Stefanek, Valenti — *Cornering Natural SUSY at a Tera-Z Factory*. => FCC-ee 的 Tera-Z 电弱精确观测量对重 Higgs 二重态、stop、轻规范微子/higgsino 的间接灵敏度系统性优于 Mega-h 运行。
+
+-   `[2601.01066]` K. Zhang — *Supersymmetry at High Luminosity LHC*. => 以弱标度判据重述电弱自然性 + stringy naturalness，给出 NUHM 模型下 HL-LHC 对 higgsino/stop/重 Higgs 的更新覆盖。
+
+-   `[2604.04687]` — *Natural supersymmetry with axion/axino mixed dark matter*. => 自然超对称框架中引入轴子–轴微子混合暗物质，缓解纯 higgsino 暗物质被 LZ 压低的困境。
+
+-   `[2607.04250]` — *Minimal supersymmetric SO(10) GUT: updated constraints*. => 在最新 Higgs 质量与质子衰变限制下更新最小超对称 SO(10) 大统一的可行性。
+
+-   `[2607.05648]` — *Can the LZ limit save Higgsino dark matter blind spots?* => 检验 LZ-2024 限制下 higgsino 暗物质的"盲点"能否在修正的微分散射截面下存活。
+
+-   `[2607.20588]` — *NLO corrections to Higgsino–nucleon scattering: cancellations revisited*. => 在单圈阶重新审视 higgsino–核子散射中的相消结构，给出更精确的直接探测截面。
+
+### 1.2 超对称破缺机制：反常媒介、规范媒介及其变体
+
+-   `[2311.18120]` Baer, Barger, Bolich, Dutta, Sengupta — *Natural anomaly mediation from the landscape with implications for LHC SUSY searches*. PRD 109, 035011 (2024). => 通过非普适 bulk Higgs 软质量与 A 项"改造"AMSB 得到 nAMSB：wino 最轻规范微子但 higgsino 为最轻 EWino，m₃/₂≈90–200 TeV 窗口在 HL-LHC 可完全检验。
+
+-   `[2408.03276]` Baer, Barger, Bolich, Dutta, Sengupta — *Minding the gap: testing natural anomaly-mediated SUSY breaking at high luminosity LHC*. => 低 m₃/₂ 被 gluino 对产生排除、高 m₃/₂ 被 boosted 强子 wino 衰变排除，中间"gap"由 SSdB+MET 等道在 HL-LHC 全覆盖。
+
+-   `[2408.02048]` Baer, Barger, K. Zhang — *Decoding the gaugino code, naturally, at high-lumi LHC*. (Particles 7, 2024, 927) => 统一型 / AMSB 型 / mirage 型三种规范微子质量范式在 m(ℓℓ̄)–m(wino) 平面上占据可区分区域，HL-LHC 的软 OS 双轻子+jets+MET 可"解码"。
+
+-   `[2411.09650]` Ghosh, Huitu, Sahu — *Revisiting the LHC Constraints on Gauge-Mediated Supersymmetry Breaking Scenarios*. => 指出 ATLAS 单光子搜索在 GGM 上的解释依赖于对 gravitino 末态分支比的假设，重新解释后 gluino–NLSP 平面限制显著改变。
+
+-   `[2412.17777]` Batell, Y. Kim, H.-S. Lee, J. Lee — *Dark gauge-mediated supersymmetry breaking with a massless dark photon*. JHEP 05 (2025) 052. => U(1)\_D 动能混合传递使 Higgs 软质量位移、降低 μ 并给出可及 LHC 的轻 higgsino，外加分数电荷稳定信使。
+
+-   `[2409.06239]` Evans, Shigekami — *Proton Lifetime in Minimal Supersymmetric SU(5) with Gauge Mediation*. => 在 O(10³) TeV 信使标度下同时满足 m\_h=125 GeV 与现有质子衰变限制，p→K⁺ν̄ 寿命处于下一代实验可及范围。
+
+-   `[2502.07539]` Takeuchi, Yokozaki, J. Zhu — *Neutralino dark matter in gauge mediation*. => 五维 brane 分离的 GMSB 中，m₃/₂∼O(100) TeV 时 neutralino 可作 LSP 暗物质，给出 bino-wino 共湮灭 / higgsino / wino / 熵稀释 bino 四类可行区间。
+
+### 1.3 Gaugino / higgsino 唯象、压缩谱与自然 SUSY
+
+-   `[2403.19598]` S. P. Martin — *Implications of purity constraints on light higgsinos*. => 在标量退耦极限下把直接探测转化为规范微子质量下限与 higgsino 质量劈裂上限；并指出 LHC 软轻子道的轻微超出可在小 tanβ、μ<0 时容纳。
+
+-   `[2401.14046]` ATLAS Collaboration — *Search for Nearly Mass-Degenerate Higgsinos Using Low-Momentum Mildly Displaced Tracks*. PRL 132, 221801 (2024). => 首次自 LEP 以来排除 Δm=0.3–0.9 GeV 的 higgsino 劈裂区间，质量上至约 170 GeV。
+
+-   `[2402.01392]` ATLAS Collaboration — *ATLAS Run 2 searches for electroweak production of supersymmetric particles interpreted within the pMSSM*. JHEP 05 (2024) 106. => 八项 140 fb⁻¹ 搜索在 19 参数 pMSSM 中的联合解释：Higgs/Z"漏斗区"几乎被完全排除。
+
+-   `[2405.11271]` H. Zhou, N. Liu — *Search for nearly degenerate higgsinos via photon fusion with the semileptonic channel at the LHC*. => 利用 γγ 融合+前向质子标记，3 ab⁻¹ 下对 Δm 仅数 GeV 的 chargino 可排除至约 295 GeV，显著优于常规压缩谱搜索。
+
+-   `[2602.09187]` Baer, Barger, K. Zhang — *pMSSM versus complete models and the excellent prospects for top-squark discovery at HL-LHC*. => 批评 pMSSM 解释引入的隐含偏见，主张 NUHM4；退耦解决 flavor/CP 问题后自然解典型给出 1–2 TeV top squark，HL-LHC 可近乎完整扫描。
+
+### 1.4 Split / mini-split SUSY 与 R 对称性
+
+-   `[2507.16246]` Okada, Shafi — *Split supersymmetry and hybrid inflation in light of Atacama Cosmology Telescope DR6 data*. => μ 项混合暴胀预言 n\_s 与 ACT DR6 高度一致，r ≲10⁻²–10⁻³，需 T\_r ≳10¹² GeV 因而要求 split SUSY，暗物质为约 2 TeV wino 类 LSP。
+
+-   `[2503.08830]` Ayber, Chowdhury, Ipek — *Leptogenesis and Neutrino Masses Via Pseudo-Dirac Gauginos*. PRD (2026 接收). => U(1)\_{R−L} 对称模型中赝 Dirac bino/wino 充当右手中微子，bino–反bino 振荡同时产生重子不对称与 Type I+III 反跷跷板中微子质量，伴随 LHC 位移顶点信号。
+
+### 1.5 SUSY 暗物质的多面收窄
+
+-   `[2412.08958]` S. P. Martin — *The curtain lowers on directly detectable higgsino dark matter*. => 用 LZ-2024 限制定量给出 higgsino 暗物质的"纯度"要求，并外推至中微子雾（neutrino fog）情形下的规范微子质量下限。
+
+-   `[2507.15934]` Safdi, W. L. Xu — *Wino and Real Minimal Dark Matter Excluded by Fermi Gamma-Ray Observations*. => 14 年 Fermi 银心连续谱数据在标准宇宙学下排除 n<9 的零超荷极小暗物质，**包括热 wino**，即使采用极保守的 DM 密度轮廓。
+
+-   `[2410.18205]` Bisal, Chatterjee, Das, Pasha — *Radiative corrections to the direct detection of Higgsino- and wino-like neutralino DM: spin-dependent interactions*. PRD 111, 083003 (2025). => χ⁰₁χ⁰₁Z 顶点的单圈修正对 higgsino 类可达 +120%，自旋相关截面变化可达 50%。
+
+-   `[2408.16043]` Eberl, Gialamas, Spanos — *Gravitino Thermal Production, Dark Matter, and Reheating of the Universe*. JCAP 01 (2025) 079. => 超出硬热圈近似的完整单圈 gravitino 热产生率；m₃/₂≈1 TeV 全暗物质要求 T\_reh ≲10⁹ GeV（M₁/₂=10 TeV 时降至 10⁷ GeV）。
+
+-   `[2408.10585]` Guo, Deng, Han, Lei — *Probing Non-Thermal Gravitinos Through Large-Scale Structure Observations*. PRD 111, 055014 (2025). => SDSS LRG 大尺度结构数据排除 neutralino 衰变产生的 super-WIMP gravitino 情形下 m\_χ ≲25 GeV 的 bino，且几乎与 gravitino 质量无关。
+
+-   `[2512.12457]` Bhattiprolu, S. P. Martin, Wells — *Chasing higgsino dark matter at colliders in the neutrino fog era*. (2025-12) => 在 wino 被 Fermi 排除后，higgsino 成为最后的极小 WIMP 情形；主张用 stop 对与 wino 对衰变到 higgsino 的级联（额外轻子/喷注可触发）作为补充探针。
+
+-   `[2602.14088]` X. Wang, Abdughani — *Current status and prospects of light bino-higgsino dark matter in natural SUSY*. => ΔEW<30 下 |μ|∈[100,350] GeV，存活参数空间中 neutralino 至多贡献约 2% 的暗物质丰度，其余留待 HL-LHC。
+
+---
+
+## 2\. R 宇称破坏（RPV）与长寿命粒子
+
+-   `[2306.07317]` Dreiner, Koay, Köhler, Martín Lozano, Montejo Berlingen, Nangia, Strobbe — *The ABC of RPV: classification of R-parity violating signatures at the LHC for small couplings*. JHEP 07 (2023) 215. => 对单一主导三线性算符做全分类：LLĒ 6 类、LQD̄ 6 类、ŪD̄D̄ 5 类信号，完整覆盖 RPV-MSSM 图景；LLĒ 情形限制不弱于 RPC。
+
+-   `[2503.03830]` Dreiner, Hank, Koay, Schürmann, Sengupta, Shah, Strobbe, Thomson — *The ABC of RPV II: UDD Couplings and their Coverage at the LHC*. JHEP 06 (2025) 258. => 重子数破坏算符的系统重铸（CheckMATE 2）：有色 LSP 覆盖良好（gluino LSP 限制最强），但 electroweakino/slepton LSP 经 UDD 衰变的覆盖存在明显空白。
+
+-   `[2402.04040]` Choudhury, A. Mondal, S. Mondal — *Status of R-parity violating SUSY*. Eur. Phys. J. ST 233 (2024) 2187. => 综述：从中微子物理、(g−2)\_μ、味观测量与对撞机四方面汇总双线性与三线性 RPV 耦合的最新状态，含长寿命粒子与 HL-LHC/HE-LHC 展望。
+
+-   `[2411.08112]` Choudhury, Mitra, A. Mondal, S. Mondal — *Markov chain Monte Carlo analysis to probe trilinear RPV SUSY scenarios and possible LHC signatures*. PRD 112 (2025). => MCMC 联合拟合中微子振荡+Higgs+味观测量，得到 λ\_{i33}、λ′\_{j33} ≲10⁻⁴ 且 tanβ<15。
+
+-   `[2509.09062]` Bittar, Roy, Wagner — *R-parity violation and 8 TeV four-jet events at the LHC*. => 将 CMS 两例 8 TeV 四喷注事件解释为单一重子数破坏耦合下的右手第一代 squark 对，受 n–n̄ 振荡与双核子衰变约束但仍自洽。
+
+-   `[2602.06957]` Barman, Choudhury, Sarkar — *Revisiting the Electroweakino Sector of the Baryon Number Violating MSSM at the HL-LHC with Deep Neural Networks*. => λ″₁₁₂/λ″₁₁₃ 算符下用 MLP 分类器，HL-LHC 对 wino 的覆盖可达约 900 GeV。
+
+-   `[2605.21065]` — *Single-photon far-detector signals of light long-lived neutralinos in RPV*. => 轻长寿命中性微子在 ANUBIS 等远区探测器中的单光子信号，是该通道中最灵敏的探测方案。
+
+---
+
+## 3\. 超引力、德西特与宇宙学
+
+### 3.1 SUGRA 模型构建与 de Sitter 构造
+
+-   `[2406.13751]` McAllister, Moritz, Nally, Schachner — *Candidate de Sitter Vacua*. => 构造 30 个显式 type IIB Calabi–Yau orientifold，用量子化通量实现 KKLT 型亚稳态 dS，所有模稳定、anti-D3 置于 Klebanov–Strassler 喉部。
+
+-   `[2512.17995]` Hebecker, Lüst, Schachner, Schreyer — *Effective potentials, warping, and implications for F-term uplifting*. => 翘曲修正主导并破坏 KKLT 中 F-term uplifting 的控制，而在 LVS 中被体积逆幂压低——给出区分两方案的清晰控制判据。
+
+-   `[2403.07065]` Andriot, Ruehle — *On classical de Sitter solutions and parametric control*. => type IIB group-manifold 紧致化中的数值经典 dS 解允许解析标度使半径与体积任意大，是渐近 dS no-go 的候选反例。
+
+-   `[2504.06190]` Zwirner — *No-scale supergravity*. (综述) => 简述 no-scale SUGRA 的平坦方向及 SUSY 破缺/弱/Planck 层级与量子稳定性问题。
+
+-   `[2511.04367]` Dudas, Mourad, Sagnotti — *Supersymmetry Breaking with Fields, Strings and Branes*. (综述) => 自下而上与自上而下综合 4D N=1 SUSY 破缺、brane-SUSY-breaking、tadpole 势与宇宙学含义。
+
+-   `[2503.13682]` Kallosh, Linde — *Attractors in Supergravity*. (收录于 *Half a Century of Supergravity*, CUP) => 统一 BPS/非-BPS 黑洞吸引子与暴胀 α-attractor；后者给出 CMB 稳定的 LiteBIRD 目标预言。
+
+-   `[2601.16891]` — *N=2 de Sitter pure supergravity: complete action*. => 给出 N=2 纯 de Sitter 超引力的完整作用量，补全该构造的拉氏量细节。
+
+-   `[2603.08779]` Cribiori, Paraskevopoulou, Van Riet — *A domain wall bound on anti-de Sitter vacua*. SciPost Phys. 20, 157 (2026). => 要求通量域壁张力高于 EFT 截断，给出 AdS 半径上界，等价于**引力微子质量下限**——把引力微子猜想从提议变为推论。
+
+### 3.2 宇宙学：暴胀、模稳定化、再加热
+
+-   `[2303.04819]` Cicoli, Conlon, Maharana, Parameswaran, Quevedo, Zavala — *String Cosmology: from the Early Universe to Today*. Phys. Rept. (190 pp). (关键综述) => 模稳定化、弦暴胀、再加热/模主导/kination、暗能量与 Swampland 联系的权威现状综述。
+
+-   `[2507.00615]` AbdusSalam, Hughes, Quevedo, Schachner — *Coexisting Flux String Vacua from Numerical Kähler Moduli Stabilisation*. => 对 >80,000 个 CY 三折叠的数值扫描实现所有已知 Kähler 模稳定方案，并发现同一通量势中*共存*的不同类型真空。
+
+-   `[2406.01694]` Bera, Chakraborty, Leontaris, Shukla — *Global Embedding of Fibre Inflation in Perturbative LVS*. PRD 110, 106009 (2024). => 把 fibre inflation 全局嵌入微扰 LVS，用弦圈与高阶 F⁴ 效应放松暴胀子场域的 Kähler 锥限制。
+
+-   `[2505.01246]` Leontaris, Shukla — *Perturbative LVS and Inflation: A Review of Volume Modulus and Fibre Scenarios*. PoS CORFU2024 (2025) 181. (综述) => 系统梳理微扰稳定 LVS 中体积模 vs fibre 暴胀，含显式 CY orientifold 嵌入。
+
+-   `[2512.02969]` Kallosh, Linde — *Singular α-attractors*. JCAP 04 (2026) 075. => 引入模空间边界奇异的"S-model"α-attractor，固定初始条件问题并覆盖 ACT/SPT/DESI 偏好的宽 n\_s 区间。
+
+-   `[2401.04064]` Apers, Conlon, Copeland, Mosny, Revello — *String Theory and the First Half of the Universe*. => 细致处理暴胀与大爆炸之间的模驱动宇宙学（kination、tracker、模主导），显示扰动增长增强与 SM 耦合变化。
+
+-   `[2303.03414]` Cicoli, Licheri, Mahanta, McDonough, Pedro, Scalisi — *Early Dark Energy in Type IIB String Theory*. JHEP 06 (2023) 052. => 在 KKLT 与 LVS 中实现早期暗能量（EDE），指出 LVS 中的 C₂ 轴子是最好候选。
+
+-   `[2501.17229]` Deal, Barrowes, Giblin, Sinha, Watson, Adams — *Cosmological Moduli and Non-perturbative Production of Axions*. => 模衰变期间的不稳定与参数共振强烈增强轴子产生，重塑 LVS 中轴子暗辐射/暗物质参数空间。
+
+-   `[2602.05623]` — *SUGRA Higgs inflation in light of ACT DR6*. => 超引力 Higgs 暴胀预言与 ACT DR6 数据的一致性检验。
+
+-   `[2605.17754]` — *SUGRA quintessence coupled to dark energy and DESI*. => 超引力精质（quintessence）耦合暗能量对 DESI 数据的拟合。
+
+### 3.3 引力微子的多面角色
+
+-   `[2309.17132]` Crispim Romão, King — *Gravitational Waves and Gravitino Mass in No-Scale Supergravity Inflation with Polonyi Term*. JCAP 02 (2024) 004. => 含 Polonyi 项的拐点 no-scale 模型产生下一代干涉仪可探测的引力波信号，其幅度与引力微子质量直接相关。
+
+-   `[2408.16065]` Gherghetta, Ke — *Effective interactions and on-shell recursion relation for massive spin 3/2*. => 用 on-shell 方法无需拉氏量重建 SUGRA 引力微子接触项，并给出大质量自旋-3/2 相互作用的幺正界。
+
+-   `[2605.28804]` — *Inferring the gravitino mass from a stochastic gravitational-wave background*. => 由随机引力波背景反推引力微子质量，给出独立于宇宙学 DM 假设的约束。
+
+-   `[2601.12537]` — *Geometric origin of the gravitino mass term*. => 从紧致化几何角度解释引力微子质量项的起源。
+
+-   `[2608.04080]` — *Factorization fixes the gravitino and super-Higgs in unitarity cuts*. => 用幺正因子化固定引力微子与超 Higgs 机制，把超对称破缺纳入振幅因子化框架。
+
+### 3.4 轴子与软破缺
+
+-   `[2601.04017]` — *Axion-like mass from soft SUSY breaking*. => 类轴子质量可由软 SUSY 破缺项产生，把轴子质量问题与超对称破缺尺度联系起来。
+
+-   `[2407.17557]` Unwin, Yildirim — *A QCD R-Axion*. PRD 111 (2025) 015048. => SSM 中的反常 U(1)\_R 可作 PQ 对称，R-轴子的 Green–Schwarz 规范化解除了轴子质量问题。
+
+-   `[2412.21157]` Babu, Dutta, Mohapatra — *Accidental Peccei-Quinn Symmetry From Gauged U(1) and a High Quality Axion*. => 无反常规范 U(1)\_a 给出偶然 PQ 对称，引力诱导破缺可控、域壁数为一。
+
+-   `[2112.04503]` Demirtas, Gendler, Long, McAllister, Moritz — *PQ Axiverse*. JHEP 06 (2023) 092 (preprint 2021). => IIB orientifold 集合中 D-brane 瞬子对 nEDM 的贡献按 N⁴ 指数衰减，故当 N>17 个轴子时强 CP 的 PQ 解在量子引力下存活。
+
+-   `[2509.03578]` Leedom, Putti, Westphal — *Towards a Heterotic Axiverse*. => 首次刻画 heterotic E₈×E₈ CY 紧致化中的轴子质量谱与耦合，发现比 IIB 更强的轴子质量下界。
+
+-   `[2504.13256]` Ling, Long, McDonough, Hayes — *Superheavy Dark Matter from the String Theory Axiverse*. => KKLT 中重轴子由暴胀涨落引力产生；体积模与 C₄ 轴子大量产生，稳定者存活为超重暗物质。
+
+-   `[2406.08543]` Reece — *Extra-Dimensional Axion Expectations*. => 额外维规范场轴子通常带张力 ~2πS\_inst f² 的基本轴子弦，意味着 UV 截断至多比 f 高约两个数量级。
+
+---
+
+## 4\. 弦紧致化、模稳定化与 Swampland
+
+-   `[2404.12422]` Grimm, van de Heisteeg — *Exact Flux Vacua, Symmetries, and the Structure of the Landscape*. => 首个在真实 CY 四折叠上的*精确*零超势通量真空景观：真空条件变代数化并在对称轨迹上稠密，而超越性在轨迹外保证有限性。
+
+-   `[2311.09295]` Grimm, Monnee — *Finiteness Theorems and Counting Conjectures for the Flux Landscape*. (类综述) => 综述 IIB/F-theory 通量真空的数学有限性定理，并就模空间边界附近的组分数、几何复杂度与维数给出计数猜想。
+
+-   `[2407.16756]` Rajaguru, Sengupta, Wrase — *Fully stabilized Minkowski vacua in the 2⁶ Landau-Ginzburg model*. JHEP 10 (2024) 095. => 给出首个无平坦方向的 4D N=1 Minkowski 通量解，并提供两个对"精炼 tadpole 猜想"的显式反例。
+
+-   `[2309.05752]` Cicoli, Cotellucci, Otsuka — *Sequestered String Models imply Split Supersymmetry*. => 与 CCB 真空稳定性及味限制相容的隔离 LVS 模型强制 split SUSY：TeV 规范微子配 ~10⁷ GeV 标量。
+
+-   `[2605.06800]` — *G₂ flux compactifications with supersymmetry*. => G₂ 流紧致化中维持超对称的构造，补充 F-theory/heterotic 之外的紧致化路径。
+
+-   `[2605.22998]` — *Perturbative LVS at finite temperature*. => 微扰 LVS 在有限温度宇宙学下的行为，连接暴胀后再加热阶段。
+
+-   `[2607.18442]` — *Swampland and preheating in string moduli*. => 弦模前加热与 Swampland 约束的交叉研究。
+
+-   `[2305.01722]` Van Riet, Zoccarato — *Beginners lectures on flux compactifications and related Swampland topics*. (教学综述, 93 页) => 强调参数控制与尺度分离 AdS / dS 真空之间的张力。
+
+-   `[2304.06751]` Braun, Fraiman, Graña, Lüst, Parra de Freitas — *Tadpoles and Gauge Symmetries*. => 穷举 F-theory K3×K3 通量普查：tadpole 界内的每个构型都保留非零非阿贝尔规范对称，其秩随通量电荷近似线性下降。
+
+-   `[2409.03847]` Smith, Tennyson, Waldram — *All-orders moduli for type II flux backgrounds*. => 广义几何计算表明模谱序列在微扰下精确，封死规避 tadpole 猜想的高阶漏洞。
+
+-   `[2509.25313]` Bedroya, Steinhardt — *Holography vs. Scale Separation*. => 论证尺度分离 AdS 真空（如 DGKT）在标准假设下无 CFT 对偶，波及 KKLT。
+
+-   `[2511.15784]` Bedroya, Steinhardt — *Holographic Constraints on the String Landscape*. => 标量势的全息一致性条件排除主导的尺度分离 AdS 与亚稳 dS 构造。
+
+### 4.1 Swampland 与"由正性得到超引力"
+
+-   `[2507.12535]` Bellazzini et al. — *(Super)gravity from positivity / the S-matrix bootstrap*. => 用色散关系与正性约束，从一致性的 S-矩阵公理*推导*出（超）引力振幅，是本时期"由正性自举出超引力"的标志性形式结果。
+
+---
+
+## 5\. 形式理论：振幅 / 可积 / 天琴全息
+
+### 5.1 N=4 SYM：可积性、关联子自举、缺陷 CFT
+
+-   `[2503.15593]` Bourjaily, He, Shi, Tang — *The Four-Point Correlator of Planar sYM at Twelve Loops*. => 把平面 N=4 SYM 四点关联子的 f-图积分被积函数推进到 12 环，并给出系数满足"广义 Catalan"结构的证据。
+
+-   `[2511.09669]` He, Jiang, Li, Liu — *Heptagon Symbols at Five Loops and All-Loop Sequences*. => 基于 E6 团簇字母表将七点振幅符号自举至五环，识别全环阶符号序列并猜想唯一解。
+
+-   `[2512.19780]` Bargheer, Bekov, Bercini, Coronado — *Higher-Point Correlators in N=4 SYM: Ten-Dimensional Null Polygons*. JHEP 2026, 176. => 把 octagon/十维对称性推广到任意 n 点零多边形关联子，用 twistor 方法给出两环被积函数。
+
+-   `[2605.03887]` Basso, Kaluç, Serban — *Classical correlation functions at strong coupling from hexagonalization*. => 证明强耦合下半 BPS 关联子的 hexagonalization 由 TBA 自由能主导，把六边形展开与经典弦面积联系起来。
+
+-   `[2512.23634]` Julius, Sokolova — *A Rosetta Stone for Wilson Line Defects*. => 建立 1/2-BPS Wilson 线缺陷 CFT 弱耦合与强耦合自由度之间的显式字典，并用可积性交叉验证。
+
+-   `[2605.17056]` — *Five-point three-loop near-mass-shell correlator in N=4 SYM*. => N=4 SYM 五点三环近质量壳关联子的显式计算。
+
+-   `[2602.18557]` — *Strong-coupling resummation in N=4 SYM*. => N=4 SYM 强耦合区关联子的复苏/重求和技术。
+
+### 5.2 Fishnet / DCI（共形）积分与新几何
+
+-   `[2310.08625]` Duhr, Klemm, Loebbert, Nega, Porkert — *The Basso-Dixon Formula and Calabi-Yau Geometry*. => 证明二维四点 fishnet 积分由 Calabi-Yau 周期控制，Basso-Dixon 行列式公式即 CY 周期行列式。
+
+-   `[2402.19034]` Duhr, Klemm, Loebbert, Nega, Porkert — *Geometry from Integrability: Multi-Leg Fishnet Integrals in Two Dimensions*. => 把上述几何推广到六边形（多腿）fishnet，证明 Yangian 对称性完全确定积分及其 CY 结构。
+
+-   `[2311.01437]` Alfimov, Ferrando, Kazakov, Olivucci — *Checkerboard CFT*. JHEP 01 (2025) 015. => 构造"棋盘格" CFT——fishnet 的可积推广，计算反常维数并证明量子修正只出现在偶数阶。
+
+-   `[2502.00862]` Dixon, Duhr — *Antipodal self-duality of square fishnet graphs*. PRD 111, L101901 (2025). => 证明方形 fishnet 图在 Hopf 代数对径映射与运动学映射的复合下自对偶，将对径对偶从六点振幅扩展到 DCI 积分族。
+
+-   He & Jiang — *Evaluating ambidextrous (DCI) integrals*. JHEP 01 (2026) 088. (已见刊，未见确认 arXiv 号) => 系统计算兼手性（DCI）积分，为 N=4 SYM 与 N=8 超引力圈图提供基本构件。
+
+### 5.3 散射振幅、超振幅与双拷贝
+
+-   `[2501.02058]` Bonezzi, Casale, Hohm — *The Double Copy of Maximal Supersymmetry in D=4*. => 用同伦（BV∞）代数给出 N=4 SYM → N=8 超引力的**离壳**双拷贝至三次阶，并显示 R 对称性增强机制。
+
+-   `[2508.11753]` Bonezzi, Casale, Hohm — *The Double Copy of Maximal Supersymmetry in D=10*. => 同一代数框架推至 D=10：N=1 SYM 张量积生成 IIA/IIB 超引力及其最大超对称性。
+
+-   `[2603.26609]` Brandhuber, Pichini, Travaglini, Wen — *N=4 single-minus superamplitudes and dual superconformal symmetry*. => 构造"单负螺旋度"超振幅并证明其具对偶超共形协变性，给出 N=8 超引力对应结果。
+
+-   `[2509.25129]` Cao, He, Zhang, Zhu — *Loop-Level Double Copy Relations from Forward Limits*. => 由单切前向极限系统构造圈层被积函数，把 KLT/BCJ 双拷贝关系提升到圈图层面。
+
+### 5.4 正几何（Amplituhedron / 负几何）
+
+-   `[2504.01217]` Even-Zohar, Lakrec, Parisi, Sherman-Bennett, Tessler, Williams — *BCFW tilings and cluster adjacency for the amplituhedron*. PNAS 122, no. 12 (2025). => 证明 Arkani-Hamed–Trnka 的 BCFW 剖分猜想与 amplituhedron 的团簇邻接猜想。
+
+-   `[2606.03439]` Galashin — *Amplituhedra and origami, II: loop level*. => 用"折纸"对应证明 BCFW 细胞在**所有环阶**三角剖分 m=4 amplituhedron（树级见 `[2410.09574]`）。
+
+-   `[2605.28926]` Dixon, Oktem, Paranjape, Trnka, Xu, Zhang — *Multi-Loop Negative Geometries*. => 显式计算三环负几何，分离红外有限块并从中提取 cusp 反常维数。
+
+### 5.5 天球全息与 twistor 手性代数
+
+-   `[2412.13113]` Tropper — *Symmetries of the Celestial Supersphere*. => 把 bms₄ 扩展为超对称 sbms 代数，在"天球超球"上统一超对称软定理与天球 OPE。
+
+-   `[2501.11471]` Ahn, Kim — *A Supersymmetric w\_{1+∞} Symmetry, the Extended Supergravity and the Celestial Holography*. => 确定 N=4 超对称 w\_{1+∞} 代数，并通过天球全息与四维扩展超引力的软流代数对应。
+
+-   `[2506.01888]` Kmec, Mason, Ruzziconi, Sharma — *S-algebra in Gauge Theory: Twistor, Spacetime and Holographic Perspectives*. => 证明天球 S-代数等同于自对偶 Yang-Mills的对称代数，统一 twistor、时空与全息三种视角。
+
+-   `[2604.21015]` Charanya, Morales, Paquette — *Form factors of N=4 self-dual Yang-Mills from the chiral algebra bootstrap*. => 用天球手性代数自举求得 N=4 自对偶 SYM 的全环阶分裂函数与形状因子。
+
+-   Mol — *Celestial sphere CFT from supersymmetry*. Nucl. Phys. B 1024 (2026). (已见刊，未见确认 arXiv 号) => 从超对称构造天球 CFT 的进一步结果。
+
+### 5.6 超对称规范理论：Argyres-Douglas、Seiberg 对偶、指标
+
+-   `[2507.13434]` Giacomelli, Harding, Mekareeya, Mininno — *From Regular to Irregular: A Unified Origin for Argyres-Douglas Theories*. JHEP 10 (2025) 155. => 论证 D\_p(SU(N)) 与 (A\_{p-1},A\_{N-1}) AD 理论源自仅含**正则** puncture 的共同母理论的质量形变。
+
+-   `[2509.20439]` Pan, Yang — *Exact non-Lagrangian Schur index in closed form*. => 给出两类非拉氏 AD 理论 D\_p^b(sl\_N,[Y]) 的 Schur 指标闭式表达式并分析大 N 行为。
+
+-   `[2508.05610]` Bonelli, Gavrylenko, Majtara, Tanzini — *On a 5D UV completion of Argyres-Douglas theories*. JHEP 05 (2026) 129. => 通过 5d N=1 SCFT 的圆紧致化 RG 流为部分 AD 理论提供五维 UV 完备，借 Painlevé/规范对应求解。
+
+-   `[2410.19049]` Benvenuti, Comi, Pasquetti — *Star-triangle dualities and supersymmetric improved bifundamentals*. => 扩展"改进双基本表示"族及其星-三角对偶网络，仅用基本 Seiberg 对偶给出场论证明。
+
+### 5.7 超共形自举、正性与 Swampland 型形式约束
+
+-   `[2607.14230]` Berman, Caron-Huot, Chandra, Elvang, Herderschee, Lin, Morales — *Gravitational Effective Theories with Maximal Supersymmetry and a Peculiar Parity*. => 在 4d 最大超对称引力 EFT 中，正性（色散）约束加一个"奇特宇称"条件几乎唯一挑出 Virasoro–Shapiro 振幅——"由正性得到超引力"的最强形式结果之一。
+
+-   `[2306.12786]` Alday, Hansen — *The AdS Virasoro-Shapiro Amplitude*. JHEP 10 (2023) 023. => 给出逐阶构造 AdS₅×S⁵ Virasoro–Shapiro 振幅曲率修正的系统方法，显式算出前两阶并复现全部局域化/可积性 CFT 数据。
+
+-   `[2512.10796]` Dempsey, Karlsson, Pufu, Zahraee, Zhiboedov — *Conformal collider bootstrap in N=4 SYM*. => 结合局域化、自举与色散约束，刻画 N=4 SYM 能量-能量关联器随耦合从弱到强的演化。
+
+-   `[2512.05189]` Chester, Dempsey, Pramanik, Pufu — *Integral constraints for N=4 super-Yang-Mills from a squashed sphere*. => 从压扁四球局域化导出三条新积分关联子约束，并证明它们可由已知两条约束推出（约束空间封闭性结果）。
+
+---
+
+## 6\. 横向观察：三条贯穿线索
+
+**线索一：超对称作为量子引力的必然。** 无论是为了稳定弱标度（现象学），还是为了构造 dS/真空（弦论），抑或为了满足 S-矩阵正性（形式理论），超对称都反复作为"一致性要求"出现。de Sitter 构造用超对称控制模、Swampland 用引力微子质量下限约束真空、正性自举用最大超对称直接挑出 Virasoro–Shapiro 振幅——三条看似无关的路都汇向"超对称≈量子引力的低能有效结构"。
+
+**线索二：引力微子的多面角色。** 它既是 SUGRA 中 SUSY 破缺的"量尺"（m₃/₂ 决定标量谱是 split 还是 natural），又是宇宙学中的暗物质/再加热瓶颈（热产生率约束 T\_reh），还是形式理论中可由幺正因子化固定的对象（2608.04080），更是 2026 年新出现的"由域壁张力给出质量下限"的 Swampland 具体实现（2603.08779）。一个量，串起了现象学、宇宙学与形式理论。
+
+**线索三：自然性的"出口"在转移。** 2023 年之前，自然性争论聚焦于"stop 多重数是否太大"；到 2026 年，争论已转向"景观是否统计上偏好电弱自然模型"（Baer 系列）、"wino 被 Fermi 排除后 higgsino 是否最后的极小 WIMP"（Safdi、Martin 等）、以及"判据本身是否该重估"（ΔEW vs stringy）。自然性没被放弃，只是从参数空间问题，升级成了统计 + 实验 + 判据的综合问题。
+
+---
+
+## 7\. 论文索引（按 arXiv 编号排列）
+
+| arXiv | 主题领域 | 年份 |
+| --- | --- | --- |
+| 2112.04503 | PQ Axiverse（轴子） | 2021(pub 2023) |
+| 2303.03414 | 弦论早期暗能量 | 2023 |
+| 2303.04819 | 弦宇宙学综述 | 2023 |
+| 2304.06751 | Tadpole 与规范对称 | 2023 |
+| 2305.01722 | 通量紧致化与 Swampland 教学综述 | 2023 |
+| 2305.16125 | 实用自然性判据 | 2023 |
+| 2306.07317 | ABC of RPV I | 2023 |
+| 2306.12786 | AdS Virasoro–Shapiro 振幅 | 2023 |
+| 2309.05752 | 隔离 LVS ⇒ Split SUSY | 2023 |
+| 2309.17132 | 无标度 SUGRA 引力波与引力微子 | 2023 |
+| 2310.08625 | Basso-Dixon 公式与 CY 几何 | 2023 |
+| 2311.01437 | Checkerboard CFT | 2023 |
+| 2311.09295 | 通量景观有限性定理 | 2023 |
+| 2311.18120 | 自然反常媒介破缺 (nAMSB) | 2023 |
+| 2401.04064 | 宇宙前半段（模宇宙学） | 2024 |
+| 2401.14046 | ATLAS 近简并 higgsino 搜索 | 2024 |
+| 2402.01392 | ATLAS pMSSM EW 产生联合解释 | 2024 |
+| 2402.04040 | RPV 现状综述 | 2024 |
+| 2402.17859 | 弦景观涌现弱标度 SUSY | 2024 |
+| 2402.19034 | Fishnet 积分的几何与可积性 | 2024 |
+| 2403.07065 | 经典 dS 解与参数控制 | 2024 |
+| 2403.19598 | 轻 higgsino 的纯度约束 | 2024 |
+| 2404.12422 | 精确通量真空与景观结构 | 2024 |
+| 2405.00872 | BSM 概览（自然性重估） | 2024 |
+| 2405.11271 | 光子融合搜 higgsino | 2024 |
+| 2406.01694 | 微扰 LVS 中 fibre 暴胀全局嵌入 | 2024 |
+| 2406.08543 | 额外维轴子期望 | 2024 |
+| 2406.13751 | Candidate de Sitter Vacua | 2024 |
+| 2407.16756 | 完全稳定 Minkowski 真空 | 2024 |
+| 2407.17557 | QCD R-轴子 | 2024 |
+| 2408.02048 | 解码 gaugino 密码 | 2024 |
+| 2408.03276 | 检验 nAMSB 的 gap | 2024 |
+| 2408.10585 | 大尺度结构探非热引力微子 | 2024 |
+| 2408.16043 | 引力微子热产生与再加热 | 2024 |
+| 2408.16065 | 大质量自旋 3/2 的 on-shell 递推 | 2024 |
+| 2409.03847 | IIB 通量背景全阶模 | 2024 |
+| 2409.06239 | GMSB 下最小 SUSY SU(5) 质子寿命 | 2024 |
+| 2410.18205 | higgsino/wino DM 直接探测辐射修正 | 2024 |
+| 2410.19049 | 星-三角对偶与改进双基本表示 | 2024 |
+| 2411.08112 | 三线性 RPV 的 MCMC 分析 | 2024 |
+| 2411.09650 | GMSB 的 LHC 限制重释 | 2024 |
+| 2412.08958 | 可探测 higgsino DM 的落幕 | 2024 |
+| 2412.17777 | 暗规范媒介破缺 + 无质量暗光子 | 2024 |
+| 2412.21157 | 偶然 PQ 对称与高质量轴子 | 2024 |
+| 2412.13113 | 天球超球的对称 | 2024 |
+| 2501.02058 | D=4 最大超对称双拷贝 | 2025 |
+| 2501.11471 | 超对称 w_{1+∞} 与天球全息 | 2025 |
+| 2501.17229 | 宇宙学模与非微扰轴子产生 | 2025 |
+| 2502.00862 | 方形 fishnet 图的对径自对偶 | 2025 |
+| 2502.07539 | 规范媒介中的 neutralino DM | 2025 |
+| 2503.03830 | ABC of RPV II (UDD) | 2025 |
+| 2503.08830 | 赝 Dirac gaugino 与轻生成 | 2025 |
+| 2503.13682 | 超引力中的吸引子 | 2025 |
+| 2503.15593 | 平面 sYM 十二环四点关联子 | 2025 |
+| 2504.01217 | Amplituhedron 的 BCFW 剖分 | 2025 |
+| 2504.06190 | No-scale 超引力综述 | 2025 |
+| 2504.13256 | 弦轴子宇宙的超重 DM | 2025 |
+| 2505.01246 | 微扰 LVS 与暴胀综述 | 2025 |
+| 2506.01888 | 规范论中的 S-代数 | 2025 |
+| 2507.00615 | 共存通量弦真空数值扫描 | 2025 |
+| 2507.03073 | Tera-Z 工厂锁定自然 SUSY | 2025 |
+| 2507.12535 | 由正性得到（超）引力 | 2025 |
+| 2507.13434 | AD 理论的正则-不规则统一起源 | 2025 |
+| 2507.15934 | Fermi 排除 wino / 极小 DM | 2025 |
+| 2507.16246 | Split SUSY 与混合暴胀 (ACT DR6) | 2025 |
+| 2508.05610 | AD 理论的 5D UV 完备 | 2025 |
+| 2508.11753 | D=10 最大超对称双拷贝 | 2025 |
+| 2509.03578 | 迈向 heterotic axiverse | 2025 |
+| 2509.09062 | RPV 与 8 TeV 四喷注事例 | 2025 |
+| 2509.25129 | 圈层双拷贝（前向极限） | 2025 |
+| 2509.25313 | 全息 vs 尺度分离 | 2025 |
+| 2511.04367 | 场/弦/膜破缺 SUSY 综述 | 2025 |
+| 2511.09669 | 七点符号五环与全环序列 | 2025 |
+| 2511.15784 | 弦景观的全息约束 | 2025 |
+| 2512.02969 | 奇异 α-attractor | 2025(pub 2026) |
+| 2512.05189 | 压扁球上的 N=4 SYM 积分约束 | 2025 |
+| 2512.10796 | N=4 SYM 共形对撞机自举 | 2025 |
+| 2512.12457 | 中微子雾时代的 higgsino 追踪 | 2025 |
+| 2512.17995 | 翘曲修正与 F-term uplifting | 2025 |
+| 2512.19780 | 高点多关联子 (N=4 SYM) | 2025 |
+| 2512.23634 | Wilson 线缺陷的罗塞塔石 | 2025 |
+| 2601.01066 | HL-LHC 上的 SUSY | 2026 |
+| 2601.04017 | 软 SUSY 破缺产生轴子质量 | 2026 |
+| 2601.12537 | 引力微子质量的几何起源 | 2026 |
+| 2601.16891 | N=2 dS 纯超引力作用量 | 2026 |
+| 2602.05623 | SUGRA Higgs 暴胀 (ACT DR6) | 2026 |
+| 2602.06957 | DNN 探 BNV MSSM 电弱微子 | 2026 |
+| 2602.09187 | pMSSM vs 完整模型与 top-squark | 2026 |
+| 2602.14088 | 自然 SUSY 中轻 bino-higgsino DM | 2026 |
+| 2602.18557 | N=4 SYM 强耦合复苏 | 2026 |
+| 2603.08779 | 反 de Sitter 真空的域壁界 | 2026 |
+| 2603.26609 | N=4 单负超振幅与对偶超共形 | 2026 |
+| 2604.04687 | 自然 SUSY + 轴子/轴微子混合 DM | 2026 |
+| 2604.21015 | 天球手性代数自举 N=4 自对偶 SYM | 2026 |
+| 2605.03887 | 强耦合经典关联子 (hexagonalization) | 2026 |
+| 2605.06800 | G₂ 流紧致化 | 2026 |
+| 2605.17056 | N=4 SYM 五点三环近质量壳 | 2026 |
+| 2605.17754 | SUGRA 精质与 DESI | 2026 |
+| 2605.21065 | RPV 轻长寿命中性微子单光子远探测 | 2026 |
+| 2605.22998 | 有限温度微扰 LVS | 2026 |
+| 2605.28804 | 由随机引力波背景反推引力微子质量 | 2026 |
+| 2605.28926 | 多环负几何 | 2026 |
+| 2606.03439 | Amplituhedron 与折纸 II（环阶） | 2026 |
+| 2607.04250 | 最小超对称 SO(10) GUT 更新 | 2026 |
+| 2607.05648 | LZ 限制与 higgsino 盲点 | 2026 |
+| 2607.14230 | 最大超对称引力 EFT 的正性约束 | 2026 |
+| 2607.18442 | Swampland 与弦模前加热 | 2026 |
+| 2607.20588 | higgsino–核子散射 NLO 修正 | 2026 |
+| 2608.04080 | 幺正因子化固定引力微子与超 Higgs | 2026 |
+
+> 说明：He & Jiang (JHEP 01 2026 088, DCI 积分) 与 Mol (NPB 1024 2026, 天球 CFT) 已见刊，检索时未见确认 arXiv 号，故未列入索引表；如后续获得编号可补入。少量 2025 年末提交、2026 年见刊的论文按投稿年标注。
+
+---
+
+## 8\. 一点方法论备注
+
+本综述由 arXiv / INSPIRE-HEP / 期刊记录的公开摘要经 WebSearch 与摘要页核对整理，每条均附可溯源编号。覆盖面力求"代表性强"而非穷尽——同一课题（如 nAMSB、RPV 分类、amplituhedron 剖分）的系列工作仅列最具标志性的数篇。若需针对某一子领域（例如把"形式理论"或"弦紧致化"单独深挖成一份独立长篇）进一步展开，或补充 2026 年下半年新上线的工作，可随时提出。
+{% endraw %}

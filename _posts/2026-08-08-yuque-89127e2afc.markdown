@@ -1,0 +1,96 @@
+---
+title: "Lucene_学习笔记(烂尾了。。)"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 杂]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+Lucene 自学笔记，还在学习中，会边学边更新。主要学习源码 + 大神的笔记 [Chris的博客](https://link.zhihu.com/?target=https%3A//www.amazingkoala.com.cn/)。整体内容以流程图的形式呈现，等我学完整体出体系后，会用文字细化重要的部分。
+
+## 结构间依赖关系
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-1.webp)
+
+## 索引相关
+
+## 索引文件的格式
+
+### segmentinfo 的 .si 文件
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-2.webp)
+
+### segment\_N
+
+IndexWriter 对象执行commit() 操作后，会生成一个 segments\_N 文件，该文件描述了当前索引目录中所有有效的 segmentinfo 。
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-3.webp)
+
+### .liv 文件
+
+在 segment 中包含 被删除的endangered时才会生成，它记录了当前段中没有被删除的文档号
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-4.webp)
+
+## 索引文件的生成
+
+索引文件的生成分为两个截断：
+
+-   第一阶段，添加文档截断，即 IndexWriter 调用 addDocument() 或 updateDocument() 方法。在此阶段会生成 .fdx、.fdt、.tvd、.tvx 索引文件。
+-   第二阶段：flush 或 commit 阶段。此阶段会生成 .liv、.dim、.dii、.tim、.tip、.doc、.pos、.pay、.nvd、nvm、.dvm、.dvd 索引文件。
+
+在添加文档时，可以使用 indexOptions 来指定 Field 的索引类型：
+
+-   None：该 Field 的信息不会写入到倒排表中，无法通过该域名进行搜索。
+-   Docs：只有域所属的 Document 号被写入倒排表中，也就是说一个词 对应每个文档的 id，即使这个词在文档中出现多次，也一样。
+-   Docs\_And\_Freqs：存了域所属的 Document 号和 term 的词频。还是没有 term 的位置信息。
+-   Docs\_And\_Freqs\_And\_Positions：文档号 + 词频 + term 位置信息。是全文搜索的默认选项。
+-   Docs\_And\_Freqs\_And\_Positions\_And\_Offsets：再加上 偏移
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-5.webp)
+
+  
+  
+
+### 倒排数据结构例子
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-6.webp)
+
+## 文档的增删改
+
+-   添加文档：lucene 允许通过 IndexWriter 对象添加一片文档或多篇文档
+-   删除文档：lucene 允许通过 IndexWriter 对象，根据 Term（指定域名和域值), Query 进行, 全部 进行删除
+-   更新文档：更新文档是一个先删除、后添加的过程。
+-   软删除：先标记，后添加的过程
+
+### 依赖
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-7.webp)
+
+上面的操作都支持单文档或多文档操作。因此流程图就分为下面两种：
+
+### 单文档的增删改流程图
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-8.webp)
+
+### 多文档的增删改流程图
+
+除了循环处理文档外，其余逻辑是相同的。不再赘述。
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-9.webp)
+
+## 构造 indexWriter 对象
+
+![](/img/yuque/计算机/杂/assets/Lucene_学习笔记(烂尾了。。)-10.webp)
+
+  
+  
+
+## Ref
+
+-   主要参考博客：[Chris的博客](https://link.zhihu.com/?target=https%3A//www.amazingkoala.com.cn/) 。 很全很强大
+-   [GitHub - apache/lucene: Apache Lucene open-source search software](https://link.zhihu.com/?target=https%3A//github.com/apache/lucene)
+{% endraw %}

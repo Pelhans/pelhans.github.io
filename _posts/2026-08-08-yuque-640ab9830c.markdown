@@ -1,0 +1,212 @@
+---
+title: "Framework vs Runtime vs Harness：一次讲透三者区别与联系"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版)]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# Framework vs Runtime vs Harness：一次讲透三者区别与联系
+
+> 很多人刚接触 agent 领域时，会把 "框架""运行时""harness" 当成同义词混用，结果选型时一头雾水：**到底我该用 LangGraph 还是 LangGraph Platform？Claude Agent SDK 是框架还是 harness？OpenHands 的 Runtime 又是什么？**  
+> 本文的目标：用一个具体的开源项目（**OpenHands**）+ 几家前沿大厂的真实做法，把这三层的边界、重叠与配合一次讲清。
+
+---
+
+## 1\. 一句话心智模型
+
+先用最朴素的比喻建立直觉：
+
+-   **Framework（框架）** = 给你**搭积木的零件和说明书**。`StateGraph`、`Agent`、`Tool`、`Memory` 这些抽象，以及把模型、工具、循环接起来的 API。
+
+-   **Runtime（运行时）** = 让积木**真正跑起来的引擎/沙箱**。它负责：把 agent 跑在哪儿（进程 / 容器 / 云服务）、状态怎么持久化、长任务怎么不被超时打断、工具调用怎么安全地真正执行。
+
+-   **Harness（外壳/马具）** = 把"模型 + 框架 + 运行时 + 护栏 + 人"**粘成一个能干活的产品**的那层应用代码。系统提示词、工具定义、上下文管理、人工确认、可观测、失败恢复，都属于 harness。
+
+一句话总结三者关系：
+
+> **Framework 是"能用的零件"，Runtime 是"零件运行的工厂"，Harness 是"你把工厂改成一条具体生产线的整套设计"。**
+
+```plain
+┌──────────────────────────────────────────────────────────┐
+│                      HARNESS（你的应用）                    │
+│  系统提示词 · 工具装配 · 记忆/压缩 · 护栏 · 人工确认 · 观测  │
+│  ┌────────────────────┐      ┌─────────────────────────┐  │
+│  │  FRAMEWORK（抽象层） │      │   RUNTIME（执行层）       │  │
+│  │ StateGraph/Agent/   │─────>│ 容器/进程/云服务          │  │
+│  │ Tool/Memory 抽象    │      │ 持久化·检查点·流式·沙箱   │  │
+│  └────────────────────┘      └─────────────────────────┘  │
+└──────────────────────────────────────────────────────────┘
+                 ↑ 都由"模型"驱动，但模型本身不属于任何一层
+```
+
+注意：**模型（LLM）不属于这三层中的任何一层**，它是被三层共同"伺候"的核心引擎。
+
+---
+
+## 2\. 代表项目深读：OpenHands（原 OpenDevin）
+
+选 OpenHands 作代表，是因为它的源码里**直接出现了一个叫** `Runtime` **的组件**，且架构边界极其清晰——非常适合用来"指认"三层各自长什么样。
+
+### 2.1 OpenHands 的四大角色
+
+OpenHands 的核心只有四个角色（V1 架构，2025.11 起）：
+
+```plain
++--------------+     +------------------+     +---------------+
+|    Agent     |<----|   Conversation   |---->|   Workspace   |
+| (无状态,     |     | (循环驱动者,      |     | (Local/Docker/ |
+|  产出 Action)|     |  EventLog 状态)  |     |  Remote 沙箱)  |
++------^-------+     +--------^---------+     +-------^-------+
+       |                     |                        |
+    uses               persists/streams          executes
+       v                     v                        v
+  +-------+            +------------+        +------------------+
+  |  LLM  |            |  EventLog  |        | bash/python/     |
+  |+Cond. |            | (追加式日志)|        | jupyter/browser  |
+  +-------+            +------------+        +------------------+
+```
+
+-   **Agent**：一个"从历史 → 下一个 Action"的纯函数，自己没有状态。它读 EventLog，调 LLM，吐出一个 Action（如"运行某 bash 命令""编辑某文件"）。
+
+-   **Conversation**：拥有唯一可变状态 `ConversationState`，驱动主循环，把每一步存成追加式的 `EventLog`（单一事实来源，可重放、可调试）。
+
+-   **Workspace（Runtime）**：真正**执行** Action 的地方。三种实现：`LocalWorkspace`（本机）、`DockerWorkspace`（容器）、`RemoteAPIWorkspace`（远程），**同一套 agent 代码，换 Workspace 即可换执行环境**。
+
+-   **Event**：所有交互都是事件（`ActionEvent` / `ObservationEvent` / `MessageEvent` …）。Action 出去，Observation（stderr、退出码、HTTP 响应）回来，再喂给下一轮——**自我纠错不是功能，而是"让模型看见自己后果"的副作用**。
+
+### 2.2 把 OpenHands 映射到三层
+
+这是关键，请对照上图：
+
+| 三层 | 在 OpenHands 里对应什么 | 说明 |
+| --- | --- | --- |
+| **Framework** | `openhands` SDK 本身：`EventStream`、`Action`/`Observation` 协议、`Agent`/`Conversation`/`Workspace` 抽象、工具/MCP/Condenser 接口 | 你"基于它开发"，换项目不变 |
+| **Runtime** | `Workspace` 的具体实现：`DockerRuntime`** / **`RemoteRuntime`** / **`LocalRuntime` | 真正跑代码的安全沙箱（Docker 容器里带 bash、浏览器、IPython） |
+| **Harness** | 你的 **system prompt**（那一大段 "You are OpenHands agent…"）+ 工具装配 + 安全确认策略 + Microagent 知识 + 卡死检测 + 记忆压缩（Condenser） | 把通用 SDK 变成"一个能写代码的特定 agent"的全部应用代码 |
+
+> **洞见**：OpenHands 的框架和运行时是**通用、与任务无关**的；真正让它成为"编程 agent"的，是 harness 那一层——也就是那段系统提示词和工具/安全装配。换一段 prompt（比如"你是一个数据分析 agent"），框架和运行时**一行都不用改**。
+
+### 2.3 为什么 OpenHands 的 Runtime 值得单独理解
+
+OpenHands 文档对 Runtime 的定义非常到位：*"Runtime 是决策与执行之间的安全转换器，是 agent 与外部环境交互的桥梁，也是整个系统稳定运转的压舱石。"*
+
+它的 `DockerRuntime` 用客户端-服务器架构：后端通过 RESTful API 把 Action 发给容器内的 ActionExecutor，容器在隔离的文件系统/网络/资源配额里执行，再把 Observation 回传。这解决了五大问题：**安全性（不可信代码伤不到主机）、一致性（消除"在我机器上能跑"）、资源控制、隔离、可复现**。
+
+这正解释了"为什么需要 Runtime"：如果你只写 `framework`（调模型+拼工具），代码会在**你的主机**上直接跑——一行 `rm -rf` 就完蛋。Runtime 把这层"脏活、险活"接管了。
+
+---
+
+## 3\. 前沿大公司的真实做法
+
+光有一个开源项目还不够，看看前沿大厂怎么切这三层——它们往往把"框架"和"运行时"做成**两个独立产品**。
+
+### 3.1 LangChain：唯一把三层写进官方文档的公司
+
+LangChain 在 LangGraph 文档里**原话定义了三层**（这是最权威的一手定义）：
+
+> -   **Deep Agents is an agent harness**: planning, subagents, filesystem tools, and context management on top of LangGraph.
+> 
+> -   **LangChain is the agent framework**: abstractions and integrations for models, tools, and agent loops.
+> 
+> -   **LangGraph is the orchestration runtime**: durable execution, streaming, human-in-the-loop, and persistence.
+> 
+> -   **LangSmith is the platform**: tracing, evaluation, prompts, and deployment across frameworks.
+
+映射极其干净：
+
+-   **Framework** = LangChain（模型/工具/循环的抽象与集成）
+
+-   **Runtime** = LangGraph（持久化、流式、人在回路、检查点——即"编排运行时"）
+
+-   **Harness** = Deep Agents（在 LangGraph 之上的规划/子代理/文件系统工具/上下文管理）
+
+-   外加 **Platform** = LangSmith（跨框架的追踪/评测/部署）
+
+补充：LangGraph 的部署层原叫 **LangGraph Platform**，2025.10 起并入 **LangSmith Deployment**。它做的事就是典型的 Runtime 职责：长任务后台跑、心跳防断连、检查点断点续跑、任务队列抗突发流量、跨会话内存——*"you build agents with the LangGraph library regardless; you reach for LangGraph Platform when you need durable, resumable runs."*
+
+### 3.2 Anthropic：把 "harness" 这个词用到了极致
+
+Anthropic 是"harness"术语最坚定的提倡者：
+
+-   **Claude Agent SDK**：*"a collection of tools that helps developers build powerful agents on top of Claude Code."* 它给 agent 一台电脑（bash、文件编辑、浏览器），核心是 `gather context → take action → verify → repeat` 的循环。它本身偏向 **Framework**（构建 agent 的工具原语）+ 一部分 **Harness**（内置的 subagent、compaction、上下文工程）。
+
+-   原话：*"the agent harness that powers Claude Code (the Claude Code SDK) can power many other types of agents, too."* —— 明确把 Claude Code 背后的那套系统称为 **harness**。
+
+-   **Claude Managed Agents**：文档定义是 *"Pre-built, configurable agent harness that runs in managed infrastructure… Instead of building your own agent loop, tool execution, and runtime, you get a fully managed environment."* 这里 harness 和 runtime **打包成托管服务**一起给你——你只定义 model/system prompt/tools/MCP，Anthropic 负责沙箱、执行、持久化。
+
+-   **《Effective harnesses for long-running agents》**：Anthropic 把 harness 工程化的核心经验——`initializer agent`（首轮搭环境、写 feature list、建 `claude-progress.txt`）+ `coding agent`（每轮增量推进、留下干净状态），用"换班工程师"比喻解决跨上下文窗口的一致性问题。这是 **harness 设计**的必读范式。
+
+### 3.3 Google：框架与运行时做成两个产品
+
+Google 在 Cloud NEXT 2025 同时发布了：
+
+-   **ADK（Agent Development Kit）**：开源工具包，**Framework**。*"build an AI agent in under 100 lines"*，提供多 agent 编排、guardrails、MCP 支持，可部署到 Kubernetes 或 Vertex AI。
+
+-   **Agent Engine**：与 ADK 并行的**托管运行时（managed runtime）**。它负责 *"agent context, infrastructure management, scaling, security, evaluation and monitoring"*，并**可跑在 LangGraph / CrewAI 等其他框架之上**。
+
+一句话：**ADK = 你怎么写；Agent Engine = 它跑在哪、怎么扩、怎么守。** 框架和运行时解耦到极致。
+
+### 3.4 OpenAI / Microsoft：同一思路的不同包装
+
+-   **OpenAI Agents SDK**（2025.3）：定位 **Framework**（开源、可配企业级安全与 guardrails），底层执行依赖其托管的 Responses API / 基础设施（即隐性 Runtime）；"harness"由你基于 SDK 组装。
+
+-   **Microsoft**：AutoGen / Semantic Kernel 作为 **Framework**；Azure AI Foundry / 自有部署作为 **Runtime**；其 agent 产品（如 Copilot 生态）即 **Harness**。
+
+### 3.5 大厂做法对比表
+
+| 公司 | Framework | Runtime | Harness | 备注 |
+| --- | --- | --- | --- | --- |
+| **LangChain** | LangChain / LangGraph 库 | LangGraph / LangSmith Deployment | Deep Agents | 官方文档明确定义三层 |
+| **Anthropic** | Claude Agent SDK | Claude Managed Agents（托管） | Claude Code 背后的系统 / Managed Agents | 最强调 harness 工程 |
+| **Google** | ADK | Agent Engine（托管/可换框架） | 你基于 ADK 组装 | 框架与运行时两产品解耦 |
+| **OpenAI** | Agents SDK | 托管 Responses/基础设施 | 你基于 SDK 组装 | Runtime 相对隐性 |
+| **Microsoft** | AutoGen / Semantic Kernel | Azure AI Foundry | Copilot 等应用 | 企业集成强 |
+| **OpenHands（开源代表）** | openhands SDK | DockerRuntime/RemoteRuntime | system prompt + 工具/安全装配 | 代码级可见三层 |
+
+---
+
+## 4\. 一个最小工作示例：自己造一个 coding agent
+
+把抽象落到选型上，假设你要从零做一个能改代码的 agent：
+
+| 层 | 你可以选 | 作用 |
+| --- | --- | --- |
+| **Framework** | LangGraph **或** OpenHands SDK **或** 自己写 200 行事件循环 | 提供"状态/动作/循环"的抽象 |
+| **Runtime** | Docker 容器（自管）**或** LangSmith Deployment **或** Claude Managed Agents | 隔离执行 bash/代码、持久化、抗长任务 |
+| **Harness** | 你的 system prompt + 工具清单（读/写/运行/测试）+ 人工确认 + 失败重试 + 可观测埋点 | **这一层永远得你自己写**，没法买 |
+
+结论很反直觉却重要：**框架和运行时你都能"买"（用现成的），唯独 harness 是买不到的——它就是你产品的差异化本身。** 这也是为什么 Anthropic 反复强调"模型约占 20%，harness 约占 80%"。
+
+---
+
+## 5\. 常见困惑 FAQ
+
+**Q1：LangGraph 既是框架又是运行时，是不是混淆了？**没有。LangGraph **库**是编排抽象（偏 framework），而它的**检查点/持久化/流式/人在回路能力**本质就是 runtime 职责；LangSmith Deployment 把它显性化为"部署运行时"。一个项目完全可以横跨两层——这恰恰说明三层是**概念边界**，不是法律边界。
+
+**Q2：harness 和 framework 的界线在哪？**  
+Framework 是**与任务无关的通用抽象**；harness 是**与你的具体任务强相关**的那层应用代码（prompt、工具装配、领域护栏）。同一套 LangGraph（framework），配上不同 harness，可以是客服 agent，也可以是科研 agent。
+
+**Q3：runtime 是不是就等于"部署"？**  
+约等于，但更宽。Runtime 包含"部署在哪里"（进程/容器/云）、"状态怎么存"、"长任务怎么续"、"工具怎么安全执行"。它不只是把服务跑起来，更是**让 agent 在真实环境里可靠、安全、可恢复**的那层。
+
+**Q4：我什么时候才"需要"一个 runtime？**  
+如果你做的是**无状态、短、低流量**的 agent，用 FastAPI 自己跑 framework 就够了；一旦涉及**长任务 / 有状态 / 人在回路 / 突发流量 / 要安全隔离执行代码**，就需要 runtime（自建沙箱或托管平台）。
+
+---
+
+## 6\. 小结
+
+-   **Framework = 零件**（抽象与 API），**Runtime = 工厂**（执行与持久化），**Harness = 生产线设计**（把一切粘成能干活的产品）。
+
+-   看一个项目属于哪层，问三句话：*它提供抽象吗？（framework）它能把 agent 安全跑起来并记住状态吗？（runtime）它把模型变成某个具体能干活的 agent 了吗？（harness）*
+
+-   开源代表 **OpenHands** 让三层在代码里清晰可指：SDK=framew劣，Workspace(Runtime)=runtime，system prompt+工具/安全=harness。
+
+-   大厂普遍把 **framework 与 runtime 拆成独立产品**（Google ADK+Agent Engine、Anthropic SDK+Managed Agents、LangChain LangGraph+LangSmith Deployment）；而 **harness 始终是你要自己写的那一层**。
+
+> 延伸阅读（已在同目录下）：主报告《Agent Harness 技术调研报告（完整版）》第 2、5、14 节；《Effective harnesses for long-running agents》（Anthropic）；LangGraph 官方 "Frameworks, runtimes, and harnesses" 文档；OpenHands 论文（arXiv 2407.16741）。
+{% endraw %}

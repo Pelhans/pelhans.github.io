@@ -1,0 +1,115 @@
+---
+title: "论文解读：When Agents Disagree: The Selection Bottleneck in Multi-Agent LLM Pipelines（2026）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版), Agent_Harness_重要论文解读_·_索引]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# 论文解读：When Agents Disagree: The Selection Bottleneck in Multi-Agent LLM Pipelines（2026）
+
+> 一句话总结：本文指出多 agent 流水线里真正的瓶颈不是"生成器的多样性"，而是"聚合/选择器的质量"——并给出选择质量 s 超过一个闭式临界值 s\* 时，多样团队才会胜出同质团队。
+
+## 1\. 背景与动机
+
+多 agent 聚合存在一组互相矛盾的证据：一方面，异构 Mixture-of-Agents（MoA，混合不同 LLM）常被认为能胜出单模型；另一方面，"Rethinking Mixture-of-Agents"（Li et al., arXiv:2502.00674）发现，仅用单一最强模型的同质 Self-MoA，在"合成式聚合（synthesis）"下反而稳定胜出混合模型。为什么有时多样性有用、有时有害？本文要解决的，正是 generate-then-select（先生成多个候选、再聚合）范式下"多样性到底帮不帮忙"的悖论，并把它归结为一个清晰的瓶颈：**选择（selection）质量**。
+
+## 2\. 核心问题
+
+1.  在单轮"生成多个候选再聚合"的流水线上，团队多样性（heterogeneous vs homogeneous）究竟何时帮助、何时损害质量？
+
+2.  决定这一点的关键变量是什么——是生成器的多样性，还是聚合/选择机制的质量？
+
+3.  能否给出一个可计算的判据，预测何时该用多样团队、何时该用同质团队？
+
+## 3\. 方法与架构
+
+论文提出 **selection bottleneck（选择瓶颈）** 模型。设团队 T 的"选择器质量"为 s ∈ [0,1]（随机选 s=0，完美选 oracle s=1），团队期望质量由线性选择模型给出：
+
+```plain
+Q(T, s) = s · O(T) + (1 − s) · M(T)
+```
+
+其中 O(T) 是团队 oracle（最佳成员质量），M(T) 是团队均值质量。若比较多样团队 Td 与同质团队 Th，可解出唯一闭式临界值：
+
+```plain
+s* = (μ_best − M(Td)) / (O(Td) − M(Td))
+```
+
+判据简洁：*当选择器质量 s > s* *时，多样团队更优；否则同质团队更优*\*。换言之，多样性只在"你挑得够好"时才兑现收益。
+
+```plain
+   多生成器       聚合器（瓶颈）
+  ┌────┬────┐      ┌──────────┐
+  │G_1 │G_2 │ ...  │  selector │──► 选出/合成 1 个输出
+  │    │    │      │ 质量 s    │
+  └────┴────┘      └──────────┘
+  多样 or 同质           ▲
+                     s > s* ? 多样胜出 : 同质胜出
+```
+
+实验在 42 个任务、7 个类别（N=210）上展开，对比"多样团队 + 基于 judge 的选择"与"同质团队"，以及 MoA 式合成聚合。
+
+## 4\. 关键实验与结论
+
+-   **多样团队 + judge 选择**对单模型基线的胜率（win rate）达 **0.810**；**同质团队**仅 **0.512**（接近随机，Glass's Δ=2.07）。
+
+-   **judge 式选择 vs MoA 式合成**：ΔWR = **+0.631**，且合成式聚合在 42 个任务中**零次**被 judge 面板偏好于基线——说明合成往往稀释质量。
+
+-   **独立 judge 复评**确认所有方向性结论（Spearman ρ = **0.90**）；但主评估存在部分测量循环（circularity），独立评估下胜率衰减 **53–67%**。
+
+-   **探索性发现**：纳入一个更弱的模型反而能提升表现并降低成本（p < 1e-4，未预注册）。
+
+**核心结论**：在单轮 generate-then-select 流水线上，**选择器质量比生成器多样性是更具影响力的设计杠杆**。
+
+## 5\. 贡献与创新点
+
+-   化解了 "MoA 异构胜出" 与 "Self-MoA 同质胜出" 的表面矛盾，给出统一框架。
+
+-   提出 selection bottleneck 与闭式临界值 s\*，把"是否该用多样性"变成一个可计算、可决策的判据。
+
+-   用实证表明：聚合环节（选择/合成）才是多 agent 流水线的真实瓶颈，而非生成端的多样性本身——直接挑战"堆更多不同模型就更好"的直觉。
+
+## 6\. 局限与争议 / 后续工作
+
+-   只覆盖**单轮** generate-then-select，未涉及多轮辩论/迭代（如 multi-agent debate）。
+
+-   judge 选择存在**测量循环**：用 LLM 当 judge 选 LLM 输出，胜率被高估；独立 judge 下显著衰减。
+
+-   任务集较小（42 个），且结论对选择器质量高度敏感。
+
+-   后续可结合："Rethinking Mixture-of-Agents"（arXiv:2502.00674）、"The Hidden Strength of Disagreement"（arXiv:2502.16565）、以及 test-time compute 缩放（Snell et al., arXiv:2408.03314）来把选择瓶颈推广到多轮与训练场景。
+
+## 7\. 与 Agent Harness 的关系
+
+对 harness 工程师，本文是一记清醒剂：**聚合/选择器的质量，比"塞多少个不同模型"重要得多。**
+
+1.  **把投资重心放在 selector / verifier 上**：与其花力气凑齐一堆异构生成器，不如先做好一个能可靠判别优劣的评审器（judge / critic / 单元测试）。选择器质量 s 直接决定多样性是否兑现。
+
+2.  **离散候选用"选择"而非"合成"**：当多个 agent 各自产出完整答案时，让选择器挑最优（pick best），通常优于把答案揉在一起合成——本文显示合成在 42/42 任务中都不被偏好。
+
+3.  *用 s* *做架构决策**：在接入多样团队前，先估测你的选择器质量 s 是否高于临界值 s*；若选择器很弱，同质 + 强模型更稳，且可大胆混入廉价弱模型降本（只要选择器能分辨）。
+
+## 8\. 原文与资源
+
+-   论文（arXiv）：[https://arxiv.org/abs/2603.20324](https://arxiv.org/abs/2603.20324)
+
+-   发表于 Applied Sciences (MDPI) 2026，DOI：[https://doi.org/10.3390/app10100000](https://doi.org/10.3390/app10100000)
+
+-   PDF 原文：[https://arxiv.org/pdf/2603.20324](https://arxiv.org/pdf/2603.20324)
+
+## 9\. BibTeX
+
+```plain
+@article{maryanskyy2026when,
+  title={When Agents Disagree: The Selection Bottleneck in Multi-Agent LLM Pipelines},
+  author={Maryanskyy, Artem and Budnikov, Dmitry and Kaliyev, Alibek T.},
+  journal={arXiv preprint arXiv:2603.20324},
+  year={2026},
+  note={Published in Applied Sciences (MDPI), 2026}
+}
+```
+{% endraw %}

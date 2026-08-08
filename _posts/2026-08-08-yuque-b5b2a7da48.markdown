@@ -1,0 +1,76 @@
+---
+title: "实验结论"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 大模型, 2._模型微调及使用方式调研]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+> Rethinking the Role of Demonstrations: What Makes In-Context Learning Work？
+
+## 什么是 incontext-learning
+
+如下图所示，我们想预测 Good meal! 的label，之前是直接送到模型去预测，现在不是了。先采样一些相同格式分布的 text-label 对。通过 template 构建成统一的格式。并进行拼接，送入到 LLM 中进行预测，这样模型可以参考采样数据的格式，更好的对当前 query 进行预测。所以 ICL 不是一个模型训练方法，而是一种提升模型预测表现的方法，不会对参数进行更新
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.3_In_Context_Learning-1.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+作者采用 12 个模型进行了实验（都是仅编码器的 dense LM）
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.3_In_Context_Learning-2.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+对于每个模型，作者采用了两种应用方式，即 direct 和 channel：
+
+-   direct : 计算给定 input x 条件下，label y 的概率 P(y|x)
+-   channel: 给定 y 的条件下计算 x 的概率
+
+# 实验结论
+
+## 实验结论1 ：用随机标签替换 gold 标签只会轻微影响性能
+
+-   这一趋势在几乎所有的模型上都是一致的：模型看到的性能下降在 0-5% 的绝对范围内。在多选择任务中（平均 1.7%）替换标签的影响小于在分类任务中（2.6% 的绝对标签）。采样数据的 标签是否正确，并不是提高预测能力的必要条件
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.3_In_Context_Learning-3.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+## 实验结论2：ICL 中，演示中的分布（即 x1...xk 的分布是否一致）极大地有助于提高性能。
+
+-   这可能是因为已 IND（in-distribution）文本的条件使任务更接近于语言建模，因为 LM 在此期间总是以 IND 文本为条件进行推理标签
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.3_In_Context_Learning-4.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+## 实验结论3：标签空间（y1...yk 所覆盖的标签空间）的一致性显著有助于提高性能
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.3_In_Context_Learning-5.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+## 实验结论4：保持输入-标签对的格式是关键的
+
+![image.png](/img/yuque/计算机/大模型/2._模型微调及使用方式调研/assets/2.3_In_Context_Learning-6.png)
+
+编辑切换为居中
+
+添加图片注释，不超过 140 字（可选）
+
+##
+{% endraw %}

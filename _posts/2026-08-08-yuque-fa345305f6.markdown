@@ -1,0 +1,416 @@
+---
+title: "超弦理论进展综述（2023–2026）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 物理, 粒子物理导论, CERN_2026年1–7月_arXiv_产出深度拆解_粒子物理全景与超对称专题]
+categories: [物理]
+yuque: true
+---
+
+{% raw %}
+# 超弦理论进展综述（2023–2026）
+
+> 覆盖时间：2023 年初至 2026 年夏（约三年半）。  
+> 范围：超弦理论的**理论**进展——Swampland 与弦真空、AdS/CFT 全息与黑洞、弦振幅与形式方法、弦宇宙学、弦唯象（从弦论构造标准模型），以及 2025–2026 的新热点（无张力/零弦）。  
+> 资料来源：arXiv 预印本、INSPIRE-HEP、JHEP/PRD/JCAP/Physics Reports 等期刊记录，经 `export.arxiv.org` API 逐条核对。每条均附 arXiv 编号（少数已见刊但无确认 arXiv 号的论文在正文中注明）。
+
+---
+
+## 0\. 这一时期的总基调
+
+如果说 2023 年前的弦论研究还弥漫着"构造 vs. no-go"的定性辩论气息，那么 2023–2026 这三年半的标志是**三个转向**：
+
+-   **从猜想到定理。** Swampland 的距离猜想、Weak Gravity 猜想在对称模空间与微扰弦中被真正"证明"；通量景观有了精确（非数值）真空与有限性定理。
+
+-   **从存在性到定量可证伪。** 弦暴胀不再只是"构造出来"，而是被 ACT DR6、DESI 数据*拟合*；弦唯象首次出现能复现完整夸克/轻子质量矩阵的显式紧致化；F-theory 轴子宇宙的部分区域已被实验排除。
+
+-   **从各分支单打到交叉印证 + 新热点涌现。** "fortuity"把 BPS 黑洞微观态与混沌挂钩；可积性、bootstrap、六角形强耦合在 N=4 SYM 中会师；无张力/零弦（Carrollian 世界面）成为 2025–2026 年最显眼的新方向，给出弦论高能相自身的本征世界面描述。
+
+下面按子领域展开。
+
+---
+
+## 1\. Swampland 纲领与弦真空
+
+### 1.1 距离猜想与 Emergent String
+
+-   `[2508.18401]` Baines, Collazuol, Fraiman, Graña, Waldram — *The Boundary of Symmetric Moduli Spaces and the Swampland Distance Conjecture*. => 用有理抛物子群与 Cartan 子代数刻画无穷远边界，对几乎所有局部对称模空间**证明**了距离猜想，轻态塔衰减率的凸包即表示权凸包。
+
+-   `[2605.26212]` Baines, Collazuol, Fraiman, Graña, Waldram — *EFTs with Symmetric Moduli Spaces: the Landscape and the Swampland*. => 分类与 Emergent String Conjecture 相容的对称模空间/表示，发现三例似乎无法由弦/M 理论紧致化得到。
+
+-   `[2405.00083]` Bedroya, Mishra, Wiesner — *Density of States, Black Holes and the Emergent String Conjecture*. JHEP 01 (2025) 144. => 仅用黑洞热力学与态密度增长（不假设弦论 UV 完备），自下而上论证弱耦合极限的最轻塔只能是 KK 塔或指数简并的弦塔。
+
+-   `[2504.01066]` Hassfeld, Monnee, Weigand, Wiesner — *Emergent Strings in Type IIB Calabi–Yau Compactifications*. JHEP 01 (2026) 140. => IIB 复结构 Tyurin 退化极限的世界面描述唯一给出临界杂化弦，D3-膜绕特殊拉格朗日三环给出 BPS 塔，并经镜像对称检验。
+
+### 1.2 Weak Gravity / 磁猜想与 Cobordism
+
+-   `[2401.14449]` Heidenreich, Lotito — *Proving the Weak Gravity Conjecture in Perturbative String Theory, Part I: The Bosonic String*. JHEP 05 (2025) 102. => 在微扰玻色弦中给出 WGC 的**证明**（而非检验），建立世界面层面的一般性论证框架。
+
+-   `[2605.05305]` Di Ubaldo, Iliesiu, Lin, Yan — *Positivity of the gravitational path integral implies the axionic weak gravity conjecture*. => 引力路径积分内积的正定性要求轴子平移对称必须被破坏，由此导出带精确常数的轴子 WGC 锐化版本。
+
+-   `[2310.06895]` Basile, Debray, Delgado, Montero — *Global anomalies & bordism of non-supersymmetric strings*. => 计算非超对称弦的扭曲 string bordism 群，验证全局反常基本消失，并按 cobordism 猜想分类所需膜。
+
+-   `[2505.15885]` Braeger, Debray, Dierigl, Heckman, Montero — *Cobordism Utopia: U-Dualities, Bordisms, and the Swampland*. => 系统计算 3≤D≤11 超引力 U-对偶群的 Spin bordism 群，并识别实现对称性破缺缺陷的弦/M/F 理论背景。
+
+### 1.3 Tadpole 猜想与精确通量景观
+
+-   `[2304.06751]` Braun, Fraiman, Graña, Lüst, Parra de Freitas — *Tadpoles and Gauge Symmetries*. => 在 K3×K3 的 F-理论通量紧化中穷举规范对称性，发现 tadpole 界内残余非阿贝尔规范群的秩随通量电荷线性降至零。
+
+-   `[2407.16756]` Rajaguru, Sengupta, Wrase — *Fully stabilized Minkowski vacua in the 2⁶ Landau–Ginzburg model*. => 给出首批无平坦方向的 4D N=1 Minkowski 解，其中两例**违反**精化 tadpole 猜想（提供明确反例）。
+
+-   `[2407.16758]` Becker, Brady, Graña, Morros, Sengupta, You — *Tadpole conjecture in non-geometric backgrounds*. JHEP 2024, 21. => 在 2⁶ Gepner 非几何背景中构造大量超对称解，确认"稳定模数—通量电荷"线性增长，并给出界内全部复结构模有质量的首例。
+
+-   `[2311.09295]` Grimm, Monnee — *Finiteness Theorems and Counting Conjectures for the Flux Landscape*. => 综述通量景观的数学有限性定理，并提出关于真空轨迹连通分量数、几何复杂度与维数的三条精确计数猜想。
+
+-   `[2404.12422]` Grimm, van de Heisteeg — *Exact Flux Vacua, Symmetries, and the Structure of the Landscape*. => 在 F-理论 CY 四折上给出首个**超势为零的精确通量真空**景观：对称轨迹上真空稠密，加上 tadpole 约束后为有限集。
+
+-   `[2501.03984]` Chauhan, Cicoli, Krippendorf, Maharana, Piantadosi, Schachner — *Deep observations of the Type IIB flux landscape*. => 给出系统枚举算法并在双模 CY 上精确计数，找到无轻模且 |W₀|≈5.5×10⁻⁵ 的真空，揭示局部分布偏离统计预期。
+
+-   `[2512.04151]` Baykara, Tomasiello, Vafa — *Counting AdS Vacua*. => 发现带 UV 截断 μ 的 AdS 真空数满足幂律 𝔑(μ)∼aμ⁻ᵇ，并讨论其有限性所需条件。
+
+### 1.4 de Sitter 构造及其可控性 / 批评
+
+-   `[2406.13751]` McAllister, Moritz, Nally, Schachner — *Candidate de Sitter Vacua*. => 本时期标志性工作：在 IIB CY 定向紧化中显式构造约 30 个领头阶全模稳定的 anti-D3 提升 dS 候选真空。
+
+-   `[2512.17995]` Hebecker, Lüst, Schachner, Schreyer — *Effective potentials, warping, and implications for F-term uplifting*. => 发现 KKLT 中翘曲修正主导使 F-项提升失控，而在 LVS 中该修正被体积幂次压低——对提升机制可控性的定量批评。
+
+-   `[2403.07065]` Andriot, Ruehle — *On classical de Sitter solutions and parametric control*. => IIB 群流形紧化的数值解暗示存在参数可控的经典 dS，可能构成"渐近 dS 禁戒"的反例。
+
+-   `[2507.02037]` Valeixo Bento, Montero — *An M-theory dS maximum from Casimir energies on Riemann-flat manifolds*. JHEP 01 (2026) 099. => 用 Casimir 能在 Riemann-flat 流形上构造完全显式、受控的尺度分离 dS₅ 极大点。
+
+-   `[2512.17095]` McAllister, Schachner — *TASI Lectures on de Sitter Vacua*. (讲义) => 系统讲授 IIB 通量紧化与 `[2406.13751]` 的构造细节。
+
+### 1.5 模稳定化、尺度分离与全息约束
+
+-   `[2507.00615]` AbdusSalam, Hughes, Quevedo, Schachner — *Coexisting Flux String Vacua from Numerical Kähler Moduli Stabilisation*. => 在 8 万余个 CY 三折上数值实现全部已知 Kähler 模稳定情形，发现 KKLT 型与 LVS 型真空在同一通量势中共存并分析其衰变。
+
+-   `[2406.01694]` Bera, Chakraborty, Leontaris, Shukla — *Global Embedding of Fibre Inflation in Perturbative LVS*. PRD 110, 106009 (2024). => 将纤维暴胀全局嵌入微扰 LVS（弦环 + F⁴ 修正稳定体积），缓解标准 LVS 中场程受限问题。
+
+-   `[2509.25313]` Bedroya, Steinhardt — *Holography vs. Scale Separation*. => 论证全息 CFT 的退耦要求与尺度分离矛盾，故 DGKT 类尺度分离 AdS 不存在对偶 CFT。
+
+-   `[2511.15784]` Bedroya, Steinhardt — *Holographic Constraints on the String Landscape*. => 将全息一致性条件推广，用以排除包括 DGKT 与 KKLT 在内的主流尺度分离 AdS 与亚稳 dS 方案。
+
+-   `[2511.07781]` Tringas, Wrase — *Classical scale-separated AdS₃ vacua in heterotic string theory*. => 给出杂化弦中首例参数弱耦合、大体积且 KK 尺度小于 AdS 长度的 N=1 尺度分离真空。
+
+-   `[2603.08779]` Cribiori, Paraskevopoulou, Van Riet — *A domain wall bound on anti-de Sitter vacua*. SciPost Phys. 20, 157 (2026). => 由域壁张力导出 AdS 半径上限，同时实现引力微子猜想与 AdS 距离猜想，并约束层级构造。
+
+### 1.6 非超对称弦真空
+
+-   `[2308.15525]` Krippendorf, Schachner — *New non-supersymmetric flux vacua in string theory*. => 首次在 CY 定向紧化中构造满足 tadpole 约束的大样本破超对称通量真空，并找到真空能层级压低的解。
+
+-   `[2510.01324]` Raucci, Tomasiello — *AdS vacua of non-supersymmetric strings*. JHEP 12 (2025) 057. => 为三种无快子非超对称弦找到新 AdS 背景（直积、T\_{p,q} 几何与 G/H 上的规范场构造）。
+
+-   `[2604.18692]` Basile, Robbins, Saleem — *Non-supersymmetric heterotic strings on AdS₄×S³×S³*. SciPost Phys. 21, 028 (2026). => 分析其稳定性：通量接近时出现快子，远离时虽无快子却存在反向尺度分离与膜成核不稳定性。
+
+-   `[2509.02632]` Lehnert — *Hitchhiker's Guide to the Swampland*. Fortschr. Phys. => 面向宇宙学家的 20 余条 Swampland 猜想手册。
+
+-   `[2509.24703]` Leone, Raucci — *Aspects of strings without spacetime supersymmetry*. Riv. Nuovo Cim. 49, 75–136 (2026). => 非超对称弦的系统性综述。
+
+---
+
+## 2\. AdS/CFT、全息与黑洞
+
+### 2.1 全息纠缠、体重构与有限 N
+
+-   `[2302.11695]` Doi, Harper, Mollabashi, Takayanagi, Taki — *Timelike entanglement entropy*. JHEP 05 (2023) 052. => 定义复值类时纠缠熵，证明其等价于伪熵并由类时/类空极值面组合的面积给出，开辟 RT 公式的洛伦兹推广方向。
+
+-   `[2301.07257]` Penington, Witten — *Algebras and States in JT Gravity*. => JT 引力耦合物质后边界可观测量代数为 Type II∞ von Neumann 代数，其代数熵与欧氏路径积分的 replica 计算一致。
+
+-   `[2409.02534]` Sugishita, Terashima — *Bulk Reconstruction and Gauge Invariance*. => 论证 N=∞ 近似破坏规范不变性从而误导体重构，有限 N 下纠缠楔重构与全息纠错码图像需实质修正。
+
+-   `[2607.08684]` Terashima — *Entanglement Wedge Reconstruction without Holographic Quantum Error Correction*. => 主张有限 N 全息 CFT 中不存在全息量子纠错，纠缠楔重构应重解释为各边界区域拥有独立低能代数的子区域互补性。
+
+-   `[2408.00823]` Dei, Knighton, Naderi, Sethi — *Tensionless AdS₃/CFT₂ and Single Trace T T̄*. => 给出无张力 k=1 弦论与单迹 T T̄ 形变对称轨形 CFT 的新全息词条，并匹配单圈环面配分函数。
+
+### 2.2 弦论 / 全息中的黑洞
+
+-   `[2307.13051]` Boruch, Iliesiu, Yan — *Constructing all BPS black hole microstates from the gravitational path integral*. => 用引力路径积分构造 BPS 黑洞微观态希尔伯特空间的完整基，维数与 Gibbons-Hawking 处方及弦论非微扰修正吻合。
+
+-   `[2402.10129]` Chang, Lin — *Holographic covering and the fortuity of black holes*. => 提出把 BPS 态分为 monotone 与 fortuitous 两类，猜想后者主导典型黑洞微观态与熵——"fortuity"纲领的源头。
+
+-   `[2312.16443]` Choi, Choi, Kim, Lee, Lee — *Finite N black hole cohomologies*. => 在 SU(3)/SU(4) N=4 SYM 中显式构造阈值以上非引力子 1/16-BPS 上同调，并在 BMN 子扇区看到黑洞式熵增长。
+
+-   `[2407.19387]` Chen, Lin, Shenker — *BPS Chaos*. SciPost Phys. 18, 072 (2025). => 用 LMRS 诊断证明全息 BPS 系统仅弱混沌，而有限面积 BPS 黑洞通过 fortuity 机制保留强混沌，把混沌与 BPS 计数直接挂钩。
+
+-   `[2506.04311]` Antonini, Chen, Maxfield, Penington — *An apologia for islands*. => 证明无无质量引力子、无外部储库时岛仍可出现，且 Page 曲线原则上可由黑洞多副本实验观测。
+
+-   `[2507.23667]` Miyaji, Ruan, Shibuya, Yano — *Universal Time Evolution of Holographic and Quantum Complexity*. PRL 136, 151602 (2026). => 用生成函数形式证明全息复杂度与量子复杂度共有的 slope–ramp–plateau 演化源于随机矩阵普适性与能级排斥。
+
+### 2.3 膜、缺陷 CFT 与线算符
+
+-   `[2501.13910]` Eleftheriou, Murthy, Rosselló — *Localization and wall-crossing of giant graviton expansions in AdS₅*. JHEP 07 (2025) 126. => 由超对称局域化直接导出巨引力子展开，并证明其解析延拓对应指数中的 wall-crossing。
+
+-   `[2601.17114]` Chen, Dorey, Moriyama, Mouland, Sanli — *An M2/M5 Duality from the Giant Graviton Expansion*. => 由巨引力子展开猜想并验证 3D ABJM 与 6D (2,0) 理论超共形指数之间的 M2/M5 对偶。
+
+-   `[2312.12551]` Ferrero, Meneghelli — *Unmixing the Wilson line defect CFT. Part II: analytic bootstrap*. => 在 N=4 SYM 的 1/2-BPS Wilson 线缺陷 CFT 中把位移超多重态四点函数推进到三圈，并发展解简并混合的新方法。
+
+### 2.4 全息 bootstrap 与 AdS Virasoro–Shapiro 振幅
+
+-   `[2306.12786]` Alday, Hansen — *The AdS Virasoro-Shapiro Amplitude*. JHEP 10 (2023) 023. => 给出逐阶算法：曲率修正的第 k 阶是权重 3k 的单值多重多对数世界面积分，据此外显式构造前两阶并产出大量强耦合 CFT 数据。
+
+-   `[2312.02261]` Alday, Hansen, Nocchi — *High Energy String Scattering in AdS*. JHEP 02 (2024) 089. => 用鞍点方法算出固定角高能极限下的 AdS Virasoro-Shapiro 振幅，显示曲率修正指数化并与 AdS 经典散射一致。
+
+-   `[2510.19909]` Alday, Armanini, Häring, Zhiboedov — *From Partons to Strings: Scattering on the Coulomb Branch of N=4 SYM*. => 在库仑分支上构造从部分子到弦的可插值散射振幅，用 bootstrap 约束 Wilson 系数并重建 AdS 曲率修正。
+
+-   `[2601.05312]` Ren, Wang, Wen — *Energy-Energy Correlator from the AdS Virasoro-Shapiro Amplitude*. => 建立世界面积分与 N=4 SYM 强耦合 EEC 的精确映射，给出平坦空间贡献及首阶曲率修正。
+
+### 2.5 天球全息、twistor 与软定理
+
+-   `[2306.00940]` Costello, Paquette, Sharma — *Burns space and holography*. => 构造以 Burns 空间为半经典体的天球全息对偶，证明该体上全部圈级散射振幅等于一个显式 2D 手征代数的关联函数——目前最完整的可证天球对偶。
+
+-   `[2506.01888]` Kmec, Mason, Ruzziconi, Sharma — *S-algebra in Gauge Theory: Twistor, Spacetime and Holographic Perspectives*. => 把天球 S-代数等同于自对偶 Yang–Mills 可积系统的对称代数，统一 twistor、时空与全息三种描述。
+
+-   `[2605.05350]` Tropper — *Challenges to Understanding Celestial Holography from the Bottom Up*. => 在可解 Sinh-Gordon 模型中发现"先变换后展开"与"先展开后变换"不一致，说明自下而上检验天球对偶远比预期微妙。
+
+-   `[2310.12922]` Donnay — *Celestial holography: An asymptotic symmetry perspective*. Physics Reports 邀稿综述。
+
+### 2.6 AdS/弦中的可积性
+
+-   `[2406.02698]` Ekhammar, Gromov, Ryan — *New Approach to Strongly Coupled N=4 SYM via Integrability*. => 引入具规则强耦合展开的 QSC 新变量，使数值算法在 g≈100 仍稳定，给出 sl(2) 扇区新解析结果。
+
+-   `[2502.00862]` Dixon, Duhr — *Antipodal self-duality of square fishnet graphs*. PRD 111, L101901 (2025). => 证明任意尺寸方形 fishnet 图在运动学映射与多重多对数 Hopf 代数对径映射的联合作用下自对偶。
+
+-   `[2605.03887]` Basso, Kaluç, Serban — *Classical correlation functions at strong coupling from hexagonalization*. => 用 hexagon 形式证明强耦合下平面 N=4 SYM 半 BPS 关联函数在经典极限中指数化，由 TBA 自由能主导。
+
+-   `[2308.03829]` Belin, de Boer, Jafferis, Nayak, Sonner — *Approximate CFTs and Random Tensor Models*. => 提出"近似 CFT"框架刻画混沌 CFT 系综，并论证 AdS₃ 纯引力可作为满足这些约束的随机张量模型。
+
+-   `[2505.20385]` Geng, Hung, Jiang — *It from ETH: Multi-interval Entanglement and Replica Wormholes from Large-c BCFT Ensemble*. => 直接从大中心荷 BCFT 系综的代数共形数据推导出 RT 公式与 replica 虫洞，即体几何源自 ETH。
+
+---
+
+## 3\. 弦振幅、弦场论与形式方法
+
+### 3.1 弦散射振幅与世界面 CFT
+
+-   `[2511.16280]` Komatsu et al. — *Worldsheet for Generalized Veneziano Amplitudes*. PRL 137, 021601 (2026). => 为近年发现的变形（超几何）Veneziano 类振幅提供诚实的世界面/积分实现，表明它们不只是 bootstrap 奇趣。
+
+-   `[2302.04895]` Chen et al. — *Bootstrapping the String KLT Kernel*. => 仅由一致性/单值性推导关联开弦与闭弦树的 KLT 核，无需世界面输入。
+
+-   `[2404.16084]` Alday et al. — *Single-valuedness of the AdS Veneziano Amplitude*. => 证明曲率修正的 AdS₅×S³ Veneziano 振幅的 α′ 展开由单值 MZV 构成，把平坦空间定理推广到 AdS。
+
+-   `[2509.02719]` Alday et al. — *Monodromy Relations for String Amplitudes on AdS*. => 建立 AdS 版本的平坦空间单值关系，约束远离平坦空间的开放弦关联子。
+
+-   `[2502.05531]` Claasen et al. — *From Modular Graph Forms to Iterated Integrals*. JHEP 2025, 204. => 系统把亏格一模图形式重写为迭代 Eisenstein 积分，简化单圈 α′ 展开。
+
+-   `[2310.07755]` Stieberger — *One-loop Double Copy Relation in String Theory*. => 把双拷贝推广到亏格一，用开弦数据表达闭弦单圈振幅。
+
+-   `[2402.14062]` Stieberger et al. — *Carrollian Amplitudes from Strings*. => 直接从弦世界面得到 Carrollian（天球相邻）振幅，把平坦全息与弦论相连。
+
+-   `[2301.11227]` Albonico et al. — *Massive Ambitwistor-Strings; Twistorial Models*. => 构建产生有质量态振幅的 twistorial ambitwistor 模型，把 CHY/散射方程推广到非无质量运动学。
+
+-   `[2507.12535]` Bellazzini et al. — *(Super)Gravity from Positivity*. => 对引力子 EFT 的正性/因果约束，刻画出弦状高导数完备必须位于的参数区域——与 SUSY 综述中的同篇工作呼应。
+
+-   `[2502.20372]` Mansfield — *Positivity of the Veneziano Amplitude in Ten Dimensions*. => 确认 Veneziano 振幅在十维的部分波完全正性，是非平凡幺正检验。
+
+### 3.2 弦场论与 D-瞬子
+
+-   `[2301.13182]` Schnabl, Stettinger — *Open String Field Theory with Stubs*. JHEP 07 (2023) 032. => 引入 stub 变形的 OSFT，重塑顶点结构与解空间。
+
+-   `[2308.08587]` Erbin, Fırat — *Open String Stub as an Auxiliary String Field*. SciPost Phys. 17, 044 (2024). => 把 stub 重铸为辅助场，恢复立方型局域作用量。
+
+-   `[2409.02982]` Fırat et al. — *Topological Recursion for Hyperbolic String Field Theory*. => 给出生成双曲闭弦 SFT 顶点到各阶的拓扑递推算法。
+
+-   `[2407.06278]` Sen — *D-instanton Induced Effective Action and its Gauge Invariance*. => 证明 SFT 导出的 D-瞬子有效作用的规范不变性，补上 D-瞬子纲领的缺口。
+
+### 3.3 无张力 / 零弦——2025–2026 新热点
+
+-   `[2601.20959]` Bagchi et al. — *The Tensionless Lives of Null Strings*. Physics Reports 邀稿综述（约 150 页）。 => 综合 Carrollian 世界面对称、三种互不等价的零弦真空及其各自量子理论。
+
+-   `[2603.26910]` Bagchi et al. — *High Energy Scattering and Null Strings*. => 在诱导真空上构造零弦振幅，并证明它们复现普通弦振幅的 Gross–Mende 与 Regge 极限。
+
+-   `[2608.02987]` Chen, Hu — *Quantum Anomalies of Tensionless Bosonic Strings*. => 比较四种零弦表述，发现临界维数依赖真空（翻转真空上 ILST 为 D=26；诱导真空上无约束）。
+
+-   `[2604.05173]` Karan, Majhi — *New-born Strings are Tensionless*. => 有限寿命（因果钻石）世界面恰在其诞生时变为无张力，给零弦相一个物理起源。
+
+### 3.4 非微扰弦：瞬子、拓扑弦、镜像对称
+
+-   `[2305.19916]` Gu, Marino et al. — *Non-perturbative Topological String Theory on Compact Calabi-Yau 3-folds*. => 把拓扑弦的跨级数/复活方法从 local 推广到紧 CY₃。
+
+-   `[2411.16211]` Marino — *Les Houches Lectures on Non-perturbative Topological Strings*. SciPost Phys. Lect. Notes 112 (2026). (讲义) => 复活、Stokes 常数及其 BPS 解释的系统性讲解。
+
+-   `[2604.19731]` Douaud, Kashani-Poor — *The Non-perturbative Topological String: from Resurgence to Wall-Crossing of DT Invariants*. => 证明 alien-导数代数同构于 Kontsevich–Soibelman 代数，把 Borel 奇点直接与 DT wall-crossing 相连。
+
+-   `[2602.21281]` Scheinpflug, Wang, Yin — *D-instanton Effects on a D3-brane*. => 计算非保护 D⁴F⁴ 瞬子修正；单瞬子项确认 Green–Gutperle，但多瞬子项与其矛盾。
+
+-   `[2509.03293]` Alexandrov, Kaushik — *Multi-instantons in 2d String Theory*. => 用中位数重求和与矩阵模型对偶修正长期模糊的多 ZZ-瞬子归一化因子 ζₙ。
+
+-   `[2303.00757]` Demirtas et al. — *Computational Mirror Symmetry*. => 提供大规模 CY 周期/GV 不变量的高效算法，现为景观扫描的主力工具。
+
+-   `[2310.06820]` Gendler et al. — *Counting Calabi-Yau Threefolds*. => 去除 Kreuzer–Skarke 列表冗余，大幅修正不同 CY₃ 超曲面的计数。
+
+---
+
+## 4\. 弦宇宙学
+
+-   `[2303.04819]` Cicoli, Conlon, Maharana, Parameswaran, Quevedo, Zavala — *String Cosmology: from the Early Universe to Today*. (Phys. Rept.，约 190 页综述) => 弦暴胀、模/kination 宇宙学、暗能量与观测抓手（含 Swampland 联系）的权威现状综述。
+
+-   `[2403.04831]` Bansal, Brunelli, Cicoli, Hebecker, Kuespert — *Loop Blow-up Inflation*. (更新见 `[2604.07288]`) => 长期被认为致命的弦圈修正反而生成新的幂律平台，并抬高张标比。
+
+-   `[2511.19610]` Chakraborty et al. — *Effect of Moduli Redefinitions on Fibre Inflation*. JCAP 06 (2026) 025. => 单圈模重定义实质移动纤维暴胀预言，影响与 ACT/DESI 的比较。
+
+-   `[2506.22630]` Leontaris, Shukla — *Assisted Fibre Inflation in Perturbative LVS*. JCAP 10 (2025) 070. => 多纤维"辅助"动力学拓宽可行的 nₛ–r 窗口。
+
+-   `[2412.05762]` Pajer et al. — *The UV Sensitivity of Axion Monodromy Inflation*. SciPost Phys. 20, 097 (2026). => 量化单轴子 monodromy 预言对未知 UV 完备的强依赖，调和早先的"稳健性"主张。
+
+-   `[2501.17226]` Eröncel et al. — *A Universal Bound on the Duration of a Kination Era*. PRL 135, 101002 (2025). => 导出与模型无关的 kination 时长上界，直接约束模主导/随机引力波背景方案。
+
+-   `[2409.08049]` Apers et al. — *A Note on 4d Kination and Higher-Dimensional Uplifts*. => 表明 4D kination 阶段升格为简单高维（去紧致化）解，澄清其弦论起源。
+
+-   `[2607.27361]` Cicoli et al. — *Spectator Axions in String Inflation and Primordial Black Holes*. => LVS 型暴胀中的旁观轴子产生原初黑洞尺度的曲率尖峰及相伴的随机引力波背景。
+
+---
+
+## 5\. 弦唯象：从弦论构造标准模型
+
+-   `[2507.03076]` Constantin, Leung, Lukas, Nutricati — *Reproducing Standard Model Fermion Masses and Mixing in String Theory: A Heterotic Line Bundle Study*. => 两个显式 E₈×E₈ 线丛模型复现全部夸克/带电轻子质量与 CKM 混合且无外来源——弦味问题的原理证明。
+
+-   `[2402.01615]` Constantin et al. — *Computation of Quark Masses from String Theory*. => 用机器学习 Ricci-平坦度量与丛联络直接数值计算物理 Yukawa（非仅全纯部分）。
+
+-   `[2307.02535]` Bies et al. — *Improved Statistics for F-theory Standard Models*. Commun. Math. Phys. (2024). => 根丛计数显示具精确 MSSM 谱的 F-理论真空远多于此前估计。
+
+-   `[2511.20458]` Vander Ploeg Fallon, Halverson, McAllister, Zhu — *F-theory Axiverse*. => 计算含至多约 181,200 个轴子的 F-理论系综耦合；h¹¹ ≳ 5,000–10,000 的模型已与太阳望远镜与 Chandra 数据紧张。
+
+-   `[2401.00040]` Li, Raby — *Towards Natural and Realistic E₇ GUTs in F-theory*. JHEP 05 (2024) 334. => 具自然双态–三重态分裂的逼真 E₇ F-理论 GUT。
+
+-   `[2407.20788]` Chen, Lou, Wang — *Massive Spectrum in F-theory and the Distance Conjecture*. JHEP 01 (2025) 128. => 在 7-膜碰撞处识别 BPS 弦结的无穷轻塔，匹配杂化 KK 塔并精炼距离猜想。
+
+-   `[2512.21382]` Knapp-Perez et al. — *Demystifying Stringy Miracles with Eclectic Flavor Symmetries*. => 把看似偶然的杂化轨形味纹理解释为折衷（模 × 传统）对称性的后果。
+
+-   `[2504.20137]` Escalante-Notario et al. — *The Non-SUSY Orbifolder*. => 系统构造具 SM 类谱的非超对称杂化轨形模型的公开工具。
+
+-   `[2501.08590]` Mansha et al. — *Three-Family Supersymmetric Pati–Salam Model from Rigid Intersecting D6-branes*. PRD 111, L121904 (2025). => 无伴随模、具三族的刚性相交 D6-膜构造。
+
+-   `[2407.13836]` Berglund et al. — *Precision String Phenomenology*. (白皮书/综述) => 论证该领域已进入弦真空能作出可证伪味与轴子预言的定量时代。
+
+-   `[2509.03416]` Kade — *Integrable systems: From the ice rule to supersymmetric fishnet Feynman diagrams*. (综述) => 可积系统从冰规则到超对称 fishnet 费曼图的脉络梳理。
+
+---
+
+## 6\. 横向观察：三条贯穿线索
+
+**线索一：Swampland 从"口号"升级为"可证明的约束"。** 距离猜想在对称模空间上被群论证明、WGC 在微扰弦中被证明、Emergent String 有自下而上论证——这类结果不再依赖"弦论假设"，而是从黑洞热力学、正性、代数几何推出。同时 tadpole/精化猜想出现了明确反例（2407.16756），提示猜想需精化而非盲从。尺度分离则成为新主战场：Bedroya–Steinhardt 用全息一致性同时挑战 DGKT 与 KKLT。
+
+**线索二：全息词典进入"有限 N 自省"期。** 2023 年的"岛屿/Page 曲线"已成熟；2024 年 "fortuity" 把 BPS 黑洞微观态从"数指数"变为"辨结构"，并和混沌、可积性打通；2025–2026 年开始认真对待有限 N：纠缠楔重构与全息纠错码本身受到质疑，天球全息从建构期进入自下而上一致性检验期。AdS Virasoro–Shapiro 振幅则从"提取 CFT 数据"走向计算真实可观测量（EEC）。
+
+**线索三：弦论走向"定量可证伪"与"新相涌现"的双重成熟。** 弦暴胀被 ACT/DESI 数据*拟合*、弦唯象首次复现完整味数据、F-theory 轴子宇宙部分区域被实验排除——弦论第一次面临"自己的预言被实验收紧"的局面。与此同时，无张力/零弦给出弦论高能相自身的本征世界面描述，成为 2025–2026 年最显眼的新方向。
+
+---
+
+## 7\. 论文索引（按 arXiv 编号排列）
+
+| arXiv | 主题领域 | 年份 |
+| --- | --- | --- |
+| 2301.07257 | JT 引力代数与态 | 2023 |
+| 2301.11227 | 有质量 ambitwistor 弦 | 2023 |
+| 2301.13182 | 带 stub 的开弦场论 | 2023 |
+| 2302.04895 | Bootstrap 弦 KLT 核 | 2023 |
+| 2302.11695 | 类时纠缠熵 | 2023 |
+| 2303.00757 | 计算镜像对称 | 2023 |
+| 2303.04819 | 弦宇宙学综述 | 2023 |
+| 2303.04831 | 圈隆起暴胀 | 2023 |
+| 2304.06751 | Tadpole 与规范对称 | 2023 |
+| 2305.19916 | 紧 CY 上非微扰拓扑弦 | 2023 |
+| 2306.00940 | Burns 空间与全息 | 2023 |
+| 2306.12786 | AdS Virasoro–Shapiro 振幅 | 2023 |
+| 2307.02535 | F-理论标准模型统计 | 2023 |
+| 2307.13051 | BPS 黑洞微观态构造 | 2023 |
+| 2308.03829 | 近似 CFT 与随机张量 | 2023 |
+| 2308.08587 | stub 作为辅助弦场 | 2023 |
+| 2308.15525 | 新非超对称通量真空 | 2023 |
+| 2310.06820 | 计数 CY 三折 | 2023 |
+| 2310.06895 | 非超对称弦全局反常 | 2023 |
+| 2310.12922 | 天球全息综述 | 2023 |
+| 2311.09295 | 通量景观有限性定理 | 2023 |
+| 2312.02261 | AdS 高能弦散射 | 2023 |
+| 2312.06443 / 12551 | 有限 N 黑洞上同调 / Wilson 线缺陷 CFT | 2023 |
+| 2312.16443 | 有限 N 黑洞上同调 | 2023 |
+| 2401.00040 | F-理论 E₇ GUT | 2024 |
+| 2401.14449 | 微扰弦证明 WGC | 2024 |
+| 2402.01615 | 从弦论计算夸克质量 | 2024 |
+| 2402.10129 | fortuity 与黑洞 | 2024 |
+| 2402.14062 | Carrollian 振幅来自弦 | 2024 |
+| 2403.04831→2604.07288 | 圈隆起暴胀（更新） | 2024/2026 |
+| 2403.07065 | 经典 dS 解与参数控制 | 2024 |
+| 2404.12422 | 精确通量真空 | 2024 |
+| 2404.16084 | AdS Veneziano 单值性 | 2024 |
+| 2405.00083 | 态密度与 Emergent String | 2024 |
+| 2406.01694 | 微扰 LVS 纤维暴胀 | 2024 |
+| 2406.02698 | 可积性新方法（强耦合 SYM） | 2024 |
+| 2406.13751 | Candidate de Sitter Vacua | 2024 |
+| 2407.06278 | D-瞬子有效作用规范不变 | 2024 |
+| 2407.13836 | 精密弦唯象白皮书 | 2024 |
+| 2407.16756 | 完全稳定 Minkowski 真空（tadpole 反例） | 2024 |
+| 2407.16758 | 非几何背景中 tadpole 猜想 | 2024 |
+| 2407.19387 | BPS 混沌 | 2024 |
+| 2407.20788 | F-理论质量谱与距离猜想 | 2024 |
+| 2408.00823 | 无张力 AdS₃/CFT₂ | 2024 |
+| 2409.02534 | 体重构与规范不变 | 2024 |
+| 2409.02982 | 双曲弦场论拓扑递推 | 2024 |
+| 2409.08049 | 4D kination 与高维 uplift | 2024 |
+| 2410.07755→2310.07755 | 单圈双拷贝（弦） | 2023 |
+| 2411.16211 | 非微扰拓扑弦 Les Houches 讲义 | 2024 |
+| 2412.05762 | 轴子 monodromy 的 UV 敏感性 | 2024 |
+| 2501.03984 | IIB 通量景观深度观测 | 2025 |
+| 2501.08590 | 刚性相交 D6 Pati–Salam | 2025 |
+| 2501.13910 | 巨引力子展开局域化 | 2025 |
+| 2501.17226 | kination 时长普适上界 | 2025 |
+| 2502.00862 | 方形 fishnet 图对径自对偶 | 2025 |
+| 2502.05531 | 模图形式→迭代积分 | 2025 |
+| 2502.20372 | 十维 Veneziano 振幅正性 | 2025 |
+| 2503/2504.01066 | IIB 中 Emergent String | 2025 |
+| 2504.20137 | 非超对称 Orbifolder 工具 | 2025 |
+| 2505.15885 | Cobordism Utopia | 2025 |
+| 2505.20385 | It from ETH | 2025 |
+| 2506.01888 | 规范论 S-代数（天球） | 2025 |
+| 2506.04311 | 为岛辩护 | 2025 |
+| 2506.22630 | 辅助纤维暴胀 | 2025 |
+| 2507.02037 | M-理论 Casimir dS 极大点 | 2025 |
+| 2507.00615 | 共存通量弦真空数值扫描 | 2025 |
+| 2507.03076 | 杂化线丛复现 SM 味 | 2025 |
+| 2507.12535 | 由正性得到（超）引力 | 2025 |
+| 2507.23667 | 全息/量子复杂度普适演化 | 2025 |
+| 2508.18401 | 对称模空间边界与距离猜想 | 2025 |
+| 2509.02632 | Swampland 搭车客指南 | 2025 |
+| 2509.02719 | AdS 弦振幅单值关系 | 2025 |
+| 2509.03293 | 2D 弦论多瞬子 | 2025 |
+| 2509.03416 | 可积系统综述（fishnet） | 2025 |
+| 2509.24703 | 无时空超对称弦综述 | 2025 |
+| 2509.25313 | 全息 vs 尺度分离 | 2025 |
+| 2510.01324 | 非超对称弦 AdS 真空 | 2025 |
+| 2510.19909 | 库仑分支部分子到弦 | 2025 |
+| 2511.07781 | 杂化弦尺度分离 AdS₃ | 2025 |
+| 2511.15784 | 弦景观的全息约束 | 2025 |
+| 2511.16280 | 广义 Veneziano 振幅世界面 | 2025 |
+| 2511.19610 | 模重定义对纤维暴胀影响 | 2025 |
+| 2511.20458 | F-theory 轴子宇宙 | 2025 |
+| 2512.04151 | 计数 AdS 真空 | 2025 |
+| 2512.17095 | TASI dS 真空讲义 | 2025 |
+| 2512.17995 | 翘曲修正与 F-term uplifting | 2025 |
+| 2512.21382 | 折衷味对称解密弦奇迹 | 2025 |
+| 2601.05312 | AdS VS 振幅的 EEC | 2026 |
+| 2601.17114 | 巨引力子展开的 M2/M5 对偶 | 2026 |
+| 2601.20959 | 零弦的张力自由生命（综述） | 2026 |
+| 2602.21281 | D3-膜上 D-瞬子效应 | 2026 |
+| 2603.08779 | AdS 真空的域壁界 | 2026 |
+| 2603.26910 | 高能散射与零弦 | 2026 |
+| 2604.05173 | 新生弦是无张力的 | 2026 |
+| 2604.07288 | 圈隆起暴胀（更新） | 2026 |
+| 2604.18692 | 非超对称杂化弦 AdS₄×S³×S³ | 2026 |
+| 2604.19731 | 非微扰拓扑弦：复活到 DT wall-crossing | 2026 |
+| 2605.05305 | 引力路径积分正性⇒轴子 WGC | 2026 |
+| 2605.05350 | 自下而上理解天球全息的挑战 | 2026 |
+| 2605.26212 | 对称模空间的景观与沼泽 | 2026 |
+| 2605.03887 | 强耦合经典关联子（hexagonalization） | 2026 |
+| 2607.08684 | 无 HQEC 的纠缠楔重构 | 2026 |
+| 2607.27361 | 旁观轴子与原初黑洞 | 2026 |
+| 2608.02987 | 无张力玻色弦的量子反常 | 2026 |
+
+> 说明：He & Jiang（JHEP 01 2026 088, DCI 积分）等少数已见刊但检索时无确认 arXiv 号的论文，未列入索引表。部分 2025 年末投稿、2026 年见刊的工作按投稿年标注；少数系列工作的"更新"版本以 "→" 标注后续编号。
+
+---
+
+## 8\. 方法论备注
+
+本综述由 arXiv / INSPIRE-HEP / 期刊记录的公开摘要经 WebSearch 与 `export.arxiv.org` API 逐条核对整理，每条均附可溯源编号。覆盖面力求"代表性强"而非穷尽——同一课题（如 dS 构造、AdS VS 振幅、零弦）的系列工作仅列最具标志性的数篇。与同目录的《SUSY 理论进展综述（2023–2026）》互为姊妹篇：SUSY 篇侧重超对称/超引力的现象学与形式，本篇侧重弦论真空、全息、振幅与唯象。若需针对某一子领域（例如把"Swampland"或"无张力弦"单独深挖成独立长篇），或补充 2026 年下半年新上线的工作，可随时提出。
+{% endraw %}

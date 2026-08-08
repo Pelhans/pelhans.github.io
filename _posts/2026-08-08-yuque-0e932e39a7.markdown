@@ -1,0 +1,45 @@
+---
+title: "Agent Harness 重要论文解读 · 索引"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版)]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# Agent Harness 重要论文解读 · 索引
+
+> 以下每篇均为对 agent harness 领域重要论文的独立精读，均挂载于《Agent Harness 技术调研报告（完整版）》目录下。
+
+1.  [论文解读：Your Agent May Misevolve: Emergent Risks in Self-evolving LLM Agents（2026）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/qva2o2o9yy8897fq)
+
+2.  [论文解读：Towards a Science of Scaling Agent Systems（2025）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/hekswwqmwtoyyxbz)
+
+3.  [论文解读：The Attacker Moves Second: Stronger Adaptive Attacks Bypass Defenses Against LLM Jailbreaks and Prompt Injections（2025）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/gz1oqsg5u87geg6s)
+
+4.  [论文解读：Defeating Prompt Injections by Design（2025）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/thc0zp46lfkkp5y4)
+
+5.  [论文解读：Benchmarking AI Agent Memory: Is a Filesystem All You Need?（2025）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/lsy0ni6uvpgv7you)
+
+6.  [论文解读：GAIA: A Benchmark for General AI Assistants（2023）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/xghpwzb3ygd6r6tm)
+
+7.  [论文解读：Generative Agents: Interactive Simulacra of Human Behavior（2023）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/eku0pfoftlxmzbvs)
+
+8.  [论文解读：MemGPT: Towards LLMs as Operating Systems（2023）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/fxgeywrktz2yv86f)
+
+9.  [论文解读：More Agents Is All You Need（2024）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/fusb36lynquvf6zt)
+
+10.  [论文解读：ReAct: Synergizing Reasoning and Acting in Language Models（2022）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/atp1842g0e0d4ehc)
+
+11.  [论文解读：Reflexion: Language Agents with Verbal Reinforcement Learning（2023）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/xaagp44rlxezz51g)
+
+12.  [论文解读：SWE-bench: Can Language Models Resolve Real-world GitHub Issues?（2023/2024）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/av2z69hbq1zh8f6f)
+
+13.  [论文解读：Tree of Thoughts: Deliberate Problem Solving with Large Language Models（2023）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/zy2u3kadklvmyvw4)
+
+14.  [论文解读：Voyager: An Open-Ended Embodied Agent with Large Language Models（2023）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/bwmnim2nw5wn9lz8)
+
+15.  [论文解读：When Agents Disagree: The Selection Bottleneck in Multi-Agent LLM Pipelines（2026）](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/wgc4214v294tbfh3)
+{% endraw %}

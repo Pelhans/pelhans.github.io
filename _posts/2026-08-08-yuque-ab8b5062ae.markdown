@@ -1,0 +1,983 @@
+---
+title: "TCP_IP_网络编程_[尹圣雨]_学习笔记"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 编程, 计算机基础]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+## 第一章知识点：理解网络编程与套接字
+
+套接字(socket) 是网络数据传输用的软件设备。用一个例子来讲解 socket 的大体工作过程：
+
+-   调用 socket 函数（安装电话机）生成套接字，返回对应文件描述符： int socket (int domain, int type, int protocol)
+-   调用 bind 函数（分配电话号码）绑定 IP 和端口号。。int bind(int sockfd, struct sockaddr \*myaddr, socklen\_t addrlen);
+-   调用 listen函数（连接电话线）将 socket 设置为可连接状态： int listen(int sockfd, int backlog)
+-   调用 accept 函数（拿起话筒）受理连接请求： int accept(int sockfd, struct sockaddr \*addr, socklen\_t \*addrlen);
+-   如果是客户端的话：创建 socket 后，直接调用 connect 函数，向服务器发起请求就可以了
+-   socket 流程演示图(见[socket流程图\_炎升的博客-CSDN博客\_socket流程](https://link.zhihu.com/?target=https%3A//blog.csdn.net/weixin_40482816/article/details/126505253)）  
+      
+    
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-1.webp)
+
+socket流程图
+
+## 第二章知识点：套接字类型与协议设置
+
+-   协议（protocol）是计算机间，为了完成数据交换而定好的约定。
+-   对于 int socket (int domain, int type, int protocol) 来讲，它的三个参数：
+
+-   domain：socket 中使用的协议族（Protocol Family），包含 PF\_INET(IPV4 互联网协议族）、PF\_INET6（Ipv6互联网协议族）、PF\_LOCAL（本地通信的 UNIX协议族）、PF\_PACKET（底层套接字的协议族）、PF\_IPX（IPX Novell 协议族）几类。。。其中最常用的是第一个 PF\_INET 协议族
+-   type：套接字数据传输类型信息，包含两种：
+
+-   面向连接的套接字（SOCK\_STREAM）：
+
+-   可靠的、按顺序传递的、基于字节的面向连接的数据传输方式的套接字。。。对应 TCP 套接字
+
+-   面向消息的套接字（SOCK\_DGRAM）：
+
+-   不可靠的、不按顺序传递的、以数据高速传输为目的的套接字
+
+-   protocol：计算机间通信中使用的协议信息。。。只有当同一协议族中存在多个数据传输方式相同的协议时才有用。。。一般上面两个协议都是默认 0 就行
+
+## 第三章 地址族与数据序列
+
+-   IPv4(internet Protocol version 4)，4字节地址族
+
+-   A类地址的首字节范围：0-127
+-   B类地址的首字节范围：128-191
+-   C类地址的首字节范围：192-223
+
+-   IPv6(internet Protocol version 6)，6字节地址族，与4的主要差别是表示IP所用的字节数
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-2.webp)
+
+表示 IPv4 地址的结构体如下所示，该结构体将作为地址信息传递给bind函数：
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-3.webp)
+
+-   地址族 sa\_family\_t：
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-4.webp)
+
+-   存放 32位IP地址的 struct in\_addr：内部实际用 uint32\_t 存放 32位 IPv4地址
+
+## 第四&五章 基于 TCP 的服务器端/客户端
+
+### 理解TCP和UDP
+
+-   根据数据传输方式的不同，基于网络协议的套接字一般分成TCP套接字和UDP套接字。
+-   TCP套接字是面向连接的，又称为基于流Stream的套接字，TCP（Transmission Control Protocol 传输控制协议）的简写，书中将TCP/IP协议栈分成4层架构，掌握这4层协议栈就足够了。另外不同于OSI 7层架构：物理层-->数据链路层-->网络层-->传输层-->会话层-->表示层-->应用层。
+-   4层结构：
+
+-   链路层：是物理链接领域标准化的结果，也是最基本的领域，专门定义LAN，WAN，MAN等网络标准
+-   IP层：复杂网络中，负责路径的选择。IP本身是面向消息的，不可靠的协议
+-   TCP/UDP层：以IP层提供的路径信息为基础完成实际的数据传输，因此也称为传输层。TCP比UDP复杂，TCP可以保证可靠的数据传输
+-   应用层：根据程序特点决定服务器端和客户端之间数据传输规则
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-5.webp)
+
+4层协议栈结构
+
+### socket 连接 & 关闭
+
+-   连接 -- 三次握手：
+
+-   主机A --> 主机B：SYN：SEQ：1000，ACK：SYN（Synchronization），传递的数据包序号为1000，ACK为空。如果对方接收无误，ACK要等于SEQ+1
+-   .主机B --> 主机A：SYN+ACK:SEQ:2000,ACK:1001（A的序列号+1）：SEQ：主机B的序列号（随机的），ACK1001表示接收无误，请求传递SEQ1001数据包
+-   主机A --> 主机B：ACK：SEQ1001（等于B之前发送的ACK），ACK2001（等于B的序列号+1）
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-6.webp)
+
+-   传输数据
+
+-   主机A分两次向主机B发送200字节数据。主机A第一个数据包序列号1200，主机B收到后，返回的ACK=SEQ号+传递的字节数+1
+-   假如传输过程中发生丢包，TCP会启动重传
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-7.webp)
+
+-   断开连接
+
+-   四次挥手
+
+-   .FIN:SEQ5000，ACK-
+-   ACK：SEQ7500，ACK5001，FIN的ACK指令
+-   FIN：SEQ7501，ACK5001；ACK5001是因为接收ACK消息后未接收数据而重传的
+-   .ACK：SEQ5001，ACK7502
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-8.webp)
+
+-   TCP socket 中的 I/O缓冲
+
+-   IO缓冲在每个TCP套接字中单独存在
+-   IO缓冲在创建套接字时自动生成
+-   即使关闭socket也会继续传递输出缓冲中的遗留数据
+-   关闭 socket 将丢失输入缓冲中的数据
+
+### 实现基于TCP的服务器端和客户端
+
+函数调用顺序如下所示：
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-9.webp)
+
+各个函数介绍：
+
+-   socket（）创建 socket：
+
+```cpp
+#include <sys/socket.h>  
+	  
+int socket(int domain, int type, int protocol);  
+	  
+// 成功时返回文件描述符，失败时返回-1.  
+	    
+// domain 套接字中使用的协议簇信息；  
+// type 套接字数据传输类型信息；  
+// protocol 计算机间通信使用的协议信息。
+```
+
+-   bind() 分配 socket 地址
+
+```cpp
+#include <sys/socket.h>  
+  
+int bind(int sockfd, struct sockaddr *myaddr, socklen_t addrlen);  
+
+// 成功时返回0，失败时返回-1  
+    
+// sockfd 要分配地址信息的套接字文件描述符  
+// myaddr 存有地址信息的结构体变量地址值  
+// addrlen 第二个结构体变量的长度
+```
+
+-   listen()等待连接请求状态
+
+```cpp
+#include <sys/socket.h>  
+
+int listen(int sock, int backlog);  
+
+// 成功时返回0，失败时返回-1  
+
+// sock 希望进入等待连接请求状态的套接字文件描述符，传递的描述符套接字参数成为服务器端套接字  
+// backlog 连接请求等待队列长度，若为5，则队列长度为5，表示最多5个连接请求进入队列。
+```
+
+-   accept() 允许连接
+
+```cpp
+#include <sys/socket.h>  
+ 
+int accept(int sock, struct sockaddr *addr, socklen_t *addrlen);  
+
+// 成功时返回创建的套接字文件描述符，失败时返回-1  
+
+// sock 服务器套接字的文件描述符 
+// addr保存发起连接请求的客户端地址信息的变量地址值，函数调用后传递来的地址变量参数填充客户端地址信息  
+// addrlen 第二个参数addr结构体的长度
+```
+
+-   connect () 建立连接
+
+```cpp
+#include <sys/socket.h>  
+  
+int connect (int sock, struct sockaddr *servaddr, socklen_t addrlen);  
+
+// 成功时返回0，失败时返回-1  
+
+// sock 客户端套接字文件描述符  
+// servaddr 保存目标服务器端地址信息的变量地址值  
+// addrlen 以字节为单位传递已传递给第二个结构体参数servaddr的地址变量长度
+```
+
+代码实现：详细流程见前面的 socket 流程图
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-10.webp)
+
+1.  服务器端代码
+
+```cpp
+#include <stdio.h>  
+#include <stdlib.h>  
+#include <string.h>  
+#include <unistd.h>  
+#include <arpa/inet.h>  
+#include <sys/socket.h>  
+  
+#define BUF_SIZE    1024  
+void error_handling(char *message);  
+ 
+int main(int argc, char *argv[]){  
+   int serv_sock;  
+   int clnt_sock;  
+ 
+   char message[BUF_SIZE];  
+   int str_len,i;  
+   struct sockaddr_in serv_addr;  
+   struct sockaddr_in clnt_addr;  
+   socklen_t clnt_addr_size;  
+     
+   if(argc != 2){  
+       printf("Usage : %s <port>\n",argv[0]);  
+       exit(1);  
+   }  
+   serv_sock = socket(PF_INET,SOCK_STREAM,0);  
+   if(serv_sock == -1){  
+       error_handling("socket() error");  
+   }  
+ 
+   memset(&serv_addr,0,sizeof(serv_addr));  
+   serv_addr.sin_family=AF_INET;  
+   serv_addr.sin_addr.s_addr=htonl(INADDR_ANY);  
+   serv_addr.sin_port=htons(atoi(argv[1]));  
+ 
+   if(bind(serv_sock,(struct sockaddr*)&serv_addr,sizeof(serv_addr)) == -1){  
+       error_handling("bind() error");  
+   }  
+ 
+   if(listen(serv_sock,5) == -1){  
+       error_handling("listen() error");  
+   }  
+ 
+   clnt_addr_size = sizeof(clnt_addr);  
+   for(i=0;i<5;i++){  
+       clnt_sock = accept(serv_sock,(struct sockaddr *)&clnt_addr,&clnt_addr_size);  
+       if(clnt_sock == -1){  
+           error_handling("accept() error");  
+       }else{  
+           printf("Connected client %d\n",i+1);  
+       }  
+       while((str_len = read(clnt_sock,message,BUF_SIZE)) != 
+       {     
+           write(clnt_sock,message,str_len);  
+           printf("client %d:message %s",i+1,message);  
+       }  
+       close(clnt_sock);  
+   }  
+   close(serv_sock);  
+ 
+   return 0;  
+ 
+}  
+ 
+void error_handling(char *message){  
+ 
+   fputs(message,stderr);  
+   fputs("\n",stderr);  
+   exit(1);  
+}
+```
+
+### 客户端代码
+
+```cpp
+#include <stdio.h>  
+#include <stdlib.h>  
+#include <string.h>  
+#include <unistd.h>  
+#include <arpa/inet.h>  
+#include <sys/socket.h>  
+  
+#define BUF_SIZE    1024  
+void error_handling(char *message);  
+  
+int main(int argc,char *argv[]){  
+    int sock;  
+    struct sockaddr_in serv_addr;  
+    char message[BUF_SIZE];  
+    int str_len;  
+  
+    if(argc != 3){  
+        printf("Usage : %s <IP> <port>\n",argv[0]);  
+        exit(1);  
+    }  
+  
+    sock = socket(PF_INET,SOCK_STREAM,0);  
+    if(sock == -1){  
+        error_handling("socket() error");  
+    }  
+      
+    memset(&serv_addr,0,sizeof(serv_addr));  
+    serv_addr.sin_family = AF_INET;  
+    serv_addr.sin_addr.s_addr = inet_addr(argv[1]);  
+    serv_addr.sin_port = htons(atoi(argv[2]));  
+  
+    if(connect(sock,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) == -1){  
+        error_handling("connect() error\r\n");  
+    }else{  
+        printf("Connected....");  
+    }  
+  
+    while(1){  
+        printf("Input message(Q to quit):");  
+        fgets(message,BUF_SIZE,stdin);  
+  
+        if(!strcmp(message,"q\n") || !strcmp(message,"Q\n"))  
+            break;  
+        write(sock,message,strlen(message));  
+        str_len = read(sock,message,BUF_SIZE-1);  
+        message[str_len] = 0;  
+  
+        printf("Message from server : %s \n",message);  
+    }  
+    close(sock);  
+    return 0;  
+}  
+  
+void error_handling(char *message){  
+    fputs(message,stderr);  
+    fputs("\n",stderr);  
+    exit(1);  
+}
+```
+
+## 第七章 优雅的断开套接字连接
+
+sockt 即使断开连接了，只要发送缓冲里仍有数据，依然会发出，尽管发出的数据无法被对方接收了，使用close后会关闭套接字，但仍有很多问题，比如发送缓冲中仍然有数据，对方还没有完全接收
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-11.webp)
+
+图中，A发送完数据后断开连接，之后主机再也不发接收B的数据，不够优雅，而使用shutdown可以关闭其中的一个流
+
+```cpp
+#include <sys/socket.h>  
+  
+int shutdown(int sock, int howto);  
+//  成功返回0，失败返回-1  
+  
+// sock：需要断开的套接字文件描述符  
+// howto：断开方式  
+//    SHUT_RD：断开输入流  
+//    SHUT_WR：断开输出流  
+//    SHUT_RDWR：同时断开IO流
+```
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-12.webp)
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-13.webp)
+
+半关闭后，通过 EOF 触发关闭
+
+## 第八章 域名及网络地址
+
+-   DNS （Domain Name System）是对IP地址和域名进行相互转换的系统，核心是DNS服务器。所有计算机都记录着默认DNS服务器地址，通过这个DNS服务器得到相应域名的IP地址信息。一般服务器域名不会轻易改变，但会相对频繁地改变服务器IP地址
+-   计算机内置的默认DNS服务器并不知道网络中的所有域名IP地址，若本地不知道，则会询问其他DNS服务器
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-14.webp)
+
+-   IP地址与域名之间的转换
+
+-   **struct** hostent \* gethostbyname(**constchar** \* hostname)， 成功时返回hostent结构体地址，失败返回NULL指针
+
+## 第十章 多进程服务器端
+
+-   **多进程服务器：**通过创建多个进程提供服务
+-   **多路复用服务器：**通过捆绑并统一管理IO对象提供服务（详见select和epoll）
+-   **多线程服务器：**通过生成与客户端等量的线程提供服务
+
+下面开始多进程服务器：
+
+通过fork函数创建进程：复制正在运行的调用fork函数的进程，复制相同的内存空间。**两个进程都执行fork函数以后的语句**
+
+```cpp
+#include <unistd.h>  
+  
+pid_t fork(void);  
+  
+// 成功时返回进程ID，失败时返回-1.
+```
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-15.webp)
+
+-   僵尸Zombie进程：进程已死，但仍旧占用系统资源
+
+-   子进程终止方式：exit函数传递的参数和执行return并返回值
+-   僵尸进程的产生：exit的传递值和return返回值会传递给操作系统，操作系统不会销毁子进程，直到这些值传递到父进程
+-   如何传递值到父进程：操作系统不会主动把值传递到父进程，而是父进程主动请求，函数调用。如果父进程不主动请求，则子进程会一直处于僵尸状态，所以父进程要负责收回子进程
+
+-   利用wait销毁僵死进程：父进程主动请求获取子进程的返回值
+
+-   子进程终止参数保存在wait的参数中，里面还有其他信息，需要通过宏分离有效值
+-   调用wait函数时，如果没有已终止的子进程，那么程序blocking，直到有子进程终止，所以调用wait需谨慎
+
+```cpp
+#include <sys/wait.h>  
+
+pid_t wait(int * statloc);  
+  
+// 成功时返回终止的子进程ID，失败返回-1
+```
+
+### 基于多任务的并发服务器
+
+基于进程的并发服务器模型
+
+-   父进程通过调用accept受理连接请求；
+-   获取socket文件描述符创建并传递给子进程，子进程复制父进程的所有资源
+-   子进程利用传递来的文件描述符提供服务
+-   在调用fork之后需要将无关的socket文件描述符关闭
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-16.webp)
+
+```cpp
+#include <stdio.h>    
+#include <stdlib.h>    
+#include <string.h>    
+#include <unistd.h>    
+#include <arpa/inet.h>    
+#include <signal.h>  
+#include <sys/wait.h>  
+#include <sys/socket.h>    
+    
+#define BUF_SIZE    30    
+void error_handling(char *message);    
+void read_childproc(int sig);  
+    
+int main(int argc, char *argv[]){    
+    int serv_sock,clnt_sock;    
+    pid_t pid;  
+    struct sigaction act;  
+    char buf[BUF_SIZE];    
+    int str_len,state;    
+    struct sockaddr_in serv_adr;    
+    struct sockaddr_in clnt_adr;    
+    socklen_t adr_sz;    
+        
+    if(argc != 2){    
+        printf("Usage : %s <port>\n",argv[0]);    
+        exit(1);    
+    }    
+  
+    act.sa_handler = read_childproc;  
+    sigemptyset(&act.sa_mask);  
+    act.sa_flags = 0;  
+    state = sigaction(SIGCHLD,&act,0);  
+  
+    serv_sock = socket(PF_INET,SOCK_STREAM,0);    
+    if(serv_sock == -1){    
+        error_handling("socket error");    
+    }    
+    
+    memset(&serv_adr,0,sizeof(serv_adr));    
+    serv_adr.sin_family=AF_INET;    
+    serv_adr.sin_addr.s_addr=htonl(INADDR_ANY);    
+    serv_adr.sin_port=htons(atoi(argv[1]));    
+    
+    if(bind(serv_sock,(struct sockaddr*)&serv_adr,sizeof(serv_adr)) == -1){    
+        error_handling("bind() error");    
+    }    
+    
+    if(listen(serv_sock,5) == -1){    
+        error_handling("listen() error");    
+    }    
+    
+    while(1){   
+        adr_sz = sizeof(clnt_adr);    
+        clnt_sock = accept(serv_sock,(struct sockaddr *)&clnt_adr,&adr_sz);    
+        if(clnt_sock == -1){    
+            continue;  
+        }else{    
+            printf("new client ...\n");    
+        }    
+  
+    pid = fork();  
+  
+    if(pid == -1){  
+        close(clnt_sock);  
+        continue;  
+    }else if(pid == 0){  
+        close(serv_sock);  
+        while((str_len = read(clnt_sock,buf,BUF_SIZE)) != 0){  
+        write(clnt_sock,buf,str_len);  
+        }  
+      
+        close(clnt_sock);  
+        puts("client disconnected...");  
+        return 0;  
+    }else{  
+        close(clnt_sock);  
+    }  
+    }    
+    close(serv_sock);    
+    
+    return 0;    
+}    
+    
+void error_handling(char *message){    
+    
+    fputs(message,stderr);    
+    fputs("\n",stderr);    
+    exit(1);    
+}  
+  
+void read_childproc(int sig){  
+    pid_t pid;  
+    int status;  
+    pid = waitpid(-1,&status, WNOHANG);  
+    printf("removed proc id : %d \n",pid);  
+}
+```
+
+## 第十一章 进程间通信
+
+两个不同进程间进行数据交换（通过提供两个进程可以同时访问的内存空间实现）
+
+-   通过 PIPE 实现
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-17.webp)
+
+## 第十二章 I/O 复用（待细化，重要，建议直接看书）
+
+-   IO复用模型与多进程模型对比
+
+-   多进程模型：需要大量的运算和内存空间，进程间数据交换复杂IPC
+-   IO复用模型可以不创建多进程同时又向多个客户端提供服务，但是并不适用于所有情况
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-18.webp)
+
+-   select函数，将多个文件描述符集中在一起统一监视，监视项目有
+
+-   是否存在套接字接收数据
+-   无需阻塞传输数据的套接字有哪些
+-   哪些套接字发生异常
+
+select 函数的调用方法和顺序如下
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-19.webp)
+
+-   设置文件描述符
+
+```cpp
+FD_ZERO(fd_set *fdset) //将fd_set变量的所有位初始化0  
+FD_SET(int fd, fd_set *fdset) //注册文件描述符fd到fdset （以位数组的形式注册）
+FD_CLR(int fd, fd_set *fdset) //清除文件描述符fd  
+FD_ISSET(int fd, fd_set *fdset) //判断是否包含
+```
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-20.webp)
+
+-   设置检查范围和超时
+
+-   监视范围：与第一个参数有关，最大的文件描述符值加1（加1,是因为文件描述符从0开始）
+
+```cpp
+#include <sys/select.h>  
+#include <sys/time.h>  
+  
+int select(int maxfd,fd_set *readset,fd_set *writeset,fd_set *exceptset, const struct timeval * timeout)  
+  
+// 成功返回大于0的值，超时返回0，失败返回-1  
+  
+// maxfd：监视对象文件描述符数量 （最大文件描述符+1）
+// readset：是否存在待读取数据的文件描述符  
+// writeset：是否可传输无阻塞数据的文件描述符  
+// exceptset：是否发生异常的文件描述符  
+// timeout：超时信息 （如果select发生了阻塞，那么就通过设置timeout防止这种情况）
+```
+
+-   设置超时(select 最后一个参数）的结构体定义
+
+```cpp
+struct timeval{  
+    long tv_sec; //sec  
+    long tv_usec; // microsec  
+}
+```
+
+### 实现 I/O 复用服务器端
+
+```cpp
+#include <stdio.h>    
+#include <stdlib.h>    
+#include <string.h>    
+#include <unistd.h>    
+#include <arpa/inet.h>    
+#include <signal.h>  
+#include <sys/wait.h>  
+#include <sys/socket.h>    
+#include <sys/time.h>  
+#include <sys/select.h>  
+    
+#define BUF_SIZE    100  
+    
+void error_handling(char *message);    
+    
+int main(int argc, char *argv[]){    
+    int serv_sock,clnt_sock;    
+    char buf[BUF_SIZE];    
+    struct sockaddr_in serv_adr;    
+    struct sockaddr_in clnt_adr;    
+    socklen_t adr_sz;    
+    fd_set reads,cpy_reads;  
+    struct timeval timeout;  
+    int fd_max,str_len,fd_num,i;  
+    
+    if(argc != 2){    
+        printf("Usage : %s <port>\n",argv[0]);    
+        exit(1);    
+    }    
+  
+    serv_sock = socket(PF_INET,SOCK_STREAM,0);    
+    if(serv_sock == -1){    
+        error_handling("socket error");    
+    }    
+    
+    memset(&serv_adr,0,sizeof(serv_adr));    
+    serv_adr.sin_family=AF_INET;    
+    serv_adr.sin_addr.s_addr=htonl(INADDR_ANY);    
+    serv_adr.sin_port=htons(atoi(argv[1]));    
+    
+    if(bind(serv_sock,(struct sockaddr*)&serv_adr,sizeof(serv_adr)) == -1){    
+        error_handling("bind() error");    
+    }    
+    
+    if(listen(serv_sock,5) == -1){    
+        error_handling("listen() error");    
+    }    
+      
+    FD_ZERO(&reads);  
+    FD_SET(serv_sock,&reads);  
+    fd_max = serv_sock; //为什么要用serv_sock作为最大文件描述符，这个地方没看懂 
+尽管后面进行了求解最大值，但我认为这地方有点不妥///
+    while(1){   
+    cpy_reads = reads;  //因为进行复用的时候，需要对原有的文件描述符位数组进行修   改，为了不修改原数组，这里进行了拷贝
+    timeout.tv_sec = 5;  
+    timeout.tv_usec = 5000;  
+  
+    if((fd_num = select(fd_max+1,&cpy_reads,0,0,&timeout)) == -1)  
+        break;  
+    if(fd_num == 0)   
+        continue;  
+    for(i=0;i<fd_max+1;i++){  
+        if(FD_ISSET(i,&cpy_reads)){  
+        if(i == serv_sock){ //connection request  
+            adr_sz = sizeof(clnt_adr);  
+                clnt_sock = accept(serv_sock,(struct sockaddr *)&clnt_adr,&adr_sz);    
+            FD_SET(clnt_sock,&reads);     
+          
+            if(fd_max < clnt_sock){  
+            fd_max = clnt_sock;  //求文件描述符的最大值
+            }  
+            printf("connected client : %d \n", clnt_sock);  
+        }else{  //read message  
+            str_len = read(i,buf,BUF_SIZE);  
+  
+            if(str_len == 0){   //close  
+            FD_CLR(i,&reads);  
+            close(i);  
+            printf("closed client %d \n",i);  
+            }else{  
+            write(i,buf,str_len);   //echo  
+            }         
+        }  
+        }  
+    }  
+    }    
+    close(serv_sock);    
+    
+    return 0;    
+}    
+    
+void error_handling(char *message){    
+    
+    fputs(message,stderr);    
+    fputs("\n",stderr);    
+    exit(1);    
+}
+```
+
+## 第十三章 多种I/O函数
+
+-   send函数
+
+```cpp
+#include <sys/socket.h>  
+  
+ssize_t send(int sockfd,const void *buf,size_t nbytes, int flags);  
+  
+// 成功时返回发送的字节数，失败-1  
+  
+// sockfd：数据传输对象的套接字文件描述符  
+// buf：保存数据的缓冲地址值  
+// nbytes：待传输的字节数  
+// flags：传输数据时指定的可选项
+```
+
+-   recv函数
+
+```cpp
+#include <sys/socket.h>  
+  
+ssize_t recv(int sockfd, void *buf, size_t nbytes, int flags)  
+  
+// 成功时返回接收的字节数，受到EOF返回0，失败返回-1  
+  
+// sockfd：接收对象的套接字文件描述符  
+// buf：保存接收数据的缓冲地址值  
+// nbytes：可接收的最大字节数  
+// flags：接收数据时指定的可选项信息
+```
+
+## 第十六章 关于 I/O流分离的其他内容
+
+-   IO流分离方式（两种）
+
+-   第十章TCP IO routine分离，通过fork文件描述符区分输入输出，虽然文件描述符不会根据输入、输出进行区分，但是分开了两个文件描述符的用途（父进程负责读，子进程负责写）
+-   第十五章调用fdopen创建FILE指针，分离输入工具和输出工具
+
+-   分离流的好处
+
+-   通过分开输入过程和输出过程降低实现难度
+-   与输入无关的输出操作可以提高速度
+-   将FILE指针按读模式、写模式加以区分
+-   可以通过区分读写模式降低难度
+-   通过区分IO缓冲提高缓冲性能
+-   将文件描述符转成文件指针后，可以使用标准IO函数
+
+## 第十七章 优于 select的epoll（重要）
+
+-   实现IO复用的传统方法select和poll，但是性能不满意，因此有Linux的epoll
+
+-   缺点：
+
+-   调用select后常见的针对所有文件描述符的循环语句
+-   每次调用select函数时都需要向函数传递监视对象信息
+
+-   epoll可以克服select的缺点
+
+```cpp
+//epoll将发生事件的文件描述符集中在一起，放在epoll_event结构体中  
+struct epoll_event{  
+    __uint32_t events;  
+    epoll_data_t data;  
+}  
+  
+typedef union epoll_data{  
+    void * ptr;  
+    int fd;  
+    __uint32_t u32;  
+    __uint64_t u64;  
+}epoll_data_t;
+```
+
+epoll服务器端用到的三个函数
+
+-   epoll\_create：创建保存epoll文件描述符的空间 //对应 fd\_set
+
+-   调用epoll\_create函数时创建的文件描述符保存空间称为“epoll例程”，size只是建议epoll例程大小，实际大小由操作系统决定，Linux2.6.8之后，内核忽略size参数，会根据情况自动调整
+-   epoll\_create函数创建的资源与套接字相同，由操作系统管理，终止时要close
+
+```cpp
+#include <sys/epoll.h>  
+  
+int epoll_create(int size)  
+  
+// 成功时返回epoll文件描述符，失败返回-1  
+  
+// size epoll实例的大小
+```
+
+-   epoll\_ctl：向空间（位数组）注册并注销文件描述符 //对应FD\_SET，FD\_CLR
+
+```cpp
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)  
+  
+// 成功时返回0，失败-1  
+  
+// epfd：用于注册监视对象的epoll例程（事件发生的监视范围）的文件描述符  
+// op：用于指定监视对象的添加、删除或更改//EPOLL_CTL_ADD,EPOLL_CTL_DEL,EPOLL_CTL_MOD  
+// fd：需要注册的监视对象文件描述符  
+// event：监视对象事件类型
+```
+
+  
+  
+
+```cpp
+struct epoll_event event;  
+  
+event.events = EPOLLIN; //  
+event.data.fd = sockfd;  
+epoll_ctl(epfd,EPOLL_CTL_ADD,sockfd,&event);  
+  
+// events 成员：  
+// EPOLLIN：需要读取数据的情况  
+// EPOLLOUT：输出缓冲为空，可以立即发送数据的情况  
+// EPOLLPRI：受到OOB数据情况  
+// EPOLLRDHUP：断开连接或半关闭的情况  
+// EPOLLERR：发生错误的情况；  
+// EPOLLET：以边缘触发的方式得到事件通知  
+// EPOLLONESHOT：发生一次事件后，相应的文件描述符不再受到事件通知
+```
+
+  
+  
+
+-   epoll\_wait：等待文件描述符发生变化 //对应select
+
+```cpp
+int epoll_wait(int epfd,struct epoll_event * events,int maxevents,int timeout)  
+  
+// 成功时返回事件的文件描述符数，失败-1  
+//   
+// epfd：事件发生监视范围epoll例程的文件描述符  
+// events：保存发生事件的文件描述符集合的结构体地址值  
+// maxevents：第二个参数中可以保存的最大事件数  
+// timeout：以1/1000秒为单位等待时间
+```
+
+### epoll 实现 echo 服务器
+
+```cpp
+#include <stdio.h>    
+#include <stdlib.h>    
+#include <string.h>    
+#include <unistd.h>    
+#include <arpa/inet.h>    
+#include <sys/socket.h>    
+#include <sys/epoll.h>  
+    
+#define BUF_SIZE    100  
+#define EPOLL_SIZE  50  
+    
+void error_handling(char *message);    
+    
+int main(int argc, char *argv[]){    
+    int serv_sock,clnt_sock;    
+    char buf[BUF_SIZE];    
+    struct sockaddr_in serv_adr;    
+    struct sockaddr_in clnt_adr;    
+    socklen_t adr_sz;    
+    int str_len,i;  
+    struct epoll_event *ep_events;  
+    struct epoll_event event;  
+    int epfd,event_cnt;    
+  
+    if(argc != 2){    
+        printf("Usage : %s <port>\n",argv[0]);    
+        exit(1);    
+    }    
+  
+    serv_sock = socket(PF_INET,SOCK_STREAM,0);    
+    if(serv_sock == -1){    
+        error_handling("socket error");    
+    }    
+    
+    memset(&serv_adr,0,sizeof(serv_adr));    
+    serv_adr.sin_family=AF_INET;    
+    serv_adr.sin_addr.s_addr=htonl(INADDR_ANY);    
+    serv_adr.sin_port=htons(atoi(argv[1]));    
+    
+    if(bind(serv_sock,(struct sockaddr*)&serv_adr,sizeof(serv_adr)) == -1){    
+        error_handling("bind() error");    
+    }    
+    
+    if(listen(serv_sock,5) == -1){    
+        error_handling("listen() error");    
+    }    
+      
+    epfd = epoll_create(EPOLL_SIZE);  
+    ep_events = malloc(sizeof(struct epoll_event)*EPOLL_SIZE);  
+  
+    event.events = EPOLLIN;  
+    event.data.fd = serv_sock;  
+    epoll_ctl(epfd,EPOLL_CTL_ADD,serv_sock,&event);  
+  
+    while(1){   
+    event_cnt = epoll_wait(epfd,ep_events,EPOLL_SIZE,-1);  
+  
+    if(event_cnt  == -1){  
+        puts("epoll wait error");  
+        break;  
+    }  
+  
+    for(i=0;i<event_cnt;i++){  
+        if(ep_events[i].data.fd == serv_sock){  
+        adr_sz = sizeof(clnt_adr);  
+            clnt_sock = accept(serv_sock,(struct sockaddr *)&clnt_adr,&adr_sz);    
+        event.events = EPOLLIN;  
+        event.data.fd = clnt_sock;  
+        epoll_ctl(epfd,EPOLL_CTL_ADD,clnt_sock,&event);  
+        printf("connected client : %d \n", clnt_sock);  
+        }else{  //read message  
+        str_len = read(ep_events[i].data.fd,buf,BUF_SIZE);  
+  
+        if(str_len == 0){   //close  
+            epoll_ctl(epfd,EPOLL_CTL_DEL,ep_events[i].data.fd,NULL);  
+            close(ep_events[i].data.fd);  
+            printf("closed client %d \n",ep_events[i].data.fd);  
+        }else{  
+            write(ep_events[i].data.fd,buf,str_len);    //echo  
+  
+  
+        }         
+        }  
+    }  
+    }    
+    close(serv_sock);    
+    close(epfd);  
+    return 0;    
+}    
+    
+void error_handling(char *message){    
+    
+    fputs(message,stderr);    
+    fputs("\n",stderr);    
+    exit(1);    
+}
+```
+
+## 第十八章 多线程服务器端的实现
+
+-   Web服务器的发展迫使UNIX系列操作系统开始重视线程，Web服务器进程需要向多个客户端提供服务，因此逐渐舍弃进程，而用效率更高的线程
+-   多进程模型的缺点：
+
+-   创建进程的过程需要大的开销
+-   进程间通信需要用到IPC技术
+-   **经常发生“上下文切换Context Switching”，时间很长，很致命：进程A切换到进程B时，要将进程A信息移出内存，并读入进程B信息**
+
+-   多线程的优点:
+
+-   线程的创建和上下文切换比进程更快
+-   线程间通信无需特殊技术
+
+-   进程 PK 线程
+
+-   每个进程都有自己的数据区、heap、stack，进程间相互独立；线程间共享数据区和heap（线程拥有自己的栈）
+-   进程：在操作系统构成单独执行流的单位；线程：在进程构成单独执行流的单位
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-21.webp)
+
+-   线程创建pthread\_create
+
+```cpp
+#include <pthread.h>  
+  
+int pthread_create(pthread_t * restrict thread, const pthread_attr_t restrict attr,
+                   void *(*start_routine)(void *), void * restrict arg)  
+// restrict用来修饰指针不能被别的指针引用
+// 成功返回0，失败其他值  
+// thread：保存新创建进程ID的变量地址值  
+// attr：用于传递线程属性的参数，NULL表示默认  
+// start_routine：线程的执行流函数指针  
+// arg：第三个参数函数指针的参数信息
+```
+
+-   进程/线程等待pthread\_join
+
+```cpp
+int pthread_join(pthread_t thread, void **status)  
+  
+// 成功返回0，失败其他值  
+//   
+// thread：等待的线程ID  
+// status：保存线程的main函数返回值的指针变量地址值
+```
+
+![](/img/yuque/计算机/编程/计算机基础/assets/TCP_IP_网络编程_[尹圣雨]_学习笔记-22.webp)
+{% endraw %}

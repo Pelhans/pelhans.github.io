@@ -1,0 +1,641 @@
+---
+title: "粒子物理研究者必备的量子力学：从零到 QFT 门槛的自学手册"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 物理]
+categories: [物理]
+yuque: true
+---
+
+{% raw %}
+# 粒子物理研究者必备的量子力学：从零到 QFT 门槛的自学手册
+
+> **目标读者**：物理专业本科生，想走粒子物理 / 高能理论路线，但不确定"量子力学到底要学到哪、哪些推导必须亲手做"。  
+> **本文档的定位**：你**只需要这一份文档 + 一支笔**就能循序渐进地掌握粒子物理所需的 QM 全部硬核内容。每个带 🔑 的推导都给出**完整步骤**，配**例题**、**常见误区**与文末**自测习题（含解答/提示）**。  
+> **资料来源**：在 Griffiths / Sakurai 教材体系、Peskin & Schroeder 等 QFT 教材先修要求、CERN 粒子物理基础讲义、以及角动量/自旋/散射/路径积分权威资料基础上，补充了完整的推导步骤与例题，经整理归类。  
+> **核心结论**：**粒子物理 = 量子场论（QFT）；而 QFT 是站在研究生级 QM 形式体系之上的。** 本科 QM 只够入门，真正起跳需要 Sakurai 水平的形式化训练。
+
+---
+
+## 使用说明（请先读这一段）
+
+**1\. 前置知识自测**——下面每条你若能不翻书写出定义/公式，就过关；否则先补对应数学（第 1 章）。
+
+-   实对称矩阵可对角化；内积空间定义。
+
+-   复变：留数定理 $\oint f(z)\,dz=2\pi i\sum\text{Res}$。
+
+-   傅里叶变换 $f(k)=\int e^{-ikx}f(x)dx$ 与 $\delta$ 函数。
+
+-   经典力学：拉格朗日量 $L=T-V$、哈密顿量 $H=p\dot q-L$、欧拉-拉格朗日方程。
+
+-   狭义相对论：四矢量 $x^\mu=(ct,\mathbf r)$、度规 $\eta_{\mu\nu}=\mathrm{diag}(1,-1,-1,-1)$、不变量 $p^\mu p_\mu=m^2c^2$。
+
+**2\. 符号与约定**
+
+-   **自然单位**：粒子物理里几乎总是令 $\hbar=c=1$（"让世界变简单"）。还原时按量纲补回。本文推导中保留 $\hbar,c$ 便于你核对，结论处给出自然单位形式。
+
+-   **Dirac 符号**：$|\psi\rangle$ 是态（右矢），$\langle\psi|$ 是对偶（左矢），内积 $\langle\phi|\psi\rangle$，可观测量的期望值 $\langle A\rangle=\langle\psi|A|\psi\rangle$。
+
+-   **约定**：指标 $\mu,\nu=0,1,2,3$；重复指标求和（爱因斯坦约定）；$\varepsilon_{ijk}$ 是 Levi-Civita 符号，$\varepsilon_{123}=+1$。
+
+**3\. 学习节奏建议**：按第 2→3→4 章顺序；第 1 章（数学）边用边查即可，不必先啃完。每读完一个 🔑，立刻合上书**自己推一遍**——看懂得分 0，推得动才算会。
+
+---
+
+## 第 0 章 为什么粒子物理对 QM 要求特别高
+
+-   **粒子物理的实验语言是散射**：从卢瑟福发现原子核、到发现质子中子由夸克组成，几乎所有关于基本粒子的知识都来自散射实验。散射理论完全建立在 QM 之上（第 2.13 节）。
+
+-   **相对论要求"场"而非"粒子"**：相对论能量下会出现粒子产生/湮灭（对产生）、负能解。单粒子波函数（薛定谔方程）无法处理"粒子数变化"，必须升级到**量子场论**（第 4 章）。
+
+-   **QFT 的两个基石都源于 QM**：(1) 正则量子化（产生/湮灭算符，来自谐振子 2.7）；(2) 路径积分（费曼，2.14）。二者都要求你吃透非相对论 QM 的形式体系。
+
+> **入门** **↔** **起跳对照表**
+
+| 阶段 | 能做什么 | 典型教材 |
+| --- | --- | --- |
+| 入门（本科 QM） | 算势阱、谐振子、氢原子、简单散射 | Griffiths |
+| 起跳（形式化 QM） | 狄拉克符号、角动量代数、对称、绘景 | Sakurai |
+| 门槛（QFT） | 算树图截面、跑圈修正、规范场 | Peskin |
+
+---
+
+## 第 1 章 数学工具箱（不必推导，但要熟练到"不会卡"）
+
+这一层是工具不是物理。卡在这里会在 QFT 里寸步难行。
+
+| 数学主题 | 必须掌握 | 在粒子物理中的用途 | 卡住时补 |
+| --- | --- | --- | --- |
+| 线性代数 / 希尔伯特空间 | 内积、正交归一、本征值/向量、厄米算符、张量积、正交基展开 | 态空间、算符、多粒子态 | 任意线代教材 |
+| 复变函数 | 留数定理、围道积分 | 传播子、费曼积分（求极点） | 见 1.2 |
+| 傅里叶分析 | 傅里叶变换、$\delta$ 函数、动量空间 | 散射振幅=势的傅里叶变换 | 见 1.3 |
+| 群论与表示论 | 群/表示、李群李代数、SU(N)、Poincaré 群 | 自旋、规范场分类 | 见 1.4 |
+| 特殊函数 | 球谐 $Y_{lm}$、勒让德、缔合拉盖尔、贝塞尔、$\Gamma$ | 中心力场、氢原子、分波 | 见 1.5 |
+| 偏微与格林函数 | 波动/泊松方程、格林函数 | 传播子 | 见 1.6 |
+| 变分法 | 欧拉-拉格朗日方程、作用量 | 拉氏量、路径积分 | 见 1.7 |
+
+### 1.1 Dirac 符号速成（最容易劝退新手的坎）
+
+-   正交归一基：$\langle n|m\rangle=\delta_{nm}$。任意态展开 $|\psi\rangle=\sum_n c_n|n\rangle$，$c_n=\langle n|\psi\rangle$。
+
+-   算符在位置表象：$\langle x|\hat p|\psi\rangle=-i\hbar\frac{d}{dx}\psi(x)$。
+
+-   完备性：$\int dx\,|x\rangle\langle x|=\mathbf 1$（单位算符）。
+
+### 1.2 留数定理（散射积分必用）
+
+若 $f(z)$ 在简单闭合围道 $C$ 内除孤立奇点 $z_k$ 外解析，则 $\oint_C f(z)\,dz=2\pi i\sum_k\mathrm{Res}(f,z_k)$。**粒子物理里 90% 的费曼积分靠它**。例：算 $\int_{-\infty}^{\infty}\frac{e^{ikx}}{x^2+a^2}dx$，在上半平面取极点 $z=ia$，得 $2\pi i\cdot\frac{e^{-ka}}{2ia}=\frac{\pi}{a}e^{-ka}$。
+
+### 1.3 $\delta$ 函数与傅里叶变换
+
+$\delta(x)=\frac{1}{2\pi}\int_{-\infty}^{\infty}e^{ikx}dk$；$\int\delta(x-a)f(x)dx=f(a)$。平面波正交 $\langle\mathbf k&#39;|\mathbf k\rangle=(2\pi)^3\delta^3(\mathbf k&#39;-\mathbf k)$。
+
+### 1.4 群论为什么重要（自旋的来源）
+
+旋转群 SO(3) 的**双覆盖**是 SU(2)。SU(2) 的表示按"自旋"$j$ 标记：$j=0,1/2,1,3/2,\dots$。**半整数表示不对应于普通 3D 旋转，而对应于旋量**——这就是电子自旋 1/2 的群论根源。洛伦兹群（含 boosts）的旋量表示给出 Dirac 旋量（第 3.2 节）。
+
+### 1.5 特殊函数速查
+
+-   球谐 $Y_{lm}(\theta,\phi)$：角动量本征函数（2.8）。
+
+-   氢原子径向用缔合拉盖尔多项式 $L_{n-l-1}^{2l+1}$。
+
+-   分波法用勒让德多项式 $P_l(\cos\theta)=\frac{1}{2^ll!}\frac{d^l}{d(\cos\theta)^l}(\cos^2\theta-1)^l$。
+
+### 1.6 格林函数
+
+对算符 $L$，格林函数 $G$ 满足 $LG(x,x&#39;)=\delta(x-x&#39;)$。自由粒子传播子就是薛定谔算子的格林函数（2.14）。
+
+### 1.7 变分法
+
+作用量 $S=\int L\,dt$，真实路径使 $\delta S=0$ → 欧拉-拉格朗日方程 $\frac{\partial L}{\partial q}-\frac{d}{dt}\frac{\partial L}{\partial \dot q}=0$。这是第 2.14、4.3 节的起点。
+
+---
+
+## 第 2 章 非相对论 QM 核心形式体系（🔑 必须会推导）
+
+### 2.1 波函数与薛定谔方程
+
+**统计诠释**：$|\psi(\mathbf r,t)|^2$ 是概率密度，须归一化 $\int|\psi|^2d^3r=1$。
+
+🔑 **从经典到算符的量子化对应（理解，非死记）**  
+经典能量-动量关系 $E=\frac{p^2}{2m}+V$。在波动力学里，自由粒子德布罗意波 $\psi\propto e^{i(\mathbf p\cdot\mathbf r-Et)/\hbar}$，于是：
+
+$$
+\hat E = i\hbar\frac{\partial}{\partial t},\qquad \hat{\mathbf p}=-i\hbar\nabla
+$$
+
+把经典关系里的 $E,\mathbf p$ 换成算符作用到 $\psi$，得**薛定谔方程**：
+
+$$
+i\hbar\frac{\partial\psi}{\partial t}=\left(-\frac{\hbar^2}{2m}\nabla^2+V\right)\psi
+$$
+
+🔑 **概率守恒（连续性方程）推导**  
+概率密度 $\rho=|\psi|^2=\psi^*\psi$，概率流 $\mathbf j=\frac{\hbar}{2mi}(\psi^*\nabla\psi-\psi\nabla\psi^*)$。  
+对薛定谔方程取复共轭乘 $\psi$，再减去原方程乘 $\psi^*$，整理得
+
+$$
+\frac{\partial\rho}{\partial t}+\nabla\cdot\mathbf j=0
+$$
+
+含义：概率像不可压缩流体一样守恒，不会凭空消失。
+
+### 2.2 一维无限深势阱（完整推导，第一个动手题）
+
+势 $V(x)=0\ (0&lt;x&lt;a)$，$V=\infty$ 其余。阱内定态方程 $-\frac{\hbar^2}{2m}\psi&#39;&#39;=E\psi$，令 $k^2=2mE/\hbar^2$，通解 $\psi=A\sin kx+B\cos kx$。边界 $\psi(0)=0\Rightarrow B=0$；$\psi(a)=0\Rightarrow \sin ka=0\Rightarrow ka=n\pi$。
+
+$$
+\boxed{E_n=\frac{n^2\pi^2\hbar^2}{2ma^2},\quad \psi_n(x)=\sqrt{\frac{2}{a}}\sin\frac{n\pi x}{a}\ (n=1,2,\dots)}
+$$
+
+> **常见误区**：基态是 $n=1$ 不是 $n=0$——因为 $n=0$ 给 $\psi\equiv0$（无物理意义）。最低能量叫**零点能**，是不确定性原理的体现。
+
+### 2.3 势垒隧穿（要点）
+
+对高为 $V_0$、宽为 $a$ 的方势垒，若 $E&lt;V_0$，经典禁止穿越，但 QM 中波函数在垒内指数衰减 $e^{-\kappa x}$，$\kappa=\sqrt{2m(V_0-E)}/\hbar$，透射系数 $T\propto e^{-2\kappa a}$。**这是扫描隧道显微镜与核衰变（α 衰变）的原理**。
+
+### 2.4 算符、对易关系与狄拉克符号
+
+-   力学量 → 厄米算符（$\hat A^\dagger=\hat A$），测量值 = 本征值，测量后坍缩到对应本征态。
+
+-   对易子 $[\hat A,\hat B]=\hat A\hat B-\hat B\hat A$。
+
+-   **基本对易关系**（QM 的公理之一）：$[\hat x,\hat p]=i\hbar$。
+
+### 2.5 🔑 海森堡不确定性原理（完整推导）
+
+**目标**：由 $[x,p]=i\hbar$ 推出 $\Delta x\,\Delta p\ge\frac{\hbar}{2}$。
+
+设可观测量 $A,B$，定义涨落 $\Delta A=A-\langle A\rangle$（仍是算符）。由柯西-施瓦茨不等式：
+
+$$
+\langle(\Delta A)^2\rangle\langle(\Delta B)^2\rangle\ge\big|\langle\Delta A\,\Delta B\rangle\big|^2
+$$
+
+把 $\Delta A\,\Delta B$ 拆成厄米与反厄米部分：
+
+$$
+\Delta A\,\Delta B=\frac{1}{2}\{\Delta A,\Delta B\}+\frac{1}{2}[\Delta A,\Delta B]
+$$
+
+取期望值后取模方，反厄米部分贡献纯虚数，故
+
+$$
+\big|\langle\Delta A\,\Delta B\rangle\big|^2\ge\frac{1}{4}\big|\langle[\Delta A,\Delta B]\rangle\big|^2
+$$
+
+对 $A=x,B=p$，$[\Delta x,\Delta p]=[x,p]=i\hbar$，于是
+
+$$
+\boxed{(\Delta x)^2(\Delta p)^2\ge\frac{\hbar^2}{4}\ \Rightarrow\ \Delta x\,\Delta p\ge\frac{\hbar}{2}}
+$$
+
+> **常见误区**：不确定性不是"测量扰动"，而是**态本身的固有属性**——即使不测量，一个态也无法同时是 $x$ 和 $p$ 的本征态。
+
+### 2.6 三个绘景（别混淆）
+
+| 绘景 | 态 | 算符 |
+| --- | --- | --- |
+| 薛定谔 | 含时 $ | \psi(t)\rangle$ |
+| 海森堡 | 固定 $ | \psi\rangle$ |
+| 相互作用 | 部分含时 | 部分含时（微扰论用） |
+
+海森堡运动方程：$\displaystyle\frac{d\hat A_H}{dt}=\frac{i}{\hbar}[\hat H,\hat A_H]+\frac{\partial\hat A_H}{\partial t}$。粒子物理的算符场常用海森堡绘景。
+
+### 2.7 🔑 谐振子与升降算符（**最关键的一块，必须推到底**）
+
+哈密顿量 $H=\frac{\hat p^2}{2m}+\frac{1}{2}m\omega^2\hat x^2$。定义
+
+$$
+a=\sqrt{\frac{m\omega}{2\hbar}}\left(\hat x+\frac{i\hat p}{m\omega}\right),\qquad a^\dagger=\sqrt{\frac{m\omega}{2\hbar}}\left(\hat x-\frac{i\hat p}{m\omega}\right)
+$$
+
+**第 1 步：验证** $[a,a^\dagger]=1$。用 $[\hat x,\hat p]=i\hbar$ 计算（注意 $a$ 里 $\hat x$ 与 $\hat p$ 的对易）：
+
+$$
+aa^\dagger-a^\dagger a=\frac{m\omega}{2\hbar}\left[\left(\hat x+\frac{i\hat p}{m\omega}\right)\left(\hat x-\frac{i\hat p}{m\omega}\right)-\text{反过来}\right]=\frac{1}{i\hbar}[\hat x,\hat p]=1
+$$
+
+**第 2 步：反解** $x,p$ **并代入** $H$。
+
+$$
+\hat x=\sqrt{\frac{\hbar}{2m\omega}}(a+a^\dagger),\qquad \hat p=-i\sqrt{\frac{m\hbar\omega}{2}}(a-a^\dagger)
+$$
+
+代入 $H$ 并利用 $[a,a^\dagger]=1$ 与 $aa^\dagger=a^\dagger a+1$：
+
+$$
+\hat p^2=-\frac{m\hbar\omega}{2}(a-a^\dagger)^2,\quad m^2\omega^2\hat x^2=\frac{m\hbar\omega}{2}(a+a^\dagger)^2
+$$
+
+相加得 $H=\frac{\hbar\omega}{2}(2a^\dagger a+1)=\hbar\omega\left(a^\dagger a+\frac12\right)$。
+
+**第 3 步：基态与能级量子化**。令粒子数算符 $\hat N=a^\dagger a$。定义基态 $|0\rangle$ 满足 $a|0\rangle=0$。则
+
+$$
+H|0\rangle=\frac{1}{2}\hbar\omega|0\rangle\quad\Rightarrow\quad E_0=\frac{1}{2}\hbar\omega\ (\text{零点能})
+$$
+
+对 $|n\rangle\propto(a^\dagger)^n|0\rangle$，算 $a^\dagger a(a^\dagger)^n|0\rangle=n(a^\dagger)^n|0\rangle$，故
+
+$$
+\boxed{E_n=\left(n+\tfrac12\right)\hbar\omega,\quad n=0,1,2,\dots}
+$$
+
+**第 4 步：升降作用**。可直接验证
+
+$$
+a|n\rangle=\sqrt{n}\,|n-1\rangle,\qquad a^\dagger|n\rangle=\sqrt{n+1}\,|n+1\rangle
+$$
+
+> **为什么关键**：QFT 中"场的量子化"就是把场展开成一堆谐振子，每个模式配一对 $a^\dagger,a$。**这是二次量子化的直接原型（第 4.2 节）**。
+
+**例题**：证明相干态 $|\alpha\rangle=e^{-|\alpha|^2/2}\sum_n\frac{\alpha^n}{\sqrt{n!}}|n\rangle$ 是湮灭算符的本征态，本征值 $\alpha$。  
+*解*：$a|\alpha\rangle=e^{-|\alpha|^2/2}\sum_n\frac{\alpha^n}{\sqrt{n!}}\sqrt{n}|n-1\rangle=\alpha\cdot e^{-|\alpha|^2/2}\sum_{n=1}\frac{\alpha^{n-1}}{\sqrt{(n-1)!}}|n-1\rangle=\alpha|\alpha\rangle$。相干态描述激光（经典极限的玻色场）。
+
+### 2.8 🔑 角动量与自旋（**核心推导**）
+
+**第 1 步：角动量代数**。轨道角动量 $\mathbf L=\mathbf r\times\mathbf p$，由正则对易关系可得
+
+$$
+[L_i,L_j]=i\hbar\varepsilon_{ijk}L_k
+$$
+
+引入升降算符 $L_\pm=L_x\pm iL_y$，满足 $[L_z,L_\pm]=\pm\hbar L_\pm$，$[L^2,L_\pm]=0$。
+
+**第 2 步：本征值与本征态**。因 $L^2$ 与 $L_z$ 对易，可取共同本征态 $|j,m\rangle$（先不限定 $j$ 为整数）：
+
+$$
+L^2|j,m\rangle=\hbar^2 j(j+1)|j,m\rangle,\qquad L_z|j,m\rangle=\hbar m|j,m\rangle
+$$
+
+**第 3 步：由升降算符推出** $m$ **的取值范围**。利用 $L_\pm$ 把 $m$ 升降 1：
+
+$$
+L_\pm|j,m\rangle=\hbar\sqrt{j(j+1)-m(m\pm1)}\,|j,m\pm1\rangle
+$$
+
+存在上限 $m_{\max}$ 使 $L_+|j,m_{\max}\rangle=0$。代入上式的根号为 0：
+
+$$
+j(j+1)-m_{\max}(m_{\max}+1)=0\ \Rightarrow\ m_{\max}=j
+$$
+
+同理下限 $m_{\min}=-j$。每步只能变 1，所以 $m_{\max}-m_{\min}=2j$ 必须是整数 → $j$ **为整数或半整数**。对轨道角动量 $\mathbf L=\mathbf r\times\mathbf p$ 可证 $j$ 只能取整数（球谐函数）；自旋 1/2 半整数来自内部自由度。
+
+**第 4 步：球谐函数**。轨道角动量本征函数在位置表象正是球谐函数 $Y_{lm}(\theta,\phi)$：
+
+$$
+\boxed{L^2\to l(l+1)\hbar^2,\quad L_z\to m\hbar,\quad l=0,1,2,\dots,\ m=-l,\dots,l}
+$$
+
+**第 5 步：自旋 1/2 与泡利矩阵**。自旋是内禀角动量，自旋 1/2 的算符 $\mathbf S=\frac{\hbar}{2}\boldsymbol\sigma$，泡利矩阵
+
+$$
+\sigma_x=\begin{pmatrix}0&1\\1&0\end{pmatrix},\ \sigma_y=\begin{pmatrix}0&-i\\i&0\end{pmatrix},\ \sigma_z=\begin{pmatrix}1&0\\0&-1\end{pmatrix}
+$$
+
+满足反对易 $\{\sigma_i,\sigma_j\}=2\delta_{ij}$，且 $\sigma_i^2=\mathbf 1$、$[\sigma_i,\sigma_j]=2i\varepsilon_{ijk}\sigma_k$。本征值 $\pm\hbar/2$。斯特恩-格拉赫实验（银原子束分裂为两条）揭示自旋的内禀性。
+
+**第 6 步：总角动量耦合**。$\mathbf J=\mathbf L+\mathbf S$，耦合给出 $|l-s|\le j\le l+s$，靠 CG 系数连接未耦合基 $\{|l,m_l\rangle|s,m_s\rangle\}$ 与耦合基 $\{|j,m\rangle\}$。**角动量相加是原子物理、核物理与粒子衰变（角动量守恒）的日常工具**。
+
+> **自旋-统计定理（Pauli, 1940）**：整数自旋 ↔ 玻色-爱因斯坦统计（对称波函数）；半整数 ↔ 费米-狄拉克统计（反对称，泡利不相容）。这是相对论因果律的必然结果，不是经验规律。
+
+### 2.9 全同粒子
+
+交换两个全同粒子：玻色子波函数不变，费米子变号。**直接后果**：费米子构成原子壳层（否则所有电子塌缩到基态，没有化学）；玻色子允许激光、BEC。写法上用**二次量子化**（第 4.2 节）最干净。
+
+### 2.10 🔑 微扰论与费米黄金规则
+
+**定态非简并微扰（一阶）**：$\hat H=\hat H_0+\lambda\hat V$，设 $|n\rangle=|n^{(0)}\rangle+\lambda|n^{(1)}\rangle$，$E_n=E_n^{(0)}+\lambda E_n^{(1)}$。一阶能量修正
+
+$$
+E_n^{(1)}=\langle n^{(0)}|\hat V|n^{(0)}\rangle\equiv V_{nn}
+$$
+
+一阶波函数修正 $|n^{(1)}\rangle=\sum_{m\neq n}\frac{V_{mn}}{E_n^{(0)}-E_m^{(0)}}|m^{(0)}\rangle$。
+
+**含时微扰（一阶跃迁振幅）**：系统在 $t=0$ 处于 $|i\rangle$，微扰 $\hat V(t)$ 在。一阶近似下
+
+$$
+c_f^{(1)}(t)=-\frac{i}{\hbar}\int_0^t\langle f|\hat V(t')|i\rangle\,e^{i\omega_{fi}t'}dt',\quad \omega_{fi}=(E_f-E_i)/\hbar
+$$
+
+🔑 **费米黄金规则推导**  
+设常微扰 $V_{fi}$ 从 $t=0$ 开启，$c_f(t)=-\frac{i}{\hbar}V_{fi}\int_0^t e^{i\omega_{fi}t&#39;}dt&#39;=\frac{V_{fi}}{\hbar}\frac{1-e^{i\omega_{fi}t}}{\omega_{fi}}$。  
+概率 $P_{i\to f}=|c_f|^2=|V_{fi}|^2\frac{4\sin^2(\omega_{fi}t/2)}{\hbar^2\omega_{fi}^2}$。  
+当末态连续、用态密度 $\rho(E_f)=dn/dE_f$，总跃迁率
+
+$$
+w_{i\to f}=\frac{d}{dt}\int P_{i\to f}\,\rho(E_f)dE_f\ \xrightarrow{t\gg}\ \boxed{w_{i\to f}=\frac{2\pi}{\hbar}|V_{fi}|^2\,\rho(E_f)}
+$$
+
+（大 $t$ 极限下 $\frac{\sin^2(xt/2)}{\pi t x^2}\to\delta(x)$。）**这是散射截面与衰变宽度的计算基础**。
+
+### 2.11 🔑 散射理论（粒子物理核心实验手段）
+
+散射振幅 $f(\theta)$，微分截面 $\displaystyle\frac{d\sigma}{d\Omega}=|f(\theta)|^2$。
+
+🔑 **Born 近似完整推导**  
+从 Lippmann-Schwinger 方程（散射的精确积分方程）
+
+$$
+|\psi^{(+)}\rangle=|\phi\rangle+\frac{1}{E-H_0+i\varepsilon}\,V\,|\psi^{(+)}\rangle
+$$
+
+散射振幅由 $f(\mathbf k&#39;,\mathbf k)=-\frac{m}{2\pi\hbar^2}\langle\mathbf k&#39;|V|\psi^{(+)}\rangle$ 定义（$|\mathbf k\rangle$ 为平面波末态）。**一阶 Born 近似**：把右端的 $|\psi^{(+)}\rangle$ 用入射平面波 $|\mathbf k\rangle$ 代替：
+
+$$
+f^{(1)}(\mathbf k',\mathbf k)=-\frac{m}{2\pi\hbar^2}\langle\mathbf k'|V|\mathbf k\rangle=-\frac{m}{2\pi\hbar^2}\int d^3r\,e^{-i\mathbf k'\cdot\mathbf r}V(\mathbf r)e^{i\mathbf k\cdot\mathbf r}
+$$
+
+即 $\boxed{f^{(1)}(\mathbf q)=-\frac{m}{2\pi\hbar^2}\int d^3r\,e^{-i\mathbf q\cdot\mathbf r}V(\mathbf r),\quad \mathbf q=\mathbf k&#39;-\mathbf k}$  
+**散射振幅 = 势的傅里叶变换**（动量转移 $\mathbf q$）。中心势下可积出
+
+$$
+f(\theta)=-\frac{2m}{\hbar^2 q}\int_0^\infty rV(r)\sin(qr)\,dr,\qquad q=2k\sin\frac{\theta}{2}
+$$
+
+**Rutherford 公式验证**：库仑势 $V(r)=\frac{Z_1Z_2e^2}{4\pi\varepsilon_0 r}$（即汤川势 $\mu\to0$ 极限）代入，得
+
+$$
+\frac{d\sigma}{d\Omega}=\left(\frac{Z_1Z_2e^2}{16\pi\varepsilon_0 E}\right)^2\frac{1}{\sin^4(\theta/2)}
+$$
+
+与经典卢瑟福结果一致，**验证了 QM 在相对论前的正确性**。
+
+**分波法（partial waves）**：把散射振幅按角动量 $l$ 展开 $f(\theta)=\frac{1}{k}\sum_l(2l+1)e^{i\delta_l}\sin\delta_l\,P_l(\cos\theta)$。低能时只有 $s$ 波（$l=0$）重要。**光学定理** $\sigma_{\text{tot}}=\frac{4\pi}{k}\mathrm{Im}\,f(0)$ 联系总截面与向前散射。
+
+> **为什么关键**：几乎所有核与基本粒子的性质都由散射实验确定——你用 Bon 近似算出的振幅，正是实验家测量的量。
+
+### 2.12 🔑 路径积分表述（通向 QFT 的桥梁）
+
+**传播子**（对所有路径求和）：
+
+$$
+\boxed{K(b,a)=\int\mathcal D x(t)\,e^{\,iS[x(t)]/\hbar},\qquad S=\int L\,dt}
+$$
+
+🔑 **时间切片推导（自由粒子传播子）**  
+把时间 $[t_i,t_f]$ 切成 $N$ 段，$\varepsilon=(t_f-t_i)/N$。演化算符 $U(t_f,t_i)=\left(e^{-i\hat H\varepsilon/\hbar}\right)^N$。用 Trotter 公式 $e^{-i\hat H\varepsilon/\hbar}\approx e^{-i\hat T\varepsilon/\hbar}e^{-i\hat V\varepsilon/\hbar}$，并在每段插入位置基完备性 $\int dx_k|x_k\rangle\langle x_k|$。每段贡献一个高斯积分，连乘后取 $N\to\infty$ 极限得自由粒子传播子
+
+$$
+K(x_f,t_f;x_i,t_i)=\sqrt{\frac{m}{2\pi i\hbar(t_f-t_i)}}\exp\!\left[\frac{i m(x_f-x_i)^2}{2\hbar(t_f-t_i)}\right]
+$$
+
+**Wick 旋转** $t\to -i\tau$：振荡权重 $e^{iS/\hbar}$ 变衰减权重 $e^{-S_E/\hbar}$，路径积分 ↔ 统计配分函数（QFT 与统计物理统一）。**这是 QFT 两大基石之一；费曼图就是路径积分在相互作用微扰展开下的图形表示**。
+
+---
+
+## 第 3 章 相对论量子力学（🔑 必须会推导）
+
+### 3.1 问题：薛定谔方程不满足洛伦兹协变
+
+薛定谔方程对时间一次、对空间二次，时空不对称，无法与狭义相对论兼容。相对论能量-动量关系 $E^2=p^2c^2+m^2c^4$。
+
+### 3.2 🔑 Klein-Gordon 方程
+
+🔑 **推导**：直接对相对论关系量子化 $E\to i\hbar\partial_t,\ \mathbf p\to -i\hbar\nabla$：
+
+$$
+\left(\frac{1}{c^2}\frac{\partial^2}{\partial t^2}-\nabla^2+\frac{m^2c^2}{\hbar^2}\right)\Phi=0
+$$
+
+自然单位下为 $(\partial^2+m^2)\Phi=0$。
+
+**缺陷与补救**：KG 方程的概率密度 $\rho=\frac{i\hbar}{2mc^2}\left(\Phi^*\partial_t\Phi-\Phi\partial_t\Phi^*\right)$ **可正可负**，不能解释为概率。补救：对自旋 0 介子，把它当作**场方程**而非单粒子波函数（第 4 章），密度解释为电荷密度即可（可正可负 = 正反粒子）。KG 流 $j^\mu=\frac{i\hbar}{2m}(\Phi^*\partial^\mu\Phi-\Phi\partial^\mu\Phi^*)$ 满足 $\partial_\mu j^\mu=0$。
+
+### 3.3 🔑 Dirac 方程（**粒子物理的基石**）
+
+🔑 **"开平方"推导**  
+想要对时间、空间都一次的方程。设 $E=\sqrt{p^2c^2+m^2c^4}=c\,\boldsymbol\alpha\cdot\mathbf p+\beta mc^2$，要求 $H^2=c^2p^2+m^2c^4$。展开
+
+$$
+H^2=c^2\alpha_i\alpha_j p_i p_j+mc^3(\alpha_i\beta+\beta\alpha_i)p_i+m^2c^4\beta^2
+$$
+
+要消去 $i\neq j$ 的交叉项并得 $c^2p^2+m^2c^4$，需
+
+$$
+\boxed{\{\alpha_i,\alpha_j\}=2\delta_{ij},\quad \{\alpha_i,\beta\}=0,\quad \beta^2=1}
+$$
+
+$\alpha_i,\beta$ 不能是数，必为**矩阵**（最小 4×4）。定义 $\gamma$ 矩阵 $\gamma^0=\beta,\ \gamma^i=\beta\alpha_i$，则 $\{\gamma^\mu,\gamma^\nu\}=2\eta^{\mu\nu}$。Dirac 方程：
+
+$$
+\boxed{(i\hbar\gamma^\mu\partial_\mu-mc)\psi=0,\qquad \psi\text{ 为 4 分量旋量}}
+$$
+
+自然单位：$(i\slashed\partial-m)\psi=0$（$\slashed\partial\equiv\gamma^\mu\partial_\mu$）。
+
+**自动包含自旋 1/2**：在静止系看 Dirac 哈密顿量 $[H,\boldsymbol\Sigma]$ 给出内禀角动量 $\mathbf S=\frac{\hbar}{2}\boldsymbol\Sigma$，正是自旋 1/2。
+
+🔑 **负能解 → 反粒子预言**：Dirac 方程有正负两组能量 $E=\pm\sqrt{p^2c^2+m^2c^4}$。Dirac 提出"负能海"被填满，空穴即正电子——**1932 年安德森发现正电子**，方程先于实验预言了反粒子。现代语言：费米子的反粒子由 $\gamma^0$ 共轭给出。
+
+**非相对论极限**：展开 Dirac 方程到低能，得**泡利方程**，自动出现自旋-轨道耦合，并给出电子 $g=2$（精密测量 $g\approx2.0023$ 的偏差来自 QED 辐射修正——这是 QFT 最漂亮的验证之一）。
+
+> **为什么关键**：标准模型中所有费米子（夸克、轻子）的理论起点都是 Dirac（或 Weyl/Majorana）旋量场。
+
+### 3.4 旋量与洛伦兹群（进阶）
+
+Dirac 旋量是洛伦兹群 $\mathrm{Spin}(1,3)\cong\mathrm{SL}(2,\mathbb C)$ 的 $(1/2,0)\oplus(0,1/2)$ 表示。左/右手外尔旋量 $(\tfrac12,0)$、$(0,\tfrac12)$ 在手性理论中更基础（中微子近似用左手 Weyl 旋量）。
+
+---
+
+## 第 4 章 通向 QFT：QM 的自然延伸
+
+### 4.1 为什么必须量子化"场"
+
+相对论下单粒子理论失败：负能海、对产生（宇宙线中粒子类型改变）。正确框架是**场的量子化**——场的每个模式用产生/湮灭算符作用到真空态。一句话：粒子是场的激发。
+
+### 4.2 🔑 二次量子化 / Fock 空间（完整推导思路）
+
+**第 1 步**：从 $N$ 个全同玻色子出发，态写为对称化乘积 $\frac{1}{\sqrt{N!}}\sum_{\text{perm}}\phi_{n_1}(1)\cdots\phi_{n_N}(N)$。用占据数 $\{n_k\}$（第 $k$ 个单粒子态上有几个粒子）标记更方便：$|\{n_k\}\rangle$。
+
+**第 2 步**：定义产生/湮灭算符 $a_k^\dagger,a_k$ 作用在占据数态上：
+
+$$
+a_k^\dagger|n_1,\dots,n_k,\dots\rangle=\sqrt{n_k+1}\,|n_1,\dots,n_k+1,\dots\rangle
+$$
+
+$$
+a_k|n_1,\dots,n_k,\dots\rangle=\sqrt{n_k}\,|n_1,\dots,n_k-1,\dots\rangle
+$$
+
+（费米子换成反对易，自动实现泡利不相容。）
+
+**第 3 步**：把单粒子波函数提升为**场算符**
+
+$$
+\hat\psi(\mathbf r)=\sum_k\phi_k(\mathbf r)a_k,\qquad \hat\psi^\dagger(\mathbf r)=\sum_k\phi_k^*(\mathbf r)a_k^\dagger
+$$
+
+粒子数算符 $\hat N=\int\hat\psi^\dagger\hat\psi\,d^3r=\sum_k a_k^\dagger a_k$。真空 $|0\rangle$ 满足 $a_k|0\rangle=0$。
+
+**玻色子**：对易 $[a,a^\dagger]=1$；**费米子**：反对易 $\{a,a^\dagger\}=1$（等价泡利不相容）。这正是 2.7 节谐振子的推广——每个模式是一个谐振子。
+
+### 4.3 🔑 Noether 定理（粒子物理的骨架）
+
+🔑 **推导（场论版）**：设连续对称变换使作用量不变 $\delta S=0$。对无穷小变换 $\delta\phi^a=\varepsilon\,\Delta\phi^a$（及可能的坐标变换），由 $\delta S=\int d^4x\,\partial_\mu\left(\frac{\partial\mathcal L}{\partial(\partial_\mu\phi^a)}\Delta\phi^a\right)=0$ 得守恒流
+
+$$
+\boxed{\partial_\mu j^\mu=0,\quad j^\mu=\frac{\partial\mathcal L}{\partial(\partial_\mu\phi^a)}\,\Delta\phi^a\ (\text{加坐标项})}
+$$
+
+-   空间平移不变 → 动量守恒
+
+-   时间平移不变 → 能量守恒
+
+-   旋转不变 → 角动量守恒
+
+-   内部 U(1) 不变 → 电荷守恒（规范对称性的原型）
+
+### 4.4 CPT 与场的分类
+
+**CPT 定理**（Pauli/Lüders）：在局域、洛伦兹不变的 QFT 中，CPT 联合变换必然守恒。**场的洛伦兹分类**：标量(自旋 0)、旋量(1/2)、矢量(1)、张量(2)——**这正是标准模型粒子的分类方式**（夸克/轻子=1/2，规范玻色子=1，希格斯=0）。
+
+### 4.5 S 矩阵与费曼图（入门）
+
+散射用 S 矩阵描述：$S=1+iT$，截面与衰变宽度由矩阵元 $\langle f|iT|i\rangle$ 计算。微扰展开 → 费曼图、传播子、顶点。路径积分量子化：$Z=\int\mathcal D\phi\,e^{\,iS[\phi]/\hbar}$，对 $e^{iS}$ 做微扰展开即得各阶图。
+
+---
+
+## 第 5 章 必读书单与学习路线图
+
+**量子力学（打底→起跳）**
+
+-   Griffiths《Introduction to Quantum Mechanics》——入门，关键是吃透谐振子升降算符与 Born 近似（对应本文 2.7、2.11）。
+
+-   Sakurai《Modern Quantum Mechanics》——**研究生级必备**，形式化、狄拉克符号、角动量、对称（对应本文 2.4–2.8、4.3）。
+
+-   Shankar《Principles of Quantum Mechanics》——备选，推导更详尽。
+
+**数学方法**：Arfken《Mathematical Methods for Physicists》或国内《数学物理方法》（对应第 1 章）。
+
+**群论（粒子物理核心）**：需要基础群论与表示论；结合 Lorentz/Poincaré 群学习旋量与 Dirac 方程（第 1.4、3.3、3.4）。
+
+**进阶到 QFT**：Peskin & Schroeder《An Introduction to Quantum Field Theory》——标准教材（计算导向）；Zee《QFT in a Nutshell》——友好预览；Srednicki / Weinberg（三卷，进阶）。
+
+**相对论 QM**：Bjorken & Drell《Relativistic Quantum Mechanics》；可溯 Dirac 原文。
+
+**路线图**：经典力学(拉氏/哈氏) → 电动力学(四矢量) → Griffiths 级 QM → 数学方法(复变/群论) → Sakurai 级 QM → 相对论 QM(KG/Dirac) → QFT(Peskin)。
+
+---
+
+## 第 6 章 最不能跳过、必须亲手推导的清单
+
+按优先级，以下推导**务必自己从头推一遍**（不能只看懂）：
+
+1.  不确定性原理 $\Delta x\Delta p\ge\hbar/2$（从 $[x,p]=i\hbar$）——2.5
+
+2.  谐振子升降算符与能级 $E_n=(n+1/2)\hbar\omega$——2.7
+
+3.  角动量代数 $[L_i,L_j]=i\hbar\varepsilon_{ijk}L_k$ 与本征值 $l(l+1)\hbar^2$——2.8
+
+4.  自旋 1/2 与泡利矩阵、泡利不相容——2.8
+
+5.  定态微扰 + **费米黄金规则**——2.10
+
+6.  **Born 近似**散射振幅（势的傅里叶变换）——2.11
+
+7.  Klein-Gordon 方程（从 $E^2=p^2c^2+m^2c^4$）——3.2
+
+8.  **Dirac 方程**（开方 + $\gamma$ 矩阵反对易 + 反粒子预言）——3.3
+
+9.  二次量子化：产生/湮灭算符与对易/反对易——4.2
+
+10.  路径积分传播子与 **Wick 旋转**——2.12
+
+11.  **Noether 定理**（对称 ↔ 守恒量）——4.3
+
+> 一句话：**把"单粒子的波函数"彻底换成"可生成/湮灭粒子的场"之前，上面这 11 条就是你最硬的底子。** 哪条推不顺，到了 QFT 都会反噬。
+
+---
+
+## 第 7 章 自我检测习题（含解答 / 详细提示）
+
+> 做不出来就回头重读对应 🔑。能独立做对 80%，你已具备 QFT 的 QM 底子。
+
+**Q1（对易）** 证明 $[x^2,p]=2i\hbar x$。*提示*：用 $[A,BC]=[A,B]C+B[A,C]$。
+
+**Q2（不确定性）** 对高斯波包 $\psi(x)=\left(\frac{1}{2\pi\sigma^2}\right)^{1/4}e^{-x^2/4\sigma^2}$，计算 $\Delta x$ 与 $\Delta p$，验证达到最小不确定度。*答*：$\Delta x=\sigma$，$\Delta p=\hbar/(2\sigma)$，乘积 $\hbar/2$。
+
+**Q3（谐振子）** 用升降算符证明 $\langle n|x^2|n\rangle=\frac{\hbar}{2m\omega}(2n+1)$。*提示*：把 $x$ 写成 $a,a^\dagger$ 线性组合，利用正交性只留 $n$ 项。
+
+**Q4（谐振子）** 计算 $\langle n|p|n+2\rangle$。*答*：0（因 $p\propto a-a^\dagger$，只连接相差 1 的态）。
+
+**Q5（角动量）** 用 $[L_z,L_\pm]=\pm\hbar L_\pm$ 证明 $L_\pm$ 把 $m$ 改变 $\pm1$。*提示*：计算 $L_z(L_\pm|j,m\rangle)$ 并重新组合。
+
+**Q6（角动量）** 证明 $L_-L_+=L^2-L_z^2-\hbar L_z$。*提示*：展开 $L_\mp=L_x\mp iL_y$ 并代入对易关系。
+
+**Q7（自旋）** 对角动量算符 $\mathbf J=\frac{\hbar}{2}\boldsymbol\sigma$（自旋 1/2），验证 $J^2=\frac{3}{4}\hbar^2\mathbf 1$。*答*：用 $\sigma_i^2=1$ 与反对易关系。
+
+**Q8（自旋）** 计算 $e^{-i\theta\sigma_y/2}$ 的形式，说明它把 $|\uparrow\rangle$ 绕 $y$ 轴转 $\theta$。*提示*：用级数展开，结果 $=\cos\frac\theta2\,\mathbf 1-i\sin\frac\theta2\,\sigma_y$。
+
+**Q9（泡利矩阵）** 证明任意 $2\times2$ 厄米矩阵可写成 $a_0\mathbf 1+\mathbf a\cdot\boldsymbol\sigma$。*答*：四个矩阵 $\{\mathbf 1,\sigma_x,\sigma_y,\sigma_z\}$ 线性无关且是 $2\times2$ 厄米空间的基。
+
+**Q10（微扰）** 一维无限深势阱中加入微扰 $V(x)=\lambda x$（阱内），求基态能量的一阶修正。*答*：$V_{11}=\frac{2}{a}\int_0^a\lambda x\sin^2(\pi x/a)dx=\lambda a/2$。
+
+**Q11（费米黄金规则）** 说明为何大 $t$ 极限下 $\frac{\sin^2(xt/2)}{\pi t x^2}\to\delta(x)$。*提示*：这是 $\delta$ 函数的表示之一，积分归一。
+
+**Q12（Born）** 对汤川势 $V(r)=g\frac{e^{-\mu r}}{r}$，计算一阶 Born 振幅（只需写出积分形式）。*答*：$f^{(1)}=-\frac{m}{2\pi\hbar^2}\int d^3r\,e^{-i\mathbf q\cdot\mathbf r}\,g\frac{e^{-\mu r}}{r}=-\frac{2mg}{\hbar^2(\mu^2+q^2)}$（用球坐标 + 留数）。
+
+**Q13（Born）** 由 Q12 取 $\mu\to0$ 恢复卢瑟福公式。*答*：$f=-\frac{2mg}{\hbar^2 q^2}$，正比于 $1/q^2=1/[4k^2\sin^2(\theta/2)]$，与 2.11 一致。
+
+**Q14（Rutherford）** 把 Q13 的振幅换成库仑常数，写出微分截面并对照经典结果。*答*：见 2.11 Rutherford 公式。
+
+**Q15（路径积分）** 写出自由粒子传播子并解释其高斯型来源。*答*：见 2.12；来自时间切片的高斯积分连乘。
+
+**Q16（Wick）** 说明 Wick 旋转 $t\to-i\tau$ 后路径积分与统计配分函数的关系。*答*：$e^{iS/\hbar}\to e^{-S_E/\hbar}$，$Z=\int\mathcal D\phi\,e^{-S_E/\hbar}$ 即欧氏路径积分=配分函数。
+
+**Q17（KG）** 推导 KG 连续性方程与守恒流 $j^\mu$。*提示*：方程乘 $\Phi^*$ 减共轭乘 $\Phi$。
+
+**Q18（Dirac）** 由 $\{\gamma^\mu,\gamma^\nu\}=2\eta^{\mu\nu}$ 证明 $\gamma^0$ 厄米、$\gamma^i$ 反厄米（在常用表示下）。*答*：取 $\gamma^0=\begin{pmatrix}\mathbf 1&amp;0\\0&amp;-\mathbf 1\end{pmatrix}$，$\gamma^i=\begin{pmatrix}0&amp;\sigma_i\\-\sigma_i&amp;0\end{pmatrix}$ 直接验证。
+
+**Q19（Dirac）** 解释为什么 Dirac 方程的负能解被解释为反粒子而非"bug"。*答*：见 3.3；负能海空穴=带正电荷的正电子，实验已证实。
+
+**Q20（二次量子化）** 说明为什么费米子用反对易 $\{a,a^\dagger\}=1$ 自动给出泡利不相容。*答*：两粒子同态 $(a^\dagger)^2|0\rangle$，反对易使 $(a^\dagger)^2=-(a^\dagger)^2\Rightarrow=0$。
+
+**Q21（Noether）** 对自由标量场 $\mathcal L=\frac12(\partial_\mu\phi)(\partial^\mu\phi)-\frac12m^2\phi^2$，求平移不变导致的守恒流（能量-动量张量）。*答*：$T^{\mu\nu}=\partial^\mu\phi\partial^\nu\phi-\eta^{\mu\nu}\mathcal L$，满足 $\partial_\mu T^{\mu\nu}=0$。
+
+**Q22（综合）** 用一句话解释：为什么粒子物理研究者必须先吃透谐振子升降算符？*答*：二次量子化把每个场模式都映射成一个谐振子，没有它就没有 QFT 的产生/湮灭算符语言。
+
+---
+
+## 附录 A：常用公式速查
+
+-   对易 $[x,p]=i\hbar$；谐振子 $[a,a^\dagger]=1$，$H=\hbar\omega(a^\dagger a+\tfrac12)$。
+
+-   角动量 $[L_i,L_j]=i\hbar\varepsilon_{ijk}L_k$，$L^2\to j(j+1)\hbar^2$，$L_z\to m\hbar$。
+
+-   泡利：$\sigma_i^2=1$，$\{\sigma_i,\sigma_j\}=2\delta_{ij}$，$[\sigma_i,\sigma_j]=2i\varepsilon_{ijk}\sigma_k$。
+
+-   $\gamma$ 矩阵：$\{\gamma^\mu,\gamma^\nu\}=2\eta^{\mu\nu}$，$\{\gamma^5,\gamma^\mu\}=0$，$\gamma^5=i\gamma^0\gamma^1\gamma^2\gamma^3$。
+
+-   费米黄金规则：$w=\frac{2\pi}{\hbar}|V_{fi}|^2\rho(E_f)$。
+
+-   Born：$f^{(1)}=-\frac{m}{2\pi\hbar^2}\int d^3r\,e^{-i\mathbf q\cdot\mathbf r}V(\mathbf r)$。
+
+-   自然单位还原：$c=1$ 看量纲补回；$\hbar=1$ 时注意 $[x]=[p]^{-1}$。
+
+## 附录 B：常见坑一览
+
+1.  把不确定性原理当成"测量扰动" → 实为态的固有属性（2.5）。
+
+2.  谐振子基态取 $n=0$ 却误以为能是 0 → 零点能 $\hbar\omega/2$（2.7）。
+
+3.  角动量 $j$ 只取整数 → 自旋允许半整数（2.8）。
+
+4.  KG 概率密度可负 → 它不是单粒子波函数，是场方程（3.2）。
+
+5.  Dirac 负能解是 bug → 是反粒子的预言（3.3）。
+
+6.  费米子用对易关系 → 必须用反对易（4.2）。
+
+---
+
+*本文档由联网调研 + 完整推导整理生成，归入「物理」知识库，供粒子物理学习路线自学使用。公式采用 LaTeX 语法，语雀支持渲染。建议配合 Griffiths / Sakurai 教材边读边推。*
+{% endraw %}

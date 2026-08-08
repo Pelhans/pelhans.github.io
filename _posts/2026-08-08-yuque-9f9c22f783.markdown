@@ -1,0 +1,156 @@
+---
+title: "大模型的位置编码及外推性"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 大模型]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+[再论大模型位置编码及其外推性（万字长文）](https://zhuanlan.zhihu.com/p/675243992)
+
+## 旋转位置编码 RoPE（Rotary Position Embedding）
+
+### 原理
+
+旋转位置编码里的旋转就是给输入乘上一个旋转矩阵，使其旋转 (m-n) \* theta 角，用来表达两个输入向量位置 (m, n) 间的相对位置信息。下面介绍原理。
+
+假设有输入 词向量 $x_m$ 和 $x_n$。分别经过 self-attention 的 q、k 映射得到 $q_m = W_{q}x_{m}$、$k_n = W_{k}x_{n}$。
+
+现在需要加上位置向量信息，加上位置信息后的输出用 $f_q(q_{m}, m)$ 和 $f_k(q_{n}, n)$ 表示。那 $f_q$ 的具体形式是什么？它要满足两个条件：
+
+1.  与输入 $q_m$是乘法组合的（比加法更自然）
+2.  能充分表达相对位置信息， 即两个向量的内积$<f_q(x_{m}, m),f_k(x_{n}, n)>$表达式里能体现 m, n 间的位置关系。
+
+一个自然的想法是乘以 $e^{im\theta}$感觉的旋转矩阵，即
+
+$f_q(x_{m}, m) = f_{q}(q_m,m) =  (W_{q}x_{m})e^{im\theta}$
+
+两个向量间的内积就可以表达为
+
+$$
+<f_q(x_{m}, m),f_k(x_{n}, n)> = Re[W_{q}x_{m}(W_{k}x_{n})^{*}e^{i(m-n)\theta}]
+$$
+
+可以看到，相对位置信息得到了很好的表示。
+
+LLaMA 里的实现
+
+```python
+def precompute_freqs_cis(dim: int, seq_len: int, theta: float = 10000.0):
+    # 计算词向量元素两两分组之后，每组元素对应的旋转角度
+    freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
+    # 生成 token 序列索引 t = [0, 1,..., seq_len-1]
+    t = torch.arange(seq_len, device=freqs.device)
+    # freqs.shape = [seq_len, dim // 2] 
+    freqs = torch.outer(t, freqs).float()
+    # 计算结果是个复数向量，输入分别是模和角度，这里模设置为1
+    # 假设 freqs = [x, y]
+    # 则 freqs_cis = [cos(x) + sin(x)i, cos(y) + sin(y)i]
+    # 可以看出每一个元素就是 e^{im\theta}
+    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)
+    return freqs_cis
+
+def apply_rotary_emb(
+    xq: torch.Tensor,
+    xk: torch.Tensor,
+    freqs_cis: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    # 两两分组，每组内部表示为复数的实部和虚部
+    # xq.shape = [batch_size, seq_len, dim]
+    # xq_.shape = [batch_size, seq_len, dim // 2, 2]
+    xq_ = xq.float().reshape(*xq.shape[:-1], -1, 2)
+    xk_ = xk.float().reshape(*xk.shape[:-1], -1, 2)
+
+    # 转为复数域，变成 [batch_size, seq_len, dim//2]
+    xq_ = torch.view_as_complex(xq_)
+    xk_ = torch.view_as_complex(xk_)
+
+    # 应用旋转操作，然后将结果转回实数域
+    # 元素对应相乘
+    # xq_out.shape = [batch_size, seq_len, dim]
+    xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(2)
+    xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(2)
+    return xq_out.type_as(xq), xk_out.type_as(xk)
+```
+
+### 原理之外
+
+1.  为什么dim 维度可以两两配对组合成复数的实部和虚部？有什么隐层含义？
+2.  为什么只对 q 和 k 做，v没有加位置信息。
+3.  经典使用 Sinusoidal 函数计算位置编码的是怎么做的？RoPE 相比有什么优势？
+
+1.  Sinusoidal 函数的表达式 ![image.png](/img/yuque/计算机/大模型/assets/大模型的位置编码及外推性-1.png)
+2.  Sinusoidal 之前为什么有效？
+
+1.  具有**相对位置表达能力**：Sinusoidal可以学习到相对位置，对于固定位置距离的k，PE(i+k)可以表示成PE(i)的线性函数。
+2.  两个**位置向量的内积只和相对位置 k 有关**。
+3.  Sinusoidal编码具有**对称性**。PE(t+k)PE(t) = PE(t)PE(t-k)
+4.  随着k的增加，内积的结果会直接减少，即会存在**远程衰减**。
+
+3.  为什么是 10000？（周期大，一般文本长度内编码不会重复）
+4.  缺点是什么？
+
+1.  理论很美好，PE 看着不错，但是和 token embedding 相加再乘以映射矩阵后，就不具备上述优势了（没有对称性、远程衰减）
+
+5.  什么是好的位置编码？
+
+1.  每个位置输出一个唯一的编码
+2.  具备良好的外推性
+3.  任何位置之间的相对距离在不同长度的句子中应该是一致的
+
+6.  RoPE 的优点：
+
+1.  绝对位置编码
+2.  乘性的，且可以准确表达相对位置
+3.  具有一定的外推性
+
+4.  RoPE 的问题：
+
+1.  虽然RoPE理论上可以编码任意长度的绝对位置信息，并且sin/cos计算就能将任意长度的相对位置信息表达出来，但是实验发现RoPE仍然存在**外推问题**，即测试长度超过训练长度之后，模型的效果会有显著的崩坏，具体表现为**困惑度（Perplexity，PPL）**等指标显著上升
+
+5.  RoPE 的改进：
+
+1.  [位置线性内插（Position Interpolation，PI）](https://arxiv.org/abs/2306.15595):
+
+1.  为了解决模型处理更长序列时的问题，研究者们提出了一个策略：**将位置索引本身进行下采样或缩放**。具体来说，他们将原本在[0, 4096]范围内索引缩放到[0, 2048]（预训练的范围）的范围内。通过这种方式，所有的位置索引都被映射回了模型预训练时的范围内，从而帮助模型更好地处理这些原本超出其处理能力的输入序列。
+2.  公式：![image.png](/img/yuque/计算机/大模型/assets/大模型的位置编码及外推性-2.png)
+3.  对照组是使用10000条样本，直接进行微调长度为8192的文本，外推长度只能到2560；而只用1000条样本，在**微调（内插是要微调的）**中使用位置线性内插，外推长度就可以达到8192。外推适应性更强。
+4.  ![image.png](/img/yuque/计算机/大模型/assets/大模型的位置编码及外推性-3.png)
+
+2.  NTK-Aware Scaled RoPE（非线性内插）：
+
+1.  插值方法是线性的，这种方法在处理相近的token时可能无法准确区分它们的顺序和位置。毕竟缩放后离得太近了。
+2.  非线性内插是改变RoPE的base而不是比例，从而改变每个RoPE维度向量与下一个向量的“旋转”速度。
+3.  它允许LLaMA模型在无需任何微调且困惑度降低到最小的情况下扩展上下文长度。这种方法基于Neural Tangent Kernel（NTK）理论和RoPE插值进行改进。
+4.  公式 ![image.png](/img/yuque/计算机/大模型/assets/大模型的位置编码及外推性-4.png)
+5.  这个方法是从进制角度看的，我们对10进制数字 n 求 $\beta$ 进制表示的（从右向左第m位数字），方法是$[\frac{n}{\beta^{m-1}}]mod\beta$。要是把 $\beta = 10000^{m/d}$ ，往上一带，看着还是很像的。所以RoPE / Sinusoidal位置编码类比为位置n的 𝛽 进制编码。建立起这个联系后，直接外推方案就是啥也不改，位置线性内插就是将n换成n/k，其中k是要扩大的倍数。
+6.  从提出者这个思想来看，**任意能实现“高频外推、低频内插”的方案都是可以的，并非只有上述引入λ的方案**。
+7.  **如果从前面的进制转换的角度分析**，直接外推会将外推压力集中在“高位（m较大）”上，而位置内插则会将“低位（m较小）”的表示变得更加稠密，不利于区分相对距离。NTK-aware Scaled RoPE其实就是进制转换，它将外推压力平摊到每一位上，并且保持相邻间隔不变，这些特性对明显更倾向于依赖相对位置的LLM来说是非常友好和关键的，所以它可以不微调也能实现一定的效果。
+
+## Alibi
+
+> [https://arxiv.org/pdf/2108.12409](https://arxiv.org/pdf/2108.12409)
+
+前面说过，在 q 和 k 乘 w 后再算 self-att，之前的 sin 位置编码就丧失了远程衰减等优秀特性。因此 RoPE 是从引入乘性位置表示来解决的，那另外一个思路就是 alibi 的在算 softmax 之前，q k 相乘后 做。这样也能避免 sin 位置编码的问题。论文里表示可以加快11%的训练速度，以及减少11%的内存使用。
+
+具体原理是在 q\_m 和k\_n 相乘后，再加上他们之间的相对位置差(n-m）\* 坡度
+
+![image.png](/img/yuque/计算机/大模型/assets/大模型的位置编码及外推性-5.png)
+
+需要注意的是：
+
+-   论文用在因果编码中，因此 n <= m
+-   坡度：每个 head 独一无二的数，比如 8 个 head 时，分别为 **1/2, 1/4, 1/8, 1/16, 1/32, 1/64, 1/128, 1/256。**
+
+-   用途是啥？为啥每个 head 都要不一样？为什么要这么设？
+
+-   每个 head 都有一个自己的 m
+-   决定了这个偏差随着查询（query）和键（key）之间距离的增加而增加的速率。我理解就是强制指定每个 head 关注不同的距离敏感度。
+
+效果
+
+![image.png](/img/yuque/计算机/大模型/assets/大模型的位置编码及外推性-6.png)
+{% endraw %}

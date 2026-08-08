@@ -1,0 +1,407 @@
+---
+title: "背景"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, NEXT, 3._地标业务, 1._地标信号识别]
+categories: [NEXT]
+yuque: true
+---
+
+{% raw %}
+# 背景
+
+为什么要做？
+
+地标下的排序是对多个召回源返回的结果，根据美团大搜 / 各下游业务场景进行适配，得到对每个业务最适合展示的 top1 地标。举个例子，比如 用户搜索长白山，在美团大搜显示长白山景区这个点。在外卖频道内，排在第一的事长白山大酒店，在酒店频道内会展示多个区域 id ，而不是一个地标点。
+
+主要挑战是啥
+
+1.  性能要求高，前面说过，地标 tp99 为 12ms。平均耗时为 5ms。所以均摊到每个模型上的时间非常短
+2.  准确性要求高：与高德不同，高德可以展示多个主点供用户选取，而美团只会展示一个主点给用户，因此对top1结果的准确率要求更高
+
+基于以上两点，需要得到一个耗时短，准确性高的模型（冲突的）。
+
+# 行动
+
+## 版本1：基于字符相关性混合排序模型
+
+纯基于 XGB 的模型，用的最基础的字符相关特征，包含 jaccard 距离、编辑距离、字符交集个数等几个特征。基本复用了相关性的特征。
+
+训练样本：
+
+1.  正样本，线上出了地标主点，且日点击次数大于等于3次的（为什么是这个数？）
+2.  负样本，主点没被点击的，候选结果，可以当做负例，正负样本比例控制在 1：5
+
+最终得到一个混合排序的 XGB 模型。
+
+## 版本2：基于字符相关性 + 地标类型 + 外卖热度的混合排序模型
+
+解决上一版的问题：
+
+1.  上一版缺乏热度信息：上一版本是基于纯文本相关性的，但实际上还有很多的恶劣badcase，比如用户搜索蓝色港湾，房山有一个蓝色港湾小区，而正确的朝阳的那个 蓝色港湾 SLOAN 却因为文本相关性不足而被排在后面。
+2.  缺乏类型相关特征 -> 使用EL 和地图类型特征
+3.  样本质量提升：
+
+1.  露出主点 + 点击的不一定是相关的，没被点击的不一定就是不相关的。
+
+挑战：
+
+1.  这是一个异构排序，实体链接返回的结构信息和地图的不一样
+
+1.  实体链接的poi\_name + 别称 + 类型 + 实体链接打分
+2.  地图的是 poi\_name + address + 类型 + 外卖热度分数
+3.  实体链接缺乏外卖热度，也没有 address 信息，而地图里没有别称数据（有俩也不一样，各自独立挖掘维护的）
+4.  解决方案：改动实体链接代码，使其透传出外卖热度信息
+
+2.  类型也对不上：EL 返回的类型和地图的是两套系统
+
+1.  解决方案：自己做的映射，将地图400多个类型映射到 EL 的体系
+
+热度虽然是外卖的，但正负样本都是美团的点击数据。所以和地图侧的结果还是有区别（为什么用外卖热度，因为耗时原因，实时调用热度时间不够，但外卖热度可以通过地图接口传回来）
+
+​  
+
+重点是样本是怎么构建的
+
+1.  正样本：为了进一步提升样本质量，将之前的样本规则卡的严一些，除了有点击外，还要加上有订单
+2.  负样本：不用变
+
+​  
+
+特征构建：
+
+1.  文本特征增加前缀匹配、后缀匹配、N-gram 匹配等特征
+2.  类型特征：地图和实体链接的地标类型，经过映射到统一类型体系，并做onehot 编码，映射后共有类型 52 个
+3.  热度特征，整体采用外卖特征，包含以下 13 个热度，每个热度都会被拆分为 近7 天/30 天/180 天数据：
+
+1.  在外卖侧的poi总浏览次数
+2.  订单数量
+3.  外卖搜索 poi 在召回 top1 的次数
+4.  外卖搜索 poi 在召回 top3 的次数
+5.  外卖搜索 poi 在召回 top5 的次数
+6.  外卖搜索 poi 在召回 top10 的次数
+7.  外卖搜索 poi 在召回 top20 的次数
+8.  外卖搜索 poi 在召回中被点击的次数
+9.  美团搜索 poi 召回中被点击的次数
+10.  该 poi 在外卖的 ctr
+11.  该 poi 在外卖的 cvr
+12.  wifi 链接次数
+13.  wifi 扫描次数
+
+特征工程师怎么做的？
+
+1.  整数的事怎么搞得？分桶
+2.  浮点数呢？也是分桶
+
+特征重要性：
+
+1.  总浏览次数
+2.  top1 次数
+3.  美团搜索被点击次数
+
+指标：
+
+1.  看排序的指标（待补充）
+
+## 版本3：基于文本相关性 + 美团侧点击热度 + 用户经纬度 + poi 经纬度编码
+
+解决上一版的问题：
+
+1.  上一版的热度是外卖的，虽然样本是美团的，可以做一些纠正，但实际和美团的行为还是有偏差，因此需要建立美团侧的热度统计
+
+1.  直接用别人的不行么？比如排序组的？ -> 可以用一部分，但还是有一部分业务特色的热度信息，因为不同的业务场景，行为特点还不一样
+
+2.  加入了用户经纬度和 poi 的经纬度信息，这是因为会有多个 poi 满足需求的情况，此时可以考虑给用户最近的那个，比如用户搜索万达广场，北京有很多个，你直接出最近的效果会好一点。
+
+因此本次迭代模型没变，只是改变了这两个特征。
+
+重点是热度怎么构建的：
+
+1.  新增的热度相关特征有：
+
+1.  近28 天主点点击热度
+2.  近 28 天的意向UV
+3.  近 28 天的意向UV（路径归因后）
+4.  近180 天的点击UV
+5.  近30天的点击次数
+6.  流行度
+7.  繁荣度
+
+繁荣度是怎么计算的？
+
+出发点：传统的基于美团用户行为的热度统计方案只能覆盖 2000多万的 poi，相比于地图 1.12 亿的总量来看有比较大的 gap，因此如何让剩余的 9000w poi 有热度信息是需要做的事，否则就会出现因为没有热度，导致新开业商场排在后面的情况。
+
+![image.png](/img/yuque/NEXT/3._地标业务/1._地标信号识别/assets/1.3_排序优化-1.png)
+
+大搜地标识别的目的是为了展示周围商家，因此一个 POI 周围 poi 的数量可以一定程度体现该区域的繁华程度，可以看做地标热度的一种展现形式。
+
+周围商家的定义为距离当前 poi 4km 以内的 poi（对应当时大搜的召回半径）。为了快速进行召回，这里采用了地理位置分桶的方式将 poi 划分到一个个小块中，最终通过遍历 poi 对应块以及周围的 8 个块来做召回，并结合距离卡控得到周边poi。
+
+地理位置编码最开始考虑了两种方案，分别是 geo hash 和墨卡托编码分桶，但 geohash 的计算量相对较大，且容易出现 geohash 相近的 poi 可能实际距离很远的情况，因此最终采用墨卡托编码分桶的方式。其中墨卡托投影的原理详见 [墨卡托投影坐标系（Mercator Projection）原理及实现C代码](https://www.cnblogs.com/DHUtoBUAA/p/6706642.html)。对经纬度进行墨卡托编码，而后根据自己设定的缩放级别（我这里设置的是7，对应的就是一个小块边长 1.22km）进行线性投影分桶，得到经纬度对应的块。
+
+![image.png](/img/yuque/NEXT/3._地标业务/1._地标信号识别/assets/1.3_排序优化-2.png)
+
+```c
+# 预先计算好的 zoom 7 结果
+zu_7 = [1222.99245234375, 1222.99245234375]
+def get_zoom_utils(zoom):
+    # zoom 是地图缩放级别，越大越细致
+    if zoom == 7:
+        return zu_7
+    zu = [0,0]
+    a = math.pow(2, (18-zoom))
+    zu[0] = 0.5971642833709717 * a
+    zu[1] = 0.5971642833709717 * a
+    return zu
+
+# 经纬度转墨卡托
+def lon2marc(x,y):
+    xx = x/180*20037508.3427892
+    yy = math.log(math.tan((90 + y) * math.pi / 360))/(math.pi / 180)
+    return xx, yy * 20037508.34 / 180
+
+# 分桶
+def smarc2region(marc_lon, marc_lat, zoom=7):
+    # zoom 7 对应 2048m, 8 是 1024 m
+    x = marc_lon - 20037508.3427
+    y = -20037508.3427 - marc_lat
+    zu = get_zoom_utils(zoom)
+    bx = -int(x/zu[0])
+    by = -int(y/zu[1])
+    return bx, by
+```
+
+最终得到有繁荣度的 poi 1.06 亿条数据
+
+流行度：
+
+类比于 pagerank 算法，前提假设是当一个 poi1 的address 里包含另一个 poi2 的name 字段时，认为 poi2 在当地有较高的知名度，可以被用来做通用的参考地标。这种字段间的包含关系可以看做网页中的外链关系，这样就可以用 pagerank 算法计算 poi 的热度。这种热度与用户的点击热度分布不同，因此叫做 popularity（流行度）。
+
+![image.png](/img/yuque/NEXT/3._地标业务/1._地标信号识别/assets/1.3_排序优化-3.png)
+
+最终得到有热度的 poi 630w 条。
+
+​  
+
+geohash 是怎么送进 xgb 的？
+
+-   也是分桶，每一个给了一个数
+-   同时还有两个间的geohash 编辑距离
+-   还有墨卡托投影特征
+
+最终模型效果为
+
+## 版本4：基于 BERT 的finetune + 离线缓存相关性特征
+
+为了补充 XGB 模型的语义相关性特征，同时又受限于整体耗时的限制。因此采用离线训练 BERT 模型并将query 和候选 poi 的相关性进行 squirrel 存储的方案，在收到用户请求时，即调用缓存得到 query 和 poi name的 bert 相关性分数。
+
+BERT 模型的微调训练。
+
+整体还是两阶段，第一阶段是无监督对比学习，正样本是 dropout 得到的，负样本全局随机负采样。
+
+第二阶段是有监督对比学习。这块后面要好好整理一个text embedding 的东西。
+
+主要迭代点有三个：
+
+1.  数据样本增强：由于相关性模型的训练基于搜索用户行为标注的弱监督数据，我们结合业务经验对数据做了去噪和数据映射。为了更好的评价相关性模型离线效果，我们构建了一套人工标注的Benchmark数据集，指导模型迭代方向。
+2.  BERT领域适配：美团业务场景中，Query和Doc以商户、商品、团购等短文本为主，除标题文本以外，还存在商户/商品描述、品类、地址、图谱标签等结构化信息。我们首先改进了MT-BERT预训练方法，将品类、标签等文本信息也加入MT-BERT预训练过程中。在相关性Fine-tuning阶段，我们对训练目标进行了优化，使得相关性任务和排序任务目标更加匹配，并进一步将两个任务结合进行联合训练。此外，由于BERT模型前向推理比较耗时，难以满足上线要求，我们通过知识蒸馏将12层BERT模型压缩为符合上线要求的2层小模型，且无显著效果损失。
+3.  排序模型优化：给定<Query, Doc>，我们将基于BERT预测的Query-Doc相关性分数作为特征用于地标排序模型的训练中。
+
+数据增强
+
+BERT Fine-tuning任务需要一定量标注数据进行迁移学习训练，美团搜索场景下Query和Doc覆盖多个业务领域，如果采用人工标注的方法为每个业务领域标注一批训练样本，时间和人力成本过高。我们的解决办法是使用美团搜索积累的大量用户行为数据（如浏览、点击、下单等）， 这些行为数据可以作为弱监督训练数据。在DSSM模型进行样本构造时，每个Query下抽取1个正样本和4个负样本，这是比较常用的方法，但是其假设Query下的Doc被点击就算是相关的，这个假设在实际的业务场景下会给模型引入一些噪声。此处以商家（POI）搜索为例，理想情况下如果一个POI出现在搜索结果里，但是没有任何用户点击，可认为该POI和Query不相关；如果该POI有点击或下单行为，可认为该POI和Query相关。下单行为数据是用户用脚投票得来的，具有更高的置信度，因此我们使用下单数据作为正样本，使用未点击过的数据构造负样本，然后结合业务场景对样本进一步优化。数据优化主要包括对样本去噪和引入品牌数据两个方面。此外，为了评测算法离线效果，我们从构造样本中随机采样9K条样本进行了人工标注作为Benchmark数据集。
+
+样本去噪声：
+
+1.  无意义单字Query过滤。由于单字Query表达的语义通常不完整，用户点击行为也比较随机，如<优，花漾星球专柜（中央大道倍客优）>，这部分数据如果用于训练会影响最终效果。我们去除了包含无意义单字Query的全部样本。
+2.  正样本从用户下单的POI中进行随机采样，且过滤掉Query只出现在POI的分店名中的样本，如<大润发，小龙坎老火锅（大润发店）>，虽然Query和POI字面匹配，但其实是不相关结果。
+3.  负样本尝试了两种构造方法：全局随机负采样和Skip-Above采样。
+
+1.  全局随机负采样：用户没有点击的POI进行随机采样得到负例。我们观察发现随机采样同样存在大量噪声数据，补充了两项过滤规则来过滤数据。① 大量的POI未被用户点击是因为不是离用户最近的分店，但POI和Query是相关的，这种类型的样例需要过滤掉，如<蛙小侠 ，蛙小侠（新北万达店）>；② 用户Query里包含品牌词，并且POI完全等同于品牌词的，需要从负样本中过滤，如<德克士吃饭 ，德克士>。
+2.  Skip-Above采样：受限于App搜索场景的展示屏效，无法保证召回的POI一次性得到曝光。若直接将未被点击的POI作为负例，可能会将未曝光但相关的POI错误地采样为负例。为了保证训练数据的准确性，我们采用Skip-Above方法，剔除这些噪音负例，即从用户点击过的POI之上没有被点击过的POI中采样负例（假设用户是从上往下浏览的POI）。
+
+模型优化
+
+除 query doc 外，还引入 doc 的品类信息，将Doc三级品类信息拼接到Doc标题之后，然后跟Query进行相关性判断。
+
+经过两阶段训练，最终得到一个大的 12 层 BERT 模型。
+
+将该模型进行部署，并通过 spark 任务每周定期对线上疑似地标类 query （ 有地标模型认为有地标意图、有where 成分）的候选召回进行相关性预测，并存入 squirrel 缓存中。缓存中数据量约 6kw 条数据。（失效周期30天）
+
+而后将相关性分数放入 xgb 模型中作为特征输入，最终模型效果提升 xxx。对于没有相关性分数的，采用特殊值填充（2）。
+
+  
+
+## 版本5：热度（特征）补充迭代
+
+列举一下都补充了哪些特征。
+
+```c
+mid bigint comment '地图 mid',
+
+       poiid bigint comment '美团 mt_id',
+
+       poi_name string comment '商户名称',
+
+       first_cate_id bigint comment '美团门店后台一级品类ID',
+
+       second_cate_id  bigint comment '美团门店后台二级品类ID',
+
+       third_cate_id bigint comment '美团门店后台三级品类ID',
+
+       city_id bigint comment '城市id',
+
+       city_name string comment '城市名称',
+
+       close_status bigint comment '营业状态',
+
+       mt_main_view_cnt_7 double comment '大搜 poi 7 天的POI曝光条数，仅POI的曝光计入一次曝光',
+
+       mt_main_click_cnt_7 double comment '大搜 poi 7 天的POI点击次数，仅POI的曝光计入一次曝',
+
+       mt_main_valid_click_cnt_7 double comment '大搜 poi 7 天的POI有效点击次数，仅POI的点击计入一次点击',
+
+       mt_total_view_cnt_7 double comment '大搜 poi 7 天的曝光条数，POI、POI下挂Deal曝光都计入一次曝光',
+
+       mt_total_click_cnt_7 double comment '大搜 poi 7 天的点击次数，POI、POI下挂Deal点击都计入一次点击',
+
+       mt_total_valid_click_cnt_7 double comment '大搜 poi 7 天的有效点击次数，POI、POI下挂Deal点击都计入一次点击',
+
+       mt_search_qv_7 double comment '大搜 poi 7 天的搜索 QV（新口径，使用new_merge_query_id计算）',
+
+       mt_click_qv_7 double comment '大搜 poi 7 天的点击 QV（新口径，使用new_merge_query_id计算）',
+
+       mt_qv_ctr_7 double comment '大搜 poi 7 天的qv_ctr',
+
+       mt_search_uv_7 double comment '大搜 poi 7 天的搜索 UV',
+
+       mt_click_uv_7 double comment '大搜 poi 7 天的点击UV',
+
+       mt_uv_ctr_7 double comment '大搜 poi 7 天的uv_ctr',
+
+       mt_intention_path_uv_7 double comment '大搜 poi 7 天的结果页带来的意向 UV',
+
+       mt_intention_uv_7 double comment '大搜 poi 7 天的实际的意向uv（不包含直达）',
+
+       mt_intention_path_cnt_7 double comment '大搜 poi 7 天的结果页带来的意向浏览次数',
+
+       mt_intention_cnt_7 double comment '大搜 poi 7 天的实际的意向浏览次数(不包含直达)',
+
+       mt_main_view_cnt_14 double comment '大搜 poi 14 天的POI曝光条数',
+
+       mt_main_click_cnt_14 double comment '大搜 poi 14 天的POI点击次数',
+
+       mt_main_valid_click_cnt_14 double comment '大搜 poi 14 天的POI有效点击次数',
+
+       mt_total_view_cnt_14 double comment '大搜 poi 14 天的曝光条数，POI、POI下挂Deal曝光都计入一次曝光',
+
+       mt_total_click_cnt_14 double comment '大搜 poi 14 天的点击次数，POI、POI下挂Deal点击都计入一次点击',
+
+       mt_total_valid_click_cnt_14 double comment '大搜 poi 14 天的有效点击次数，POI、POI下挂Deal点击都计入一次点击',
+
+       mt_search_qv_14 double comment '大搜 poi 14 天的搜索 QV（新口径，使用new_merge_query_id计算',
+
+       mt_click_qv_14 double comment '大搜 poi 14 天的点击 QV（新口径，使用new_merge_query_id计算）',
+
+       mt_qv_ctr_14 double comment '大搜 poi 14 天的qv_ctr',
+
+       mt_search_uv_14 double comment '大搜 poi 14 天的搜索 UV',
+
+       mt_click_uv_14 double comment '大搜 poi 14 天的点击UV',
+
+       mt_uv_ctr_14 double comment '大搜 poi 14 天的uv_ctr',
+
+       mt_intention_path_uv_14 double comment '大搜 poi 14 天的结果页带来的意向 UV',
+
+       mt_intention_uv_14 double comment '大搜 poi 14 天的实际的意向uv（不包含直达）',
+
+       mt_intention_path_cnt_14 double comment '大搜 poi 14 天的结果页带来的意向浏览次数',
+
+       mt_intention_cnt_14 double comment '大搜 poi 14 天的实际的意向浏览次数(不包含直达)',
+
+       mt_main_view_cnt_28 double comment '大搜 poi 28 天的POI曝光条数',
+
+       mt_main_click_cnt_28 double comment '大搜 poi 28 天的POI点击次数',
+
+       mt_main_valid_click_cnt_28 double comment '大搜 poi 28 天的POI有效点击次数',
+
+       mt_total_view_cnt_28 double comment '大搜 poi 28 天的曝光条数，POI、POI下挂Deal曝光都计入一次曝光',
+
+       mt_total_click_cnt_28 double comment '大搜 poi 28 天的点击次数，POI、POI下挂Deal点击都计入一次点击',
+
+       mt_total_valid_click_cnt_28 double comment '大搜 poi 28 天的有效点击次数，POI、POI下挂Deal点击都计入一次点击',
+
+       mt_search_qv_28 double comment '大搜 poi 28 天的搜索 QV（新口径，使用new_merge_query_id计算',
+
+       mt_click_qv_28 double comment '大搜 poi 28 天的点击 QV（新口径，使用new_merge_query_id计算）',
+
+       mt_qv_ctr_28 double comment '大搜 poi 28 天的qv_ctr',
+
+       mt_search_uv_28 double comment '大搜 poi 28 天的搜索 UV',
+
+       mt_click_uv_28 double comment '大搜 poi 28 天的点击UV',
+
+       mt_uv_ctr_28 double comment '大搜 poi 28 天的uv_ctr',
+
+       mt_intention_path_uv_28 double comment '大搜 poi 28 天的结果页带来的意向 UV',
+
+       mt_intention_uv_28 double comment '大搜 poi 28 天的实际的意向uv（不包含直达）',
+
+       mt_intention_path_cnt_28 double comment '大搜 poi 28 天的结果页带来的意向浏览次数',
+
+       mt_intention_cnt_28 double comment '大搜 poi 28 天的实际的意向浏览次数(不包含直达)',
+
+       mt_main_view_cnt_180 double comment '大搜 poi 180 天的POI曝光条数',
+
+       mt_main_click_cnt_180 double comment '大搜 poi 180 天的POI点击次数',
+
+       mt_main_valid_click_cnt_180 double comment '大搜 poi 180 天的POI有效点击次数',
+
+       mt_total_view_cnt_180 double comment '大搜 poi 180 天的曝光条数，POI、POI下挂Deal曝光都计入一次曝光',
+
+       mt_total_click_cnt_180 double comment '大搜 poi 180 天的点击次数，POI、POI下挂Deal点击都计入一次点击',
+
+       mt_total_valid_click_cnt_180 double comment '大搜 poi 180 天的有效点击次数，POI、POI下挂Deal点击都计入一次点击',
+
+       mt_search_qv_180 double comment '大搜 poi 180 天的搜索 QV（新口径，使用new_merge_query_id计算',
+
+       mt_click_qv_180 double comment '大搜 poi 180 天的点击 QV（新口径，使用new_merge_query_id计算）',
+
+       mt_qv_ctr_180 double comment '大搜 poi 180 天的qv_ctr',
+
+       mt_search_uv_180 double comment '大搜 poi 180 天的搜索 UV',
+
+       mt_click_uv_180 double comment '大搜 poi 180 天的点击UV',
+
+       mt_uv_ctr_180 double comment '大搜 poi 180 天的uv_ctr',
+
+       mt_intention_path_uv_180 double comment '大搜 poi 180 天的结果页带来的意向 UV',
+
+       mt_intention_uv_180 double comment '大搜 poi 180 天的实际的意向uv（不包含直达）',
+
+       mt_intention_path_cnt_180 double comment '大搜 poi 180 天的结果页带来的意向浏览次数',
+
+       mt_intention_cnt_180 double comment '大搜 poi 180 天的实际的意向浏览次数(不包含直达)',
+
+       loc_main_view_clc_7_qv double comment '近7天出地标主点时的主点 qv // 28 天的要扫描空间太大，运行不了',
+
+       loc_main_view_clc_7_uv double comment '近7天出地标主点时的主点 UV',
+
+       loc_main_view_clc_7_view_qv double comment '近7天出地标主点时的主点曝光 qv',
+
+       loc_main_view_clc_7_clc_qv double comment '近7天出地标主点时的主点点击qv',
+
+       loc_main_view_clc_7_view_uv double comment '近7天出地标主点时的主点曝光 UV',
+
+       loc_main_view_clc_7_clc_uv double comment '近7天出地标主点时的主点点击 UV',
+
+       loc_main_view_clc_7_uv_ctr double comment '近7天出地标主点时的主点 uvctr',
+
+       loc_main_view_clc_7_qv_ctr double comment '近7天出地标主点时的主点 qv_ctr',
+
+       loc_main_list_click_7 double comment '近7天出地标时，该poi对应的列表页+主点的点击次数',
+
+       loc_main_list_view_7 double comment '出地标时，该poi对应的列表页+主点的曝光次数'
+```
+{% endraw %}

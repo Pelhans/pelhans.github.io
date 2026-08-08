@@ -1,0 +1,601 @@
+---
+title: "Agent Harness 技术调研报告（完整版）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# Agent Harness 技术调研报告（完整版）
+
+> 调研时间：2026-07-27  
+> 主题：AI Agent 编排运行时（Agent Harness）的完整技术报告——概念、参考架构、行业通用方案、前沿问题与从业者路线  
+> 面向对象：希望从事 Agent Harness / Agent 基础设施研发的工程师  
+> 说明：本报告在初版基础上大幅扩充，重点补充了**分层记忆架构、可观测与评测体系、多智能体编排、安全与前沿开放问题**，并给出一套可落地的参考架构与学习路线。
+
+---
+
+## 〇、给从业者的一句话定位
+
+Agent Harness（智能体编排运行时）是**包裹在 LLM 之外、负责"除模型本身之外一切"的软件基础设施**：上下文与记忆管理、工具调用、规划与编排、护栏与安全、长程状态持久化、可观测与评测。行业共识正在形成：**模型约占 20%，Harness 约占 80%**（Google ADK 实践者 Renuka Kelkar 的总结）。选型的第一个动作，是先分清自己缺的是 Framework / Runtime / Harness 三层中的哪一层。
+
+---
+
+## 一、背景与摘要
+
+随着大模型能力增强，开发者把 Agent 用于**跨会话、长周期、需调用工具与外部系统**的复杂任务。但一个越来越清楚的事实是：Agent 的真实表现，往往不取决于模型本身，而取决于模型之外那一层"外壳"——Agent Harness。
+
+-   裸 LLM 只是引擎：不会记忆、不会调用工具、没有审计、不稳定、不安全。
+
+-   Harness 是把引擎变成可上路汽车的方向盘、刹车、安全带和仪表盘。
+
+-   现代 Agent 技术栈被拆成三层：**Framework（框架）→ Runtime（运行时）→ Harness（外壳）**，职责各异。
+
+-   2025–2026 年，主流框架已普遍收敛到 **MCP（Model Context Protocol）** 作为工具集成标准；可观测性（tracing）则与框架解耦，成为独立平台。
+
+-   **长程任务（跨多个 context window）** 是当前最前沿也最难的工程问题，Anthropic 的 "Initializer + Coding" 两段式与"协调者-工作者"多智能体是目前最有效的范式之一。
+
+---
+
+## 二、什么是 Agent Harness
+
+### 2.1 定义
+
+**Agent Harness** 是包裹在大模型（LLM）或 AI Agent 之外、负责"除模型本身之外一切"的软件基础设施。一位 AI 架构师给出的定义：*Harness 是"围绕 LLM 的完整架构系统，管理上下文的生命周期——从意图捕获、规格化、编译、执行、验证到持久化"，本质上就是除 LLM 之外的一切。*
+
+换言之：模型负责"想"，Harness 负责把"想"连接到真实世界——让它**能用工具、能跨步记忆、能跑长流程、能被约束、可被审计**。
+
+### 2.2 三层架构：Framework vs Runtime vs Harness
+
+现代 Agent 技术栈通常被拆成三层（Analytics Vidhya, 2025-12）：
+
+| 层次 | 角色 | 关注点 | 典型代表 |
+| --- | --- | --- | --- |
+| **Framework（框架）** | 库 / SDK，定义 agent 怎么"想" | 提供抽象与模式，组装 LLM + 工具 + 记忆 + 控制逻辑 | LangChain、CrewAI、Pydantic AI |
+| **Runtime（运行时）** | 生产执行引擎 | 持久化执行、状态管理、可暂停/恢复、human-in-the-loop、流式 | LangGraph、Claude Agent SDK |
+| **Harness（外壳）** | 把 agent 包起来部署的接口 | 连接真实世界、工具、跨会话记忆、长会话、护栏、可观测 | Claude Agent SDK、deepagents、Google ADK |
+
+> 三层不是非此即彼：**LangGraph 是 runtime，deepagents / Claude Agent SDK 是 harness，LangChain 是 framework**；而 deepagents 正是构建在 LangGraph 的 runtime 之上的 harness。
+
+> 📎 想彻底厘清这三层的边界与重叠？见同目录下专文：**《**[Framework vs Runtime vs Harness：区别与联系详解](https://www.yuque.com/yuqueyonghuyit3fz/nssocf/uay9xyeoi49unyhk)**》**——以开源项目 OpenHands 的代码级架构 + Anthropic / Google / LangChain 的真实产品拆解为案例。
+
+---
+
+## 三、为什么需要 Harness：裸 LLM 的六大痛点
+
+直接把裸 LLM 投入生产会遇到：
+
+1.  **幻觉**——自信地编造内容；
+
+2.  **无跨会话记忆**——每次会话从零开始；
+
+3.  **无私有 / 实时数据访问**——只能依赖训练数据；
+
+4.  **输出不一致**——相同输入结果漂移；
+
+5.  **无审计轨迹**——无法追溯它说了什么、做了什么；
+
+6.  **可能泄露敏感信息**——缺乏约束就会"乱说"。
+
+Harness 正是为了补上这六类缺口而存在。
+
+---
+
+## 四、Harness 的核心职责（六大模块）
+
+1.  **Prompt / 上下文管理**：存储、版本化、控制喂给模型的指令，保证每次调用一致。
+
+2.  **Memory（记忆）**：补充短期与长期上下文，让模型跨会话"记得"相关信息（详见第八节）。
+
+3.  **Retrieval / RAG（检索）**：在请求时拉入私有、实时数据。
+
+4.  **Guardrails（护栏）**：约束能/不能做什么，拦截敏感数据，强制输出格式（详见第十节）。
+
+5.  **Orchestration（编排）**：串联多次 LLM 调用、协调多个 agent、管理工具调用（详见第九节）。
+
+6.  **Monitoring / Observability（可观测）**：记录每次交互，跟踪质量与成本，提供审计轨迹（详见第七节）。
+
+---
+
+## 五、行业通用方案：参考架构蓝图
+
+对一个想"从零构建或深度定制 Harness"的工程师，下面是一套 2026 年已被多家生产系统验证的**分层参考架构**。它把 Harness 拆成 8 个可独立演进的子系统。
+
+```plain
+┌───────────────────────────────────────────────────────────┐
+│                      Agent Harness                          │
+│                                                             │
+│  ① 控制循环 (Agent Loop)       ⑥ 护栏 / 权限层 (Guardrails) │
+│     - 读取状态 → 调 LLM → 解析动作                                │
+│     - 执行工具 → 回写观测 → 判定继续/终止                            │
+│                                 - 信任边界 / 能力门控            │
+│  ② 状态与持久化 (State)          - 最小权限 / HITL 闸门            │
+│     - checkpoint / 可恢复                                        │
+│     - 幂等、重放、time-travel                                    │
+│                                ⑦ 可观测 / 评测 (Observability)    │
+│  ③ 规划模块 (Planning)           - trace / span / session         │
+│     - ReAct / Plan-Execute                                      │
+│     - 反思 / 自我修正            - evals / LLM-as-judge            │
+│                                ⑧ 人机协同 (HITL)                  │
+│  ④ 工具与协议层 (Tools)          - interrupt/resume               │
+│     - Function Calling → MCP    - 风险分级路由                    │
+│     - 沙箱执行 (代码/浏览器)                                      │
+│                                                             │
+│  ⑤ 记忆子系统 (Memory)                                         │
+│     - 工作/短期/长期/语义/情景 多层级                                │
+└───────────────────────────────────────────────────────────┘
+```
+
+### 5.1 控制循环（Agent Loop）—— Harness 的心脏
+
+最精简的循环（伪代码）：
+
+```python
+state = load_or_init(thread_id)          # ① 状态恢复
+while not done:
+    decision = llm(
+        system=SYSTEM_PROMPT,
+        messages=state.window,            # 当前上下文窗口（工作记忆）
+        tools=tool_registry.schemas,      # 工具清单（来自 MCP）
+    )
+    action = parse(decision)              # 解析 tool_call / 文本
+    if action.is_final:
+        break
+    if guardrails.deny(action, state):    # ⑥ 护栏前置校验
+        state.append(refusal); continue
+    observation = execute(action)         # ④ 工具执行（可沙箱）
+    state.append(action, observation)     # 回写状态
+    state.compact_if_needed()             # 上下文压缩/淘汰
+persist(state)                            # ② 持久化
+```
+
+关键点：循环必须把"模型判断"和"动作执行"**结构分离**——负责推理的不该直接拥有执行权限（见第十节 Parallax 结构性论点）。
+
+### 5.2 状态与持久化（State）
+
+-   **Durable Execution（持久化执行）**：把每一步状态写入数据库（Postgres/Redis），进程崩溃后可从断点恢复。
+
+-   **Checkpointing**：LangGraph 把图节点状态落库，支持 `interrupt()`/`resume()` 与"时间旅行"调试。
+
+-   **幂等与重放**：每个动作带幂等键，失败可安全重试。
+
+### 5.3 规划模块（Planning）
+
+三种主流范式：
+
+-   **ReAct**（推理+行动交错）：通用、轻量，适合中等任务。
+
+-   **Plan-and-Execute**（先规划后执行）：先生成完整计划再逐步执行，可控但易因计划过时失效。
+
+-   **Reflection / 自我修正**：执行后让模型评审结果，迭代改进（如 Reflexion 框架）。
+
+-   前沿趋势：把更多决策**委托给模型**（tool-calling-in-a-loop），减少硬编码编排。
+
+### 5.4 工具与协议层（Tools）—— MCP 成为事实标准
+
+-   **Function Calling** 是底层能力；**MCP（Model Context Protocol，Anthropic 提出）** 已成为 2025–2026 各框架收敛的工具集成标准——工具写成 MCP server 即可跨框架（LangGraph/CrewAI/Claude/OpenAI）移植。
+
+-   **A2A（Agent-to-Agent，Google）**：agent 之间互通的协议，配合 MCP 形成"工具标准化 + agent 互联"双层。
+
+-   **沙箱执行**：代码执行放 Firecracker/Kata/gVisor 微虚拟机；浏览器操作放 Puppeteer/Playwright MCP。
+
+### 5.5 人机协同（HITL）
+
+-   **风险分级**：可逆/低风险动作自动执行；不可逆/高价值/高波及面动作（删文件、发邮件、转账、部署）必须人工确认。
+
+-   **原语支持**：LangGraph `interrupt()`、Cloudflare Agents、Claude Code `PreToolUse` 钩子均可暂停执行并暴露人工决策点（批准/修改/拒绝/补充）。
+
+---
+
+## 六、长程任务的 Harness 工程实践（Anthropic 经验）
+
+来源：Anthropic《Effective harnesses for long-running agents》（2025-11-26），基于 **Claude Agent SDK**。
+
+### 6.1 问题
+
+Agent 必须在离散的会话（session）中工作，新会话开始时对之前一无所知——像轮班但失忆的工程师。仅靠"压缩（compaction）"不够：即便前沿模型 + Agent SDK 多窗口循环，只给高层 prompt 也会出现两类失败——**一次性贪多**（中途耗尽上下文留半成品）与**过早宣布完成**。
+
+### 6.2 解法：Initializer + Coding 两段式
+
+1.  **Initializer Agent**：首会话搭建环境——生成 `feature_list.json`（数百条端到端功能，**全标记 failing**）、`init.sh`（一键拉起服务）、初始 `git commit`。
+
+2.  **Coding Agent**：之后每会话只**增量推进一个 feature**，结束提交 git 并写 progress 文件，把环境留在"干净状态"（可合并 main）。
+
+### 6.3 关键工程经验
+
+-   **用 JSON 而非 Markdown 存 feature list**：模型更不易误改 JSON。
+
+-   **每会话先"找状态"**：`pwd` → 读 git log + progress → 读 feature list → 选最高优先级未完成项 → 启动 dev server 做基本端到端验证，再动手。
+
+-   **强制端到端测试**：不显式要求时模型只做单测/curl，会误判完成；给 browser automation 工具后性能显著提升。
+
+-   **保持 clean state**：每会话代码达"可合并"标准，避免下个会话先收拾烂摊子。
+
+### 6.4 失败模式对照表
+
+| 失败模式 | Initializer 应对 | Coding 应对 |
+| --- | --- | --- |
+| 过早宣布整个项目完成 | 建 feature list（全 failing） | 每会话只做一个 feature |
+| 留下有 bug / 无记录状态 | 建初始 git + progress 文件 | 开始读 progress+git log，结束提交 |
+| 未测就标完成 | 建 feature list | 自测通过后才标 passing |
+| 浪费时间折腾运行 | 写 `init.sh` | 每会话先拉起服务验证 |
+
+---
+
+## 七、可观测与评测体系（Observability & Eval）
+
+Agent 是非确定性系统，应用逻辑写在 **trace（调用链）** 里，不在代码里。没有可观测性等于"盲飞"。
+
+### 7.1 核心概念
+
+-   **Trace（调用链）**：完整决策路径——每次 LLM 调用、工具调用、检索、中间决策都带上下文记录。相当于 AI 系统的"调用栈"。
+
+-   **Span（跨度）**：trace 中单次操作（带耗时、输入输出、元数据），可嵌套。
+
+-   **Session（会话）**：把多轮/多步交互归组，理解完整用户旅程。
+
+-   **Eval（评测）**：用启发式 / LLM-as-judge / 自定义逻辑对输出自动打分。
+
+-   **Feedback（反馈）**：自动分 + 人工标注，形成持续改进数据。
+
+### 7.2 主流工具（2026）
+
+| 工具 | 定位 | 部署 | 开源 | 选型建议 |
+| --- | --- | --- | --- | --- |
+| **Langfuse** | 端到端 tracing + evals + 成本 | 云 + 自托管 | ✅ MIT | 大多数团队起点；框架无关、便宜 |
+| **LangSmith** | LangChain/LangGraph 原生 | 云 + 自托管(企业) | ❌ | 已用 LangChain 生态首选 |
+| **Braintrust** | evals-first + CI 质量门禁 | 云 + 混合 | ❌ | 需要回归阻断发布 |
+| **Arize Phoenix** | OSS + 嵌入聚类/漂移检测 | 自托管 + 云 | ✅ | 强数据隐私/需诊断退化 |
+| **Comet Opik** | OSS + 丰富 eval 指标库 | 自托管 + 云 | ✅ Apache-2.0 | 低代码评测 |
+| **Helicone** | 代理式轻量日志/成本 | 云 + 自托管 | ✅ | 想最快接入 |
+| **Datadog LLM Obs** | 并入现有 APM | 云 | ❌ | 已在 Datadog 体系 |
+
+> 经验法则：标准 APM 把 LLM 调用当不透明 HTTP 请求，看不到 token/成本/提示词 diff。凡每月 >10 万次调用或跑 RAG 检索评测，就需要 LLM 专用可观测。
+
+### 7.3 评测方法论
+
+-   **小样本快启动**：20 个代表性查询即可起步，无需数百任务。
+
+-   **LLM-as-Judge**：按事实准确性、引文准确性、完整性、来源质量、工具效率打分。
+
+-   **人工评估不可替代**：人类测试者能发现模型持续偏向 SEO 内容农场而非权威源等偏差。
+
+-   **CI 质量门禁**：把 evals 接进 CI，回归自动阻断发布（Braintrust 范式）。
+
+---
+
+## 八、分层记忆架构（Memory Stack）—— Context Engineering
+
+RAG 回答了"模型怎么知道公司文档"，但**生产 Agent 需要的是记忆栈（memory stack）**：多个存储系统各司其职。这是 2026 年最有影响力的 AI 基础设施学科之一，名为 **Context Engineering（上下文工程）**。
+
+### 8.1 为什么单库不够
+
+生产 Agent 要回答：
+
+-   "用户 10 秒前说了什么？"（当前轮）
+
+-   "用户上周说了什么？"（跨会话）
+
+-   "关于 TA 我知道什么？"（画像/偏好）
+
+-   "这个查询相关的领域知识？"（语义检索）
+
+-   "类似任务以前长什么样？"（情景记忆）
+
+-   "任务当前工具/环境状态？"（工作记忆）
+
+每种数据的形状、延迟预算、写入模式、保留要求都不同，**单向量库会又慢又容易忘**。
+
+### 8.2 五层记忆（认知科学映射）
+
+| 层级 | 范围 | 存储 | 生命周期 | 延迟预算 |
+| --- | --- | --- | --- | --- |
+| **工作记忆** | 当前轮 scratchpad | 进程内 state（LangGraph GraphState）/ Redis | 即时、易失 | 个位数 ms |
+| **短期记忆** | 当前会话 | Redis（TTL） / 工作流引擎 state | 分钟~小时 | 数十 ms |
+| **长期记忆** | 用户/任务/实体的持久事实 | Postgres（结构化表 + JSON） | 永久 | <50ms |
+| **语义记忆** | 可检索知识（RAG） | 向量库 + BM25 + reranker | 永久 | <200ms |
+| **情景记忆** | 历史轨迹/成败经验 | 数仓（BigQuery/ClickHouse）+ 摘要向量索引 | 永久 | <500ms |
+
+> 并非所有 Agent 都需要全栈。起步：工作 + 短期 + 语义；能力成熟再加长期、情景、图谱。
+
+### 8.3 RAG ≠ Memory（常见误区分）
+
+| 维度 | RAG | Memory |
+| --- | --- | --- |
+| 检索对象 | 文档/知识 | 过往交互、用户状态 |
+| 有状态？ | 否（无状态查询） | 是（跨会话持久） |
+| 写入时机 | 离线建索引 | 对话时 |
+| 归属 | 系统/语料 | 用户/租户 |
+| 失败模式 | 检索到错误文档 | 检索到错误用户的数据 |
+
+**集成模式**：RAG 从语料检索，Memory 从用户历史检索，编排器合并进工作记忆，模型无需知道来源；**溯源（provenance）记在 trace 里，不记在 prompt 里**。
+
+### 8.4 写什么、怎么忘（最难的工程决策）
+
+-   **写入策略三选一（常组合用）**：
+
+1.  *轮末抽取*（Mem0 / LangMem 模式）：小模型读转录，抽取事实/决策/偏好，去重后写入；
+
+2.  *会话末反思*：大模型把会话摘要为情景记录并更新语义库（质量高、成本大）；
+
+3.  *显式用户确认*：Agent 偶尔问"要记住吗？"——高利害事实用。
+
+-   **遗忘是设计面，不是可选项**：按类型设 TTL（情景衰减、语义刷新或标 stale）；坏记忆一旦写入会永远付费，写入前务必去重+校验。
+
+-   **上下文窗口不是记忆，是注意力**：研究指出上下文超 60% 容量后模型开始贬低关键信息；更大窗口只是更贵的遗忘。
+
+---
+
+## 九、多智能体编排（Multi-Agent Orchestration）
+
+来源：Anthropic《How we built our multi-agent research system》（2025-06）。
+
+### 9.1 核心发现
+
+-   **多智能体本质是多消耗 token 来解决问题**：BrowseComp 评测中，token 用量单独解释 80% 性能方差；多智能体系统比聊天多用约 **15×** token，比单 agent 多约 **4×**。
+
+-   **架构**：orchestrator-worker（协调者-工作者）。Lead Agent 规划并并行派生 Subagent；Subagent 各自上下文窗口充当"智能过滤器"压缩信息回传。
+
+-   **性能**：Opus 4 主 + Sonnet 4 子，在内部研究评测比单 agent Opus 4 高 **90.2%**。
+
+-   **适用边界**：高并行度、信息超单窗口、需对接大量复杂工具的任务最佳；**需要共享上下文或 agent 间强依赖的任务（多数编码任务）当前不适合**。
+
+### 9.2 八条提示工程原则（节选）
+
+1.  像 Agent 一样思考（用相同 prompt/工具在控制台模拟观察）；
+
+2.  教导协调器如何委派（每个子 agent 需明确目标/输出格式/工具边界，含糊指令导致重复劳动）；
+
+3.  规模随查询复杂度扩展（事实查找 1 agent；复杂研究 10+ 子 agent）；
+
+4.  工具设计至关重要（给明确启发式）；
+
+5.  让 Agent 自完善（"工具测试 Agent"可发现关键缺陷，任务完成时间降 40%）；
+
+6.  先宽后窄（避免过长查询）；
+
+7.  引导思考（扩展思考 / 交错思考）；
+
+8.  并行工具调用（研究时间最多降 90%）。
+
+### 9.3 评估与生产可靠性
+
+-   有状态系统错误会累积——要能从错误中恢复，让 Agent 知道工具失败并自适应。
+
+-   调试需新方法：完整生产 trace，监控决策模式。
+
+-   部署用彩虹部署（rainbow deployment）逐步切流。
+
+---
+
+## 十、安全与护栏（Security & Guardrails）
+
+Agent 的威胁模型不同于聊天机器人：威胁从"不安全文本"扩展到"不安全动作"（文件系统、shell、MCP、凭据、网络副作用）。
+
+### 10.1 致命三位一体（Lethal Trifecta，Simon Willison）
+
+当 Agent 同时具备：① 访问私有数据 ② 暴露给不可信内容 ③ 能对外通信——提示注入即可诱导其泄露数据。**Meta "Rule of two"**：无需人工批准的会话里，三者至多满足两个。
+
+### 10.2 OWASP Agentic 风险（节选）
+
+未受控自主、委派身份滥用、跨 Agent 提示注入、工具权限过度、持久记忆篡改、供应链妥协、审计缺失、信任边界违例、编排劫持、借推理提权。
+
+> 提示注入（LLM01）被 OWASP 称为"结构性特征，而非实现 bug"——当前**没有 LLM 能提供确定性的抗注入保证**。
+
+### 10.3 纵深防御栈（Defense in Depth）
+
+| 层 | 控制 | 拦截的失败 |
+| --- | --- | --- |
+| 内容过滤 | 输入/输出文本过滤（Llama Guard / NeMo / Guardrails AI） | 有毒输出、PII 泄露 |
+| 权限阶梯 | 最小工具集、路径/API/scope 限定 | 摘要器误写生产系统 |
+| 工具前钩子 | 该动作此刻是否该执行（PreToolUse） | 由不可信内容拼出的 shell 命令 |
+| 沙箱 | OS/网络层隔离（Firecracker/gVisor/V8 Isolates） | 文件外泄、依赖投毒、命令注入 |
+| 人工闸门 | 不可逆/高影响动作需批准 | 发邮件、转账、部署 |
+| MCP/令牌定界 | 凭据仅对该 server/audience 有效（RFC 8707） | 令牌跨 server 复用 |
+| 审计追踪 | 记录做了什么、谁批准、为何 | 长自主运行后取证 |
+
+### 10.4 两个重要结构性原则
+
+-   **信任隔离（Zylos）**：不可信外部内容绝不能继承系统指令的信任级别；高影响能力执行前需干净信任链。
+
+-   **最小代理原则（Principle of Least Agency，Pignati）**：Least Privilege 问"身份能访问什么"，Least Agency 问"Agent 被允许决定什么"。**推理系统结构性地不能执行，执行系统结构性地不能推理**，中间插独立不可变校验器（Claude Code PreToolUse、Codex bubblewrap/seccomp、托管凭据库均体现此分离）。
+
+---
+
+## 十一、主流实现 / 框架图谱
+
+### A. 通用 Agent Harness / SDK
+
+-   **Claude Agent SDK（Anthropic）**：*general-purpose agent harness*，驱动 Claude Code 的同款；提供 tool loop、文件系统、Web、session、artifact、Computer Use、hooks、MCP、skills、subagents。
+
+-   **LangChain deepagents**：*batteries-included agent harness*；长程 planning、tool-calling-in-a-loop、context offloading 到文件系统、subagent 编排；**宣称唯一不绑定特定 LLM/技术栈**。
+
+-   **Google ADK**：多 agent 编排、tool use、MCP、A2A、session/memory。
+
+### B. Runtime / 有状态编排
+
+-   **LangGraph**：StateGraph（显式 state + nodes + 条件边 + 循环 + 中断）；Postgres/Redis checkpoint、durable state、subgraph、流式、第一等 HITL；2026 复杂生产 workflow 默认选择（月下载 34.5M，400+ 企业上线）。
+
+### C. 多 Agent 框架
+
+-   **CrewAI**：角色化多 agent（role/goal/backstory），上手最快，规模化后常重写 LangGraph。
+
+-   **AutoGen / AG2**（微软研究）：对话式多 agent 开创者，现维护模式，合并进 **MAF**。
+
+-   **Microsoft Agent Framework（MAF）**：Semantic Kernel + AutoGen 合并，Azure 原生、Entra ID、OTel。
+
+-   **Semantic Kernel**：多语言（C#/Python/Java），.NET 企业首选。
+
+### D. 轻量 / 云厂商
+
+-   **OpenAI Agents SDK**：轻量、handoffs + guardrails + tracing、100+ LLM。
+
+-   **Strands Agents（AWS）**：Bedrock 一等、多 provider、OTel。
+
+### E. 低代码 / 超级 Harness
+
+-   **Dify**：可视化构建器，144k stars。
+
+-   **DeerFlow（字节）**：*Super Agent Harness*，代码执行+浏览器操控+报告生成+多子 agent 协同，生产级运行时。
+
+---
+
+## 十二、框架对比表
+
+| 框架 | 类型 | 模型绑定 | 状态/持久化 | 多 Agent | Human-in-loop | 最佳实践场景 |
+| --- | --- | --- | --- | --- | --- | --- |
+| **LangGraph** | Runtime | 模型无关 | ✅ checkpoint(PG/Redis) | ✅ subgraph | ✅ 第一等 | 复杂可控生产 workflow |
+| **Claude Agent SDK** | 通用 Harness | Anthropic 优先 | compaction | ✅ subagents | hooks+skills | Anthropic 优先生产 agent |
+| **deepagents** | 通用 Harness | **模型无关（唯一）** | 基于 LangGraph | ✅ 编排 | 继承 LangGraph | 长程自主/不想绑栈 |
+| **CrewAI** | 角色化多 Agent | 模型无关(LiteLLM) | 弱 | ✅ 角色团队 | 一般 | 快速多 agent 原型 |
+| **AutoGen/AG2** | 对话式多 Agent | 模型无关 | 一般 | ✅ group chat | 一般 | 研究型（维护模式） |
+| **MAF/Semantic Kernel** | 企业框架 | 多(含本地) | ✅ | ✅ | ✅ | .NET/Azure 企业 |
+| **Google ADK** | Harness/多 Agent | Gemini 优先 | session/memory | ✅ A2A | 一般 | Google Cloud/Gemini |
+| **OpenAI Agents SDK** | 轻量 SDK | OpenAI 优先 | 轻 | ✅ handoffs | guardrails | OpenAI 栈原型 |
+| **Dify** | 低代码 | 多 | 平台托管 | ✅ 可视化 | ✅ | 非工程团队 |
+
+---
+
+## 十三、选型决策矩阵
+
+先按四变量判断：**团队语言、任务复杂度、模型生态、生产要求**。
+
+| 你的画像 | 推荐 | 理由 |
+| --- | --- | --- |
+| Python + 复杂 + 生产可靠 | **LangGraph** | 图式控制、durable、checkpoint、企业采用广 |
+| Anthropic 优先生产 | **Claude Agent SDK** | 驱动 Claude Code 同款架构 |
+| 快速多 agent 原型 | **CrewAI** | 门槛最低；规模化需重评估 |
+| .NET / Azure | **MAF / Semantic Kernel** | 唯一一等 C#、Azure 原生 |
+| OpenAI 栈 | **OpenAI Agents SDK** | 官方、最小抽象 |
+| 长程自主 / 通用 harness | **Claude SDK / deepagents** | 长程 planning、subagent、文件 offload |
+| RAG / 文档密集 | **Haystack / LlamaIndex** | pipeline 级检索 |
+| TypeScript / Next.js | **Mastra / Vercel AI SDK** | TS 原生、UI streaming |
+| 非开发 / 低代码 | **Dify / Langflow** | 可视化换速度 |
+
+**到底需不需要框架？** 简单单次调用百行可写；框架价值在你需要**持久状态、重试、多 agent 委派、HITL、一致 tracing** 时。经验：用 top 2 候选各写最小任务、都打 trace、对比成本/延迟/失败模式，选更想长期调试的那个。
+
+---
+
+## 十四、前沿开放问题（Frontier Open Problems）
+
+> 📎 **配套详解**：本节每题的「研究现状 + 代表论文清单」已单独展开为文档 **《Agent Harness 前沿问题详解（研究现状 + 代表论文）》**，同位于「技术调研」目录下，建议配合阅读。
+
+1.  **长程一致性（Long-horizon consistency）**：跨多 context window 持续推进、避免"一次性贪多"与"过早收工"。Initializer+Coding 两段式有效但泛化有限（目前偏全栈 Web）。
+
+2.  **多 Agent 协调瓶颈**：并行收益依赖任务可并行度；强依赖/共享上下文任务（多数编码）仍不适合；实时委派与协调是开放难题。
+
+3.  **提示注入的结构性无解**：无 LLM 能提供确定性抗注入保证；方向在架构隔离（信任边界、最小代理、推理/执行分离）与机器速度的行为监控+自动遏制。
+
+4.  **记忆的"写什么/怎么忘"**：抽取噪声、错误记忆持久化、语义陈旧（如用户升职后 role 仍旧）——需去重、校验、TTL、刷新机制。
+
+5.  **评测困境**：非确定性使传统测试失效；缺少统一 benchmark；LLM-as-judge 自身有偏；需 trace 驱动 + 人机混合评估。
+
+6.  **成本与延迟经济性**：每步皆 LLM 调用，多 agent 15× token；需任务价值足够高才划算，催生更小/更便宜模型做子 agent、缓存、批处理。
+
+7.  **Computer Use / GUI Agent 可靠性**：视觉与浏览器自动化局限（如看不到浏览器原生 alert），端到端验证仍脆。
+
+8.  **Agent 协议与互操作**：MCP（工具）+ A2A（agent 互通）+ ANP 等标准仍在演化，跨厂商身份/权限/审计尚未统一。
+
+9.  **安全供应链**：MCP server / 插件市场是活跃供应链攻击面；工具 schema 篡改、跨 server 令牌复用需监控与定界。
+
+10.  **自我改进与失控风险**：procedural memory 让 Agent 改写自身指令/系统提示已在发生，需版本化与不可变校验器兜底。
+
+---
+
+## 十五、给想从事 Agent Harness 的人的学习路线
+
+**阶段一：打底（1–2 月）**
+
+-   吃透一个 runtime：LangGraph 的 StateGraph / checkpoint / HITL。
+
+-   理解 Agent Loop 与 Function Calling 协议（OpenAI/Anthropic tool use）。
+
+-   读 Anthropic《Effective harnesses for long-running agents》《multi-agent research system》两篇原文。
+
+**阶段二：造轮子（2–4 月）**
+
+-   从零写一个最小 Harness：循环 + 状态持久化 + 一个 MCP 工具 + 一个 memory 层。
+
+-   接入 Langfuse 打 trace，刻意制造失败并观察。
+
+-   实现 HITL 闸门与沙箱执行（代码/浏览器）。
+
+**阶段三：纵深（4–6 月）**
+
+-   做分层记忆栈（工作/短期/长期/语义/情景），实验 Mem0 / Letta。
+
+-   搭建评测：20 个查询 + LLM-as-judge + CI 质量门禁。
+
+-   攻防演练：提示注入、最小权限、信任边界；读 OWASP Agentic 与 Zylos/MITRE ATLAS。
+
+**阶段四：前沿**
+
+-   跟踪 MCP / A2A / ANP 协议演进；
+
+-   复现长程两段式、多 agent 协调实验；
+
+-   关注"推理/执行分离""最小代理""可证明护栏"等结构性方向。
+
+---
+
+## 十六、参考链接
+
+### 概念与分层
+
+-   Analytics Vidhya — Agent Frameworks vs Runtime vs Harnesses: [https://www.analyticsvidhya.com/blog/2025/12/agent-frameworks-vs-runtimes-vs-harnesses/](https://www.analyticsvidhya.com/blog/2025/12/agent-frameworks-vs-runtimes-vs-harnesses/)
+
+-   Renuka Kelkar (LinkedIn) — What is an AI Harness: [https://www.linkedin.com/pulse/what-ai-harness-why-every-developer-building-llms-needs-renuka-kelkar-nqgne](https://www.linkedin.com/pulse/what-ai-harness-why-every-developer-building-llms-needs-renuka-kelkar-nqgne)
+
+-   parallel.ai — What is an agent harness?: [https://parallel.ai/articles/what-is-an-agent-harness](https://parallel.ai/articles/what-is-an-agent-harness)
+
+-   LangChain — On Agent Frameworks and Agent Observability (deepagents): [https://www.langchain.com/blog/on-agent-frameworks-and-agent-observability](https://www.langchain.com/blog/on-agent-frameworks-and-agent-observability)
+
+### 长程与多智能体
+
+-   Anthropic — Effective harnesses for long-running agents: [https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
+
+-   Anthropic — How we built our multi-agent research system: [https://www.anthropic.com/engineering/multi-agent-research-system](https://www.anthropic.com/engineering/multi-agent-research-system)
+
+### 记忆与上下文工程
+
+-   Turion — Context Engineering: Storage, Retrieval, and the New Memory Stack: [https://turion.ai/blog/context-engineering-storage-retrieval-memory-stack](https://turion.ai/blog/context-engineering-storage-retrieval-memory-stack)
+
+-   Metacto — AI Agent Memory: Architecture for Agents That Don't Forget: [https://www.metacto.com/blogs/ai-agent-memory-production-architecture](https://www.metacto.com/blogs/ai-agent-memory-production-architecture)
+
+-   Paperclipped — AI Agent Memory in 2026: From RAG to Persistent Context Architecture: [https://www.paperclipped.de/en/blog/ai-agent-memory-persistent-context-architecture](https://www.paperclipped.de/en/blog/ai-agent-memory-persistent-context-architecture)
+
+### 可观测与评测
+
+-   Braintrust — AI observability tools buyer's guide 2026: [https://www.braintrust.dev/articles/best-ai-observability-tools-2026](https://www.braintrust.dev/articles/best-ai-observability-tools-2026)
+
+-   Langfuse（开源可观测）: [https://langfuse.com/](https://langfuse.com/)
+
+-   Comet Opik（开源评测）: [https://www.comet.com/site/products/opik/](https://www.comet.com/site/products/opik/)
+
+### 安全与护栏
+
+-   Zylos — Defensive Prompt Engineering for Multi-Tool AI Agents: [https://zylos.ai/en/research/2026-05-11-defensive-prompt-engineering-multi-tool-ai-agents](https://zylos.ai/en/research/2026-05-11-defensive-prompt-engineering-multi-tool-ai-agents)
+
+-   Slav Dubrov — AI Agent Security in 2026: [https://slavadubrov.github.io/blog/2026/04/20/ai-agent-security](https://slavadubrov.github.io/blog/2026/04/20/ai-agent-security)
+
+-   zylos — Agentic AI Security defense stack: [https://zylos.ai/research/2026-05-16-agentic-ai-security-prompt-injection-defense-stack/](https://zylos.ai/research/2026-05-16-agentic-ai-security-prompt-injection-defense-stack/)
+
+-   OWASP — Agentic AI Security / LLM Top 10: [https://owasp.org/www-project-llm-top-10/](https://owasp.org/www-project-llm-top-10/)
+
+### 框架对比与生态
+
+-   The Agent Report — Ultimate Guide 2026: [https://the-agent-report.com/2026/05/ultimate-guide-open-source-ai-agent-frameworks](https://the-agent-report.com/2026/05/ultimate-guide-open-source-ai-agent-frameworks)
+
+-   The Agent Report — Mid-2026 Landscape: [https://the-agent-report.com/2026/07/ai-agent-frameworks-comparison-2026-langgraph-crewai-autogen/](https://the-agent-report.com/2026/07/ai-agent-frameworks-comparison-2026-langgraph-crewai-autogen/)
+
+-   Alice Labs — Best AI Agent Frameworks 2026: [https://alicelabs.ai/en/insights/best-ai-agent-frameworks-2026](https://alicelabs.ai/en/insights/best-ai-agent-frameworks-2026)
+
+-   Firecrawl — Best open source agent frameworks 2026: [https://firecrawl.vercel.app/blog/best-open-source-agent-frameworks](https://firecrawl.vercel.app/blog/best-open-source-agent-frameworks)
+
+### 语雀发布
+
+-   语雀开放 API — Toc 知识库目录: [https://www.yuque.com/yuque/developer/hq9l5y](https://www.yuque.com/yuque/developer/hq9l5y)
+{% endraw %}

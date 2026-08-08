@@ -1,0 +1,100 @@
+---
+title: "论文解读：ReAct: Synergizing Reasoning and Acting in Language Models（2022）"
+date: 2026-08-08
+layout: post
+liquid: false
+tags: [语雀, 计算机, 技术调研, Agent_Harness_技术调研报告(完整版), Agent_Harness_重要论文解读_·_索引]
+categories: [计算机]
+yuque: true
+---
+
+{% raw %}
+# 论文解读：ReAct: Synergizing Reasoning and Acting in Language Models（2022）
+
+> 一句话总结：ReAct 提出让 LLM 以交错方式同时生成"推理轨迹"与"动作"，用外部工具反馈 grounding 推理、用推理指导动作，奠定了现代 agent 的"思考-行动-观察"循环范式。
+
+## 1\. 背景与动机
+
+当时（2022）LLM 的两大能力被分开研究：一是 chain-of-thought（CoT，思维链）式的"推理"，二是把文本映射为环境动作的"行动"（如文本游戏、网页导航）。CoT 完全依赖模型内部参数化知识，在知识密集型任务上会产生幻觉、且无法纠正；而纯行动 agent 没有高层规划与工作记忆，在长程任务中一旦走错就无法恢复。ReAct 想回答：能不能把"推理"与"行动"耦合起来，令二者互相促进？
+
+## 2\. 核心问题
+
+-   如何让 LLM 同时具备可解释的内部推理与外部交互能力？
+
+-   推理与行动如何交错才能既减少幻觉、又能从异常中恢复？
+
+-   这种范式在知识任务与决策任务上是否都优于"只推理"或"只行动"？
+
+## 3\. 方法与架构
+
+ReAct 用 frozen LLM（PaLM-540B）+ few-shot prompt，让模型交替输出三类内容：
+
+-   Thought（推理轨迹，不作用于环境）：分解目标、注入常识、追踪进度、处理异常；
+
+-   Action（领域动作）：调用外部 API（如 Wikipedia 搜索）；
+
+-   Observation（环境返回的反馈）。
+
+```plain
+User Query
+   │
+   ▼
+[LLM] ──Thought──► 内部推理（规划/纠错，不进环境）
+   │
+   ├──Action─────► [外部工具/环境] ──Observation──┐
+   │                                              │
+   └──────────────────────────────────────────────┘
+            （交错循环，直到给出最终答案）
+```
+
+对知识任务采用"稠密"交错（每步都有 Thought）；对长程决策任务采用 sparse reasoning，只在关键位置插入 Thought，由模型自行决定出现时机。论文还用 ReAct 格式轨迹去微调更小的 PaLM-8/62B。
+
+## 4\. 关键实验与结论
+
+基准：HotpotQA（多跳问答）、FEVER（事实核查）、ALFWorld（文本家务游戏）、WebShop（网页购物）。
+
+-   HotpotQA（EM）：ReAct 27.4，CoT 29.4；但 ReAct→CoT-SC 组合达 35.1，优于纯 CoT。
+
+-   FEVER（Acc）：ReAct 60.9，超过 CoT 的 56.3；CoT-SC→ReAct 达 64.6。
+
+-   ALFWorld 成功率：ReAct 71%，比模仿学习基线（37%）高 34 个百分点。
+
+-   WebShop：ReAct 40% 平均分，比 IL 基线（29.1%）高约 10 个百分点。
+
+-   错误归因：CoT 失败中 56% 源于幻觉，ReAct 失败样本里幻觉占 0%。
+
+## 5\. 贡献与创新点
+
+首次把"推理"与"行动"统一进同一个生成循环，并提出 sparse/dense reasoning 的灵活用法；用 few-shot 即达到超过模仿/强化学习的决策表现；展示了可诊断、可控、可信的轨迹。它几乎是此后所有 agent 框架（LangChain Agent、OpenAI Assistants function calling、AutoGPT 等）的底层范式来源。
+
+## 6\. 局限与争议 / 后续工作
+
+ReAct 单独并不总优于 CoT（HotpotQA 上 27.4 < CoT 29.4），对检索质量敏感，易陷入重复搜索循环；长轨迹会撑爆上下文。后续 Reflexion（arXiv:2303.11366）在 ReAct 上加"自我反思"记忆以打破循环；Tree of Thoughts（arXiv:2305.10601）引入树搜索做前瞻/回溯；Generative Agents（arXiv:2304.03442）把动作扩展为带记忆流的长期规划。
+
+## 7\. 与 Agent Harness 的关系
+
+-   把"think-act-observe"作为 harness 的一等循环原语，给每一次动作配一条可观测的 Thought，便于 debug 与人工介入。
+
+-   不要假设单一模式万能：在检索/事实类任务用 ReAct grounding，在纯推理任务退回 CoT，做成"路由器"而非单一 agent。
+
+-   谨慎设计工具层与观察回传格式，避免模型陷入重复工具调用（加步数预算、失败检测与退避）。
+
+## 8\. 原文与资源
+
+-   论文：[https://arxiv.org/abs/2210.03629](https://arxiv.org/abs/2210.03629)
+
+-   项目页：[https://react-lm.github.io](https://react-lm.github.io)
+
+-   代码：[https://github.com/ysymyth/react-paper](https://github.com/ysymyth/react-paper)
+
+## 9\. BibTeX
+
+```plain
+@inproceedings{yao2023react,
+  title={ReAct: Synergizing Reasoning and Acting in Language Models},
+  author={Yao, Shunyu and Zhao, Jeffrey and Yu, Dian and Du, Nan and Shafran, Izhak and Narasimhan, Karthik and Cao, Yuan},
+  booktitle={International Conference on Learning Representations (ICLR)},
+  year={2023}
+}
+```
+{% endraw %}
