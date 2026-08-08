@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "Elasticsearch 笔记"
-subtitle:   "用 ES 做实体召回"
+subtitle:   "ES  基础"
 date:       2018-11-17 00:15:18
 author:     "Pelhans"
 header-img: "img/tensorflow.jpg"
