@@ -36,8 +36,26 @@
         {% endfor %}
       {% endif %}
       {% if hit %}
-        {% assign picked = picked | append: key %}
-        {% assign used = used | append: key %}
+        {% assign in_child = false %}
+        {% if group.children %}
+          {% for child in group.children %}
+            {% if child.tag %}
+              {% for t in post.tags %}
+                {% assign tn = t | strip | downcase %}
+                {% for gt in child.tag %}
+                  {% assign gtn = gt | strip | downcase %}
+                  {% if tn == gtn %}{% assign in_child = true %}{% break %}{% endif %}
+                {% endfor %}
+                {% if in_child %}{% break %}{% endif %}
+              {% endfor %}
+            {% endif %}
+            {% if in_child %}{% break %}{% endif %}
+          {% endfor %}
+        {% endif %}
+        {% unless in_child %}
+          {% assign picked = picked | append: key %}
+          {% assign used = used | append: key %}
+        {% endunless %}
       {% endif %}
     {% endfor %}
 
@@ -58,21 +76,17 @@
         <span class="yq-tree-count">{{ count }}</span>
       </div>
       <ul class="yq-tree-children">
-        {% for p in site.posts reversed %}
+        {% assign yq_docs = "" | split: "" %}
+        {% assign yq_docs_no = "" | split: "" %}
+        {% for p in site.posts %}
           {% assign pk = "|" | append: p.url | append: "|" %}
           {% if picked contains pk %}
-        <li>
-          <a class="yq-tree-doc{% if p.url == include.current %} is-active{% endif %}"
-             href="{{ p.url | prepend: site.baseurl }}"
-             title="{{ p.title | strip }}{% if p.subtitle %} · {{ p.subtitle | strip }}{% endif %}">
-            <svg class="yq-doc-icon" viewBox="0 0 1024 1024" width="13" height="13" aria-hidden="true">
-              <path d="M608 96H224a64 64 0 0 0-64 64v704a64 64 0 0 0 64 64h576a64 64 0 0 0 64-64V352L608 96z m-16 288V168l208 216H592z" fill="currentColor"></path>
-            </svg>
-            <span class="yq-doc-name">{% if p.subtitle and p.subtitle != "" %}{{ p.subtitle | strip }}{% else %}{{ p.title | strip }}{% endif %}</span>
-          </a>
-        </li>
+            {% if p.doc_order %}{% assign yq_docs = yq_docs | push: p %}{% else %}{% assign yq_docs_no = yq_docs_no | push: p %}{% endif %}
           {% endif %}
         {% endfor %}
+        {% assign yq_docs = yq_docs | sort: "doc_order" %}
+        {% for p in yq_docs %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
+        {% for p in yq_docs_no %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
 
         {% if group.children %}
           {% for child in group.children %}
@@ -107,21 +121,17 @@
                 <span class="yq-tree-count">{{ ccount }}</span>
               </div>
               <ul class="yq-tree-children">
-                {% for p in site.posts reversed %}
+                {% assign yq_docs = "" | split: "" %}
+                {% assign yq_docs_no = "" | split: "" %}
+                {% for p in site.posts %}
                   {% assign pk = "|" | append: p.url | append: "|" %}
                   {% if cpicked contains pk %}
-                <li>
-                  <a class="yq-tree-doc{% if p.url == include.current %} is-active{% endif %}"
-                     href="{{ p.url | prepend: site.baseurl }}"
-                     title="{{ p.title | strip }}{% if p.subtitle %} · {{ p.subtitle | strip }}{% endif %}">
-                    <svg class="yq-doc-icon" viewBox="0 0 1024 1024" width="13" height="13" aria-hidden="true">
-                      <path d="M608 96H224a64 64 0 0 0-64 64v704a64 64 0 0 0 64 64h576a64 64 0 0 0 64-64V352L608 96z m-16 288V168l208 216H592z" fill="currentColor"></path>
-                    </svg>
-                    <span class="yq-doc-name">{% if p.subtitle and p.subtitle != "" %}{{ p.subtitle | strip }}{% else %}{{ p.title | strip }}{% endif %}</span>
-                  </a>
-                </li>
+                    {% if p.doc_order %}{% assign yq_docs = yq_docs | push: p %}{% else %}{% assign yq_docs_no = yq_docs_no | push: p %}{% endif %}
                   {% endif %}
                 {% endfor %}
+                {% assign yq_docs = yq_docs | sort: "doc_order" %}
+                {% for p in yq_docs %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
+                {% for p in yq_docs_no %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
               </ul>
             </li>
           {% endfor %}

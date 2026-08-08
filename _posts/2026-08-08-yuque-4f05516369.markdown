@@ -1,10 +1,11 @@
 ---
-title: "4\\. MCP 与外部工具生态：让 Agent 长出可插拔的\"手\""
+title: "7. MCP 与外部工具生态：让 Agent 长出可插拔的\"手\""
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 7
 yuque: true
 ---
 
@@ -14,8 +15,6 @@ yuque: true
 > 阅读方式：本文由直觉到实现逐步推进，不分层级，可随读随停。
 
 ---
-
-# 4\. MCP 与外部工具生态：让 Agent 长出可插拔的"手"
 
 > 一句话：**MCP 不是"又一个工具格式"，而是 Agent 与外部世界之间的"能力总线"——Codex 用一层统一协议，把任意外部工具/数据源变成模型一眼能看见、且同样受审批与沙箱约束的一等公民。**
 

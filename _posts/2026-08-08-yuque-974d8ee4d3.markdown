@@ -1,10 +1,11 @@
 ---
-title: "4\\. 多代理编排：从 orchestrator 到 agent graph"
+title: "10 . 多代理编排：从 orchestrator 到 agent graph"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 10
 yuque: true
 ---
 
@@ -14,8 +15,6 @@ yuque: true
 > 阅读方式：本文由直觉到实现逐步推进，不分层级，可随读随停。
 
 ---
-
-# 4\. 多代理编排：从 orchestrator 到 agent graph
 
 > 一句话：**一个 agent 干不完、或干起来太贵时，就把活拆给多个 agent——但"拆"本身也要成本，Codex 的解法是把协调收拢到一个共享控制柄 + 一张可持久化的 agent 图上。**
 

@@ -1,10 +1,11 @@
 ---
-title: "N. 可观测性与遥测：让 agent“看见”系统"
+title: "12. 可观测性与遥测：让 agent“看见”系统"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 12
 yuque: true
 ---
 
@@ -15,8 +16,6 @@ yuque: true
 > 阅读方式：本文由直觉到实现逐步推进，不分层级，可随读随停。
 
 ---
-
-# N. 可观测性与遥测：让 agent“看见”系统
 
 > 一句话：**传统软件的可观测性是为 SRE 准备的“事后显微镜”，而 agent 的可观测性是给黑盒决策本身装上的“行车记录仪”——它既要在诡异行为发生后回放“为什么”，也要在运行中量化“花了多少、卡在哪”。**
 

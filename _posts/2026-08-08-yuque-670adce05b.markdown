@@ -3,8 +3,9 @@ title: "2._Agent_循环_一次_turn_的生命周期"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 2
 yuque: true
 ---
 

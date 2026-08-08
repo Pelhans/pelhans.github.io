@@ -1,10 +1,11 @@
 ---
-title: "4\\. 代码即工具：把\"写代码\"做成模型的一等工具"
+title: "5. 代码即工具：把\"写代码\"做成模型的一等工具"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 5
 yuque: true
 ---
 

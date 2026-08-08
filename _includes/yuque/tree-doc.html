@@ -1,0 +1,10 @@
+<li>
+  <a class="yq-tree-doc{% if include.p.url == include.current %} is-active{% endif %}"
+     href="{{ include.p.url | prepend: site.baseurl }}"
+     title="{{ include.p.title | strip }}{% if include.p.subtitle %} · {{ include.p.subtitle | strip }}{% endif %}">
+    <svg class="yq-doc-icon" viewBox="0 0 1024 1024" width="13" height="13" aria-hidden="true">
+      <path d="M608 96H224a64 64 0 0 0-64 64v704a64 64 0 0 0 64 64h576a64 64 0 0 0 64-64V352L608 96z m-16 288V168l208 216H592z" fill="currentColor"></path>
+    </svg>
+    <span class="yq-doc-name">{% if include.p.subtitle and include.p.subtitle != "" %}{{ include.p.subtitle | strip }}{% else %}{{ include.p.title | strip }}{% endif %}</span>
+  </a>
+</li>

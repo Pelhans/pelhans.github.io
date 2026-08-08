@@ -1,10 +1,11 @@
 ---
-title: "工程实践与未来：造你自己的 harness"
+title: "14. 工程实践与未来：造你自己的 harness"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 14
 yuque: true
 ---
 
@@ -15,7 +16,6 @@ yuque: true
 
 ---
 
-# 工程实践与未来：造你自己的 harness
 
 > 一句话：**读完前 13 篇，你"看懂了" Codex；但只有当你能照着它的骨架从零搭一个，才真正"拥有"这套工程判断力。** 本篇把 Codex 当作一份已经验证过的 reference implementation，提炼出可迁移的原则、约定、坑，和一张能落地的路线图。
 

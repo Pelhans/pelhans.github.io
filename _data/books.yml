@@ -25,11 +25,13 @@
     - title: David Silver 强化学习
       prefix: [deepRL-ch, deepRL]
       tag: [Reinforment Learning]
-    - title: Agent Harness 技术调研
+    - title: Agent Harness
       tag: [Agent Harness 技术调研]
       children:
         - title: Agent Harness 论文解读
           tag: [Agent Harness 论文解读]
+        - title: Codex 代码解读
+          tag: [Codex 代码解读]
     - title: 大模型
       tag: [大模型]
       children:

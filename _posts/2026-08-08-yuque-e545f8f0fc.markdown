@@ -1,10 +1,11 @@
 ---
-title: "4\\. 安全自治：策略、沙箱、权限、审批与守护"
+title: "8 . 安全自治：策略、沙箱、权限、审批与守护"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 8
 yuque: true
 ---
 
@@ -14,8 +15,6 @@ yuque: true
 > 阅读方式：本文由直觉到实现逐步推进，不分层级，可随读随停。
 
 ---
-
-# 4\. 安全自治：策略、沙箱、权限、审批与守护
 
 > 一句话：**coding agent 要有用，就得被允许"自己敲命令"；可一旦它自己敲命令，就具备了搞垮你系统的能力。** 这两者之间的张力，是 Codex 整套安全设计的出发点。
 

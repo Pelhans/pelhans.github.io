@@ -1,10 +1,11 @@
 ---
-title: "1\\. Harness 解剖学：model + harness 与 Codex 全景架构"
+title: "1 . Harness 解剖学：model + harness 与 Codex 全景架构"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 1
 yuque: true
 ---
 
@@ -14,8 +15,6 @@ yuque: true
 > 阅读方式：本文由直觉到实现逐步推进，不分层级，可随读随停。
 
 ---
-
-# 1\. Harness 解剖学：model + harness 与 Codex 全景架构
 
 > 一句话：**模型是大脑，Harness 是身体与操作系统。** 框架给你乐高积木，harness 直接给你一台能上路的车——Codex 就是后者。
 

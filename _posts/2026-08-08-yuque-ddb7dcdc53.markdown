@@ -1,10 +1,11 @@
 ---
-title: "11._评估与自我验证_让_agent_自己证明_我改对了_"
+title: "11. 评估与自我验证 让 agent 自己证明 我改对了"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 11
 yuque: true
 ---
 

@@ -1,10 +1,11 @@
 ---
-title: "4\\. 工具层：注册表、路由与安全编排"
+title: "4 . 工具层：注册表、路由与安全编排"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 计算机, Agent Harness 技术调研]
+tags: [语雀, 计算机, Agent Harness 技术调研, Codex 代码解读]
 categories: [计算机]
+doc_order: 4
 yuque: true
 ---
 
@@ -15,7 +16,7 @@ yuque: true
 
 ---
 
-# 4\. 工具层：注册表、路由与安全编排
+# 4 . 工具层：注册表、路由与安全编排
 
 > 一句话：**工具是模型的"手和脚"**——它决定了 agent 能"动"什么，以及"动"的时候有多安全。
 
