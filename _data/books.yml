@@ -122,19 +122,3 @@
       tag: [数学物理方法]
     - title: 其它
       tag: [物理]
-
-- slug: yuque-next
-  title: NEXT
-  icon: "🚀"
-  desc: 来自语雀备份：NEXT 工作笔记
-  groups:
-    - title: 地标业务
-      tag: [地标业务]
-    - title: 酒店业务
-      tag: [酒店业务]
-    - title: 大模型项目
-      tag: [大模型项目]
-    - title: 八股文
-      tag: [八股文]
-    - title: 其它
-      tag: [NEXT]
