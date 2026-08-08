@@ -1,288 +1,76 @@
 ---
-layout: default
+layout: yuque
 ---
 
-<!-- Image to hack wechat -->
-<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
-<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+{% include yuque/resolve-book.html post=page %}
+{% assign cur_book = null %}
+{% for b in site.data.books %}
+  {% if b.slug == resolved_book_slug %}{% assign cur_book = b %}{% break %}{% endif %}
+{% endfor %}
 
-<!-- Post Header -->
-<!-- canvas-nest.min.js -->
-<!--<script type="text/javascript" src="../../../../js/canvas-nest.min.js"></script>-->
-<head>
-    <link href="../../../../css/rouge.css" rel="stylesheet">
-</head>
-<!--<script type="text/javascript" color="238,205,205" opacity='0.7' zIndex="-2" count="99" src="../../../../js/canvas-nest.min.js"></script>-->
-<!--//添加评论系统-->
-<link rel="stylesheet" href="../../../../css/gitalk.css">
-    <script src="../../../../js/gitalk.min.js"></script>
-<!--    打赏-->
-<link href="/css/reward.css?v=6.2.0" rel="stylesheet" type="text/css" />
-<!-- 大图浏览 -->
-<link href="../../../../css/imageContent.css" rel="stylesheet">
+<div class="yq-shell">
 
-<style type="text/css">
-    header.intro-header{
-        position: relative;
-        background-image: url('{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}')
-    }
-
-    {% if page.header-mask %}
-    header.intro-header .header-mask{
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        background: rgba(0,0,0, {{ page.header-mask }});
-    }
-    {% endif %}
-</style>
-<header class="intro-header" >
-    <div class="header-mask"></div>
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-                <div class="post-heading">
-                    <div class="tags">
-                        {% for tag in page.tags %}
-                        <a class="tag" href="{{ site.baseurl }}/tags/#{{ tag }}" title="{{ tag }}">{{ tag }}</a>
-                        {% endfor %}
-                    </div>
-                    <h1>{{ page.title }}</h1>
-                    {% comment %}
-                        always create a h2 for keeping the margin , Yizibi
-                    {% endcomment %}
-                    {% comment %} if page.subtitle {% endcomment %}
-                    <h2 class="subheading">{{ page.subtitle }}</h2>
-                    {% comment %} endif {% endcomment %}
-                    <span class="meta">Posted by {% if page.author %}{{ page.author }}{% else %}{{ site.title }}{% endif %} on {{ page.date | date: "%B %-d, %Y" }}</span>
-                </div>
-            </div>
-        </div>
+  {% if cur_book %}
+  <aside class="yq-sidebar">
+    <div class="yq-sidebar-head">
+      <span class="yq-book-icon">{{ cur_book.icon }}</span>
+      <a class="yq-book-title" href="{{ '/book/' | append: cur_book.slug | append: '/' | prepend: site.baseurl }}">{{ cur_book.title }}</a>
     </div>
-</header>
+    <a class="yq-back-all" href="{{ site.baseurl }}/">
+      <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M640 256L384 512l256 256z" fill="currentColor"/></svg>
+      全部知识库
+    </a>
+    {% include yuque/book-tree.html book=cur_book current=page.url %}
+  </aside>
+  {% endif %}
 
-<!-- Post Content -->
-<article>
-    <div class="container">
-        <div class="row">
-
-    <!-- Post Container -->
-            <div class="
-                col-lg-8 col-lg-offset-2
-                col-md-10 col-md-offset-1
-                post-container">
-
-                <!-- Multi-Lingual -->
-                {% if page.multilingual %}
-                <!-- Language Selector -->
-                <select class="sel-lang" onchange= "onLanChange(this.options[this.options.selectedIndex].value)">
-                    <option value="0" selected> 中文 Chinese </option>
-                    <option value="1"> 英文 English </option>
-                </select>
-                {% endif %}
-
-
-				{{ content }}
-
-
-                <hr style="visibility: hidden;">
-
-
-   <!--  上一篇或者下一篇post按钮 -->
-                <ul class="pager">
-                    {% if page.previous.url %}
-                    <li class="previous">
-                        <a href="{{ page.previous.url | prepend: site.baseurl | replace: '//', '/' }}" data-toggle="tooltip" data-placement="top" title="{{page.previous.title}}">
-                        Previous<br>
-                        <span>{{page.previous.title}}</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                    {% if page.next.url %}
-                    <li class="next">
-                        <a href="{{ page.next.url | prepend: site.baseurl | replace: '//', '/' }}" data-toggle="tooltip" data-placement="top" title="{{page.next.title}}">
-                        Next<br>
-                        <span>{{page.next.title}}</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-
-
-<!--                {% if site.disqus_username %}-->
-                <!-- disqus 评论框 start -->
-<!--                <div class="comment">-->
-<!--                    <div id="disqus_thread" class="disqus-thread"></div>-->
-<!--                </div>-->
-                <!-- disqus 评论框 end -->
-<!--                {% endif %}-->
-
-<!--                <div id="disqus_thread"></div>-->
-<!--                <script>-->
-<!--                    -->
-<!--                    /**-->
-<!--                     *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.-->
-<!--                     *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/-->
-<!--                 var disqus_config = function () {-->
-<!--                 this.page.url = site.page.url;  // Replace PAGE_URL with your page's canonical URL variable-->
-<!--                 this.page.identifier = site.page.identifier; // Replace PAGE_IDENTIFIER with your page's unique identifier variable-->
-<!--                 };-->
-<!--                 -->
-<!--                (function() { // DON'T EDIT BELOW THIS LINE-->
-<!--                 var d = document, s = d.createElement('script');-->
-<!--                 s.src = 'https://yizibi.disqus.com/embed.js';-->
-<!--                 s.setAttribute('data-timestamp', +new Date());-->
-<!--                 (d.head || d.body).appendChild(s);-->
-<!--                 })();-->
-<!--                    </script>-->
-<!--                <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>-->
-
-
-                {% if site.netease_comment %}
-                <!-- 网易云跟帖 评论框 start -->
-                <div id="cloud-tie-wrapper" class="cloud-tie-wrapper"></div>
-                <!-- 网易云跟帖 评论框 end -->
-                {% endif %}
-                
-                <!--   gitalk       -->
-                {% if site.gitalk %}
-                <!--<div class="comment">-->
-                    <!--{% include comments.html %}-->
-                    <!--</div>-->
-                {% endif %}
-            </div>  
-
-    <!-- Side Catalog Container -->
-        {% if page.catalog %}
-            <div class="
-                col-lg-2 col-lg-offset-0
-                visible-lg-block
-                sidebar-container
-                catalog-container">
-                <div class="side-catalog">
-                    <hr class="hidden-sm hidden-xs">
-                    <h5>
-                        <a class="catalog-toggle" href="#">CATALOG</a>
-                    </h5>
-                    <ul class="catalog-body"></ul>
-                </div>
-            </div>
+  <main class="yq-main{% unless cur_book %} is-full{% endunless %}">
+    <article class="yq-doc">
+      <div class="yq-breadcrumb">
+        <a href="{{ site.baseurl }}/">知识库</a>
+        {% if cur_book %}
+        <span class="sep">/</span>
+        <a href="{{ '/book/' | append: cur_book.slug | append: '/' | prepend: site.baseurl }}">{{ cur_book.title }}</a>
         {% endif %}
+        {% if resolved_group_title != "" %}
+        <span class="sep">/</span>
+        <span>{{ resolved_group_title }}</span>
+        {% endif %}
+      </div>
 
-    <!-- Sidebar Container -->
-            <div class="
-                col-lg-8 col-lg-offset-2
-                col-md-10 col-md-offset-1
-                sidebar-container">
+      <h1 class="yq-doc-title">{{ page.title | strip }}</h1>
+      {% if page.subtitle and page.subtitle != "" %}
+      <p class="yq-doc-subtitle">{{ page.subtitle | strip }}</p>
+      {% endif %}
 
-                <!-- Featured Tags -->
-                {% if site.featured-tags %}
-                <section>
-                    <hr class="hidden-sm hidden-xs">
-                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
-                    <div class="tags">
-        				{% for tag in site.tags %}
-                            {% if tag[1].size > site.featured-condition-size %}
-                				<a href="/tags/#{{ tag[0] }}" title="{{ tag[0] }}" rel="{{ tag[1].size }}">
-                                    {{ tag[0] }}
-                                </a>
-                            {% endif %}
-        				{% endfor %}
-        			</div>
-                </section>
-                {% endif %}
+      <div class="yq-doc-meta">
+        <span>{{ page.date | date: "%Y-%m-%d" }}</span>
+        <span>{{ page.author | default: site.title }}</span>
+        {% for tag in page.tags %}
+        <a class="yq-tag" href="{{ site.baseurl }}/tags/#{{ tag | strip }}">{{ tag | strip }}</a>
+        {% endfor %}
+      </div>
 
-                <!-- Friends Blog -->
-                {% if site.friends %}
-                <hr>
-                <h5>FRIENDS</h5>
-                <ul class="list-inline">
-                    {% for friend in site.friends %}
-                        <li><a href="{{friend.href}}">{{friend.title}}</a></li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
+      <div class="yq-content">
+        {{ content }}
+      </div>
 
-    
-</article>
-<!-- 大图浏览 -->
-<!-- {% include clickable-image.html %} -->
+      <nav class="yq-pager">
+        {% if page.previous.url %}
+        <a class="prev" href="{{ page.previous.url | prepend: site.baseurl }}">
+          <span class="dir">← 上一篇</span>
+          <span class="name">{{ page.previous.title | strip }}</span>
+        </a>
+        {% endif %}
+        {% if page.next.url %}
+        <a class="next" href="{{ page.next.url | prepend: site.baseurl }}">
+          <span class="dir">下一篇 →</span>
+          <span class="name">{{ page.next.title | strip }}</span>
+        </a>
+        {% endif %}
+      </nav>
+    </article>
 
-<!-- Add support for Mathjax by Voleking-->
-{% if page.mathjax %}
-  {% include mathjax_support.html %}
-{% endif %}
-
-{% if site.netease_comment %}
-<!-- 网易云跟帖JS代码 start -->
-<script src="https://img1.cache.netease.com/f2e/tie/yun/sdk/loader.js"></script>
-<script>
-  var cloudTieConfig = {
-    url: document.location.href, 
-    sourceId: "",
-    productKey: "de25fc98a6fe48b3bc8a7ae765da99a0",
-    target: "cloud-tie-wrapper"
-  };
-  var yunManualLoad = true;
-  Tie.loader("aHR0cHM6Ly9hcGkuZ2VudGllLjE2My5jb20vcGMvbGl2ZXNjcmlwdC5odG1s", true);
-</script>
-<!-- 网易云跟帖JS代码 end -->
-{% endif %}
-
-{% if site.disqus_username %}
-<!-- disqus 公共JS代码 start (一个网页只需插入一次) -->
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES * * */
-    var disqus_shortname = "{{site.disqus_username}}";
-    var disqus_identifier = "{{page.id}}";
-    var disqus_url = "{{site.url}}{{page.url}}";
-
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<!-- disqus 公共JS代码 end -->
-{% endif %}
-
-
-{% if site.anchorjs %}
-<!-- async load function -->
-<script>
-    function async(u, c) {
-      var d = document, t = 'script',
-          o = d.createElement(t),
-          s = d.getElementsByTagName(t)[0];
-      o.src = u;
-      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
-      s.parentNode.insertBefore(o, s);
-    }
-</script>
-<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
-<script>
-    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
-        anchors.options = {
-          visible: 'always',
-          placement: 'right',
-          icon: '#'
-        };
-        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
-    })
-</script>
-<style>
-    /* place left on bigger screen */
-    @media all and (min-width: 800px) {
-        .anchorjs-link{
-            position: absolute;
-            left: -0.75em;
-            font-size: 1.1em;
-            margin-top : -0.1em;
-        }
-    }
-</style>
-{% endif %}
+    <aside class="yq-outline" id="yqOutline"></aside>
+  </main>
+</div>

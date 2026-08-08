@@ -1,0 +1,30 @@
+---
+layout: yuque
+title: 全部文档
+permalink: /archive/
+---
+
+<div class="yq-page">
+  <h1 class="yq-page-title">全部文档</h1>
+  <p class="yq-page-desc">按时间归档，共 {{ site.posts | size }} 篇</p>
+
+  {% assign posts_by_year = site.posts | group_by_exp: "post", "post.date | date: '%Y'" %}
+  {% for year in posts_by_year %}
+  <section class="yq-group-block">
+    <div class="yq-group-head">
+      {{ year.name }}
+      <span class="c">{{ year.items | size }} 篇</span>
+    </div>
+    <ul class="yq-list">
+      {% for post in year.items %}
+      <li>
+        <a href="{{ post.url | prepend: site.baseurl }}">
+          <span class="t">{{ post.title | strip }}{% if post.subtitle and post.subtitle != "" %} · {{ post.subtitle | strip }}{% endif %}</span>
+          <span class="d">{{ post.date | date: "%m-%d" }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</div>

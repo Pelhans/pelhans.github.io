@@ -1,0 +1,104 @@
+# 知识库（语雀式层级结构）定义
+#
+# 每个 book 是一个知识库，slug 决定 URL：/book/<slug>/
+# groups 为知识库下的目录（层级二），match 用于把文章自动归入该目录：
+#   - tag:    按文章 tags 精确匹配（去空格、忽略大小写）
+#   - prefix: 按文章文件名去掉日期后的前缀匹配（如 ml_note1 -> ml_note）
+# 一篇文章只会归入第一个命中的目录；未命中任何目录的文章进入 "其它" 目录。
+
+- slug: machine-learning
+  title: 机器学习
+  icon: "📘"
+  desc: 机器学习经典算法与 PRML 读书笔记
+  groups:
+    - title: 机器学习笔记
+      prefix: [ml_note]
+    - title: PRML 读书笔记
+      prefix: [prml_note]
+      tag: [PRML]
+
+- slug: deep-learning
+  title: 深度学习
+  icon: "🧠"
+  desc: 深度学习基础、优化、网络结构与预训练模型
+  groups:
+    - title: 深度学习笔记
+      prefix: [deep_learning-note]
+    - title: 专题总结
+      tag: [Deep Learning]
+
+- slug: nlp
+  title: 自然语言处理
+  icon: "💬"
+  desc: NLP 任务、预训练模型、检索与匹配
+  groups:
+    - title: 预训练与模型压缩
+      prefix: [pretraining_model, various_attention, duibixuexi]
+    - title: 检索与匹配
+      prefix: [lucene, es_score, recall, text_matching]
+    - title: 源码与实践
+      prefix: [crf_in_tensorflow, meta_graph_embedding]
+    - title: 其它笔记
+      tag: [NLP]
+
+- slug: knowledge-graph
+  title: 知识图谱
+  icon: "🕸"
+  desc: 知识图谱构建、语义网、实体链接与关系抽取
+  groups:
+    - title: 从零构建知识图谱
+      prefix: [kg_from_0_note]
+    - title: 小象学院知识图谱
+      prefix: [xiaoxiangkg-note]
+    - title: 语义网与本体
+      prefix: [semantic_web_note, semantic_note, kg_turtle]
+    - title: 论文笔记
+      prefix: [kg_paper-note, relation_extraction_note, named_entity_recognition, entity_linking, entity_alignment]
+    - title: 图数据库
+      prefix: [kg_neo4j_cypher]
+    - title: 其它
+      tag: [Knowledge Graph]
+
+- slug: speech
+  title: 语音识别
+  icon: "🎧"
+  desc: 语音信号处理、GMM-HMM、Kaldi 实践
+  groups:
+    - title: 语音识别笔记
+      prefix: [deepspeech_ch1_ch, deepspeech_phonetics, deepspeech-hmm, deepspeech-oldasr, deepspeech-mfcc, deepspeech-advanced-decode-triphone]
+    - title: 语音信号处理
+      prefix: [speeh_process_note, speeh_process]
+    - title: Kaldi 手札
+      prefix: [kaldi-note]
+      tag: [Kaldi]
+    - title: 项目实践
+      prefix: [introduction_for_ZASR]
+    - title: 其它
+      tag: [speech process]
+
+- slug: reinforcement-learning
+  title: 强化学习
+  icon: "🎮"
+  desc: David Silver 强化学习课程笔记
+  groups:
+    - title: David Silver 强化学习
+      prefix: [deepRL-ch, deepRL]
+      tag: [Reinforment Learning]
+
+- slug: engineering
+  title: 工程与工具
+  icon: "🛠"
+  desc: Python、Linux、数据库等工程实践
+  groups:
+    - title: Python
+      prefix: [python_cookbook_1to, python_cookbook_7to, python_cookbook_9to, python_cookbook_12to, python_cookbook_14to, numpy-note]
+      tag: [Python]
+    - title: Linux
+      prefix: [liunx-sed_awk, liunx-regex]
+      tag: [Linux]
+    - title: 数据库
+      prefix: [mongodb]
+      tag: [Database]
+    - title: 杂谈
+      prefix: [zatan_]
+      tag: [zatan]

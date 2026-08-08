@@ -1,0 +1,95 @@
+---
+layout: yuque
+---
+
+{% assign cur_book = null %}
+{% for b in site.data.books %}
+  {% if b.slug == page.slug %}{% assign cur_book = b %}{% break %}{% endif %}
+{% endfor %}
+
+<div class="yq-shell">
+  <aside class="yq-sidebar">
+    <div class="yq-sidebar-head">
+      <span class="yq-book-icon">{{ cur_book.icon }}</span>
+      <span class="yq-book-title">{{ cur_book.title }}</span>
+    </div>
+    <a class="yq-back-all" href="{{ site.baseurl }}/">
+      <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M640 256L384 512l256 256z" fill="currentColor"/></svg>
+      全部知识库
+    </a>
+    {% include yuque/book-tree.html book=cur_book current="" %}
+  </aside>
+
+  <main class="yq-main">
+    <div class="yq-doc">
+      <div class="yq-breadcrumb">
+        <a href="{{ site.baseurl }}/">知识库</a>
+        <span class="sep">/</span>
+        <span>{{ cur_book.title }}</span>
+      </div>
+
+      <h1 class="yq-doc-title">{{ cur_book.icon }} {{ cur_book.title }}</h1>
+      <p class="yq-doc-subtitle">{{ cur_book.desc }}</p>
+      <div class="yq-doc-meta"></div>
+
+      {% assign used = "|" %}
+      {% for group in cur_book.groups %}
+        {% assign picked = "|" %}
+        {% for post in site.posts reversed %}
+          {% assign key = post.url | append: "|" %}
+          {% assign probe = "|" | append: key %}
+          {% if used contains probe %}{% continue %}{% endif %}
+
+          {% assign hit = false %}
+          {% if group.prefix %}
+            {% assign base = post.path | split: "/" | last | split: "." | first %}
+            {% assign stem = base | slice: 11, 200 %}
+            {% for p in group.prefix %}
+              {% assign plen = p | size %}
+              {% assign head = stem | slice: 0, plen %}
+              {% if head == p %}{% assign hit = true %}{% break %}{% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if hit == false and group.tag %}
+            {% for t in post.tags %}
+              {% assign tn = t | strip | downcase %}
+              {% for gt in group.tag %}
+                {% assign gtn = gt | strip | downcase %}
+                {% if tn == gtn %}{% assign hit = true %}{% break %}{% endif %}
+              {% endfor %}
+              {% if hit %}{% break %}{% endif %}
+            {% endfor %}
+          {% endif %}
+
+          {% if hit %}
+            {% assign picked = picked | append: key %}
+            {% assign used = used | append: key %}
+          {% endif %}
+        {% endfor %}
+
+        {% if picked != "|" %}
+        <section class="yq-group-block">
+          <div class="yq-group-head">
+            <svg viewBox="0 0 1024 1024" width="15" height="15"><path d="M128 192h288l64 96h416a32 32 0 0 1 32 32v480a32 32 0 0 1-32 32H128a32 32 0 0 1-32-32V224a32 32 0 0 1 32-32z" fill="#8c8c8c"/></svg>
+            {{ group.title }}
+            <span class="c">{{ picked | split: "|" | size }} 篇</span>
+          </div>
+          <ul class="yq-list">
+            {% for p in site.posts reversed %}
+              {% assign pk = "|" | append: p.url | append: "|" %}
+              {% if picked contains pk %}
+              <li>
+                <a href="{{ p.url | prepend: site.baseurl }}">
+                  <span class="t">{{ p.title | strip }}{% if p.subtitle and p.subtitle != "" %} · {{ p.subtitle | strip }}{% endif %}</span>
+                  <span class="d">{{ p.date | date: "%Y-%m-%d" }}</span>
+                </a>
+              </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </main>
+</div>

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+{% include yuque/head.html %}
+<body>
+  {% include yuque/header.html %}
+  <div class="yq-body">
+    {{ content }}
+  </div>
+  {% include yuque/footer.html %}
+  {% include yuque/search-data.html %}
+  <script src="{{ '/js/yuque.js' | prepend: site.baseurl }}"></script>
+</body>
+</html>

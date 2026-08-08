@@ -1,0 +1,11 @@
+<footer class="yq-footer">
+  <div>
+    © {{ site.time | date: '%Y' }} {{ site.title }}
+    {% if site.github_username %}
+      · <a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub</a>
+    {% endif %}
+    {% if site.email %}
+      · <a href="mailto:{{ site.email }}">{{ site.email }}</a>
+    {% endif %}
+  </div>
+</footer>

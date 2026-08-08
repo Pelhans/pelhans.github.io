@@ -1,0 +1,47 @@
+{% comment %}
+  解析一篇文章属于哪个知识库 / 哪个目录。
+  入参: include.post
+  输出变量（include 之后可直接使用）:
+    resolved_book_slug / resolved_book_title / resolved_group_title
+{% endcomment %}
+
+{% assign resolved_book_slug = "" %}
+{% assign resolved_book_title = "" %}
+{% assign resolved_group_title = "" %}
+
+{% assign rp = include.post %}
+{% assign rbase = rp.path | split: "/" | last | split: "." | first %}
+{% assign rstem = rbase | slice: 11, 200 %}
+
+{% for b in site.data.books %}
+  {% if resolved_book_slug != "" %}{% break %}{% endif %}
+  {% for g in b.groups %}
+    {% assign rhit = false %}
+
+    {% if g.prefix %}
+      {% for p in g.prefix %}
+        {% assign plen = p | size %}
+        {% assign head = rstem | slice: 0, plen %}
+        {% if head == p %}{% assign rhit = true %}{% break %}{% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if rhit == false and g.tag %}
+      {% for t in rp.tags %}
+        {% assign tn = t | strip | downcase %}
+        {% for gt in g.tag %}
+          {% assign gtn = gt | strip | downcase %}
+          {% if tn == gtn %}{% assign rhit = true %}{% break %}{% endif %}
+        {% endfor %}
+        {% if rhit %}{% break %}{% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if rhit %}
+      {% assign resolved_book_slug = b.slug %}
+      {% assign resolved_book_title = b.title %}
+      {% assign resolved_group_title = g.title %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+{% endfor %}

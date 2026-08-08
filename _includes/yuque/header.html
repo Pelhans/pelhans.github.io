@@ -1,0 +1,29 @@
+<header class="yq-header">
+  <div class="yq-header-inner">
+    <button class="yq-sidebar-toggle" id="yqSidebarToggle" aria-label="目录">
+      <svg viewBox="0 0 1024 1024" width="16" height="16"><path d="M128 256h768v72H128zM128 476h768v72H128zM128 696h768v72H128z" fill="currentColor"/></svg>
+    </button>
+
+    <a class="yq-logo" href="{{ site.baseurl }}/">
+      <span class="yq-logo-mark">P</span>
+      <span>{{ site.title }}</span>
+    </a>
+
+    <nav class="yq-nav">
+      <a href="{{ site.baseurl }}/"{% if page.url == '/' %} class="is-active"{% endif %}>知识库</a>
+      <a href="{{ site.baseurl }}/archive/"{% if page.url contains '/archive' %} class="is-active"{% endif %}>全部文档</a>
+      <a href="{{ site.baseurl }}/tags/"{% if page.url contains '/tags' %} class="is-active"{% endif %}>标签</a>
+      <a href="{{ site.baseurl }}/about/"{% if page.url contains '/about' %} class="is-active"{% endif %}>关于</a>
+    </nav>
+
+    <div class="yq-header-spacer"></div>
+
+    <div class="yq-search">
+      <span class="yq-search-icon">
+        <svg viewBox="0 0 1024 1024" width="14" height="14"><path d="M448 128a320 320 0 1 1 0 640 320 320 0 0 1 0-640z m0 72a248 248 0 1 0 0 496 248 248 0 0 0 0-496z m235 427l53-53 176 176-53 53z" fill="currentColor"/></svg>
+      </span>
+      <input type="text" id="yqSearchInput" placeholder="搜索文档…" autocomplete="off">
+      <div class="yq-search-result" id="yqSearchResult"></div>
+    </div>
+  </div>
+</header>

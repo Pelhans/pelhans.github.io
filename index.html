@@ -1,44 +1,68 @@
 ---
-layout: page
-description: "道阻且长，行则将至"
+layout: yuque
+title: 知识库
 ---
 
+<div class="yq-page">
+  <h1 class="yq-page-title">{{ site.title }} 的知识库</h1>
+  <p class="yq-page-desc">{{ site.description }}　·　共 {{ site.posts | size }} 篇文档</p>
 
-{% for post in paginator.posts %}
+  <div class="yq-book-grid">
+    {% for b in site.data.books %}
+      {% assign bcount = 0 %}
+      {% assign used = "|" %}
+      {% for group in b.groups %}
+        {% for post in site.posts %}
+          {% assign key = post.url | append: "|" %}
+          {% assign probe = "|" | append: key %}
+          {% if used contains probe %}{% continue %}{% endif %}
 
-<div class="post-preview">
-    <a href="{{ post.url | prepend: site.baseurl }}">
-        <h2 class="post-title">
-            {{ post.title }}
-        </h2>
-        {% if post.subtitle %}
-        <h3 class="post-subtitle">
-            {{ post.subtitle }}
-        </h3>
-        {% endif %}
-        <div class="post-content-preview">
-            {{ post.content | strip_html | truncate:200 }}
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by {% if post.author %}{{ post.author }}{% else %}{{ site.title }}{% endif %} on {{ post.date | date: "%B %-d, %Y" }}
-    </p>
+          {% assign hit = false %}
+          {% if group.prefix %}
+            {% assign base = post.path | split: "/" | last | split: "." | first %}
+            {% assign stem = base | slice: 11, 200 %}
+            {% for p in group.prefix %}
+              {% assign plen = p | size %}
+              {% assign head = stem | slice: 0, plen %}
+              {% if head == p %}{% assign hit = true %}{% break %}{% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if hit == false and group.tag %}
+            {% for t in post.tags %}
+              {% assign tn = t | strip | downcase %}
+              {% for gt in group.tag %}
+                {% assign gtn = gt | strip | downcase %}
+                {% if tn == gtn %}{% assign hit = true %}{% break %}{% endif %}
+              {% endfor %}
+              {% if hit %}{% break %}{% endif %}
+            {% endfor %}
+          {% endif %}
+
+          {% if hit %}
+            {% assign used = used | append: key %}
+            {% assign bcount = bcount | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+
+      <a class="yq-book-card" href="{{ '/book/' | append: b.slug | append: '/' | prepend: site.baseurl }}">
+        <div class="icon">{{ b.icon }}</div>
+        <div class="name">{{ b.title }}</div>
+        <div class="desc">{{ b.desc }}</div>
+        <div class="stat">{{ b.groups | size }} 个目录 · {{ bcount }} 篇文档</div>
+      </a>
+    {% endfor %}
+  </div>
+
+  <h2 class="yq-section-title">最近更新</h2>
+  <ul class="yq-list">
+    {% for post in site.posts limit: 12 %}
+    <li>
+      <a href="{{ post.url | prepend: site.baseurl }}">
+        <span class="t">{{ post.title | strip }}{% if post.subtitle and post.subtitle != "" %} · {{ post.subtitle | strip }}{% endif %}</span>
+        <span class="d">{{ post.date | date: "%Y-%m-%d" }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
 </div>
-<hr>
-{% endfor %}
-
-<!-- Pager -->
-{% if paginator.total_pages > 1 %}
-<ul class="pager">
-    {% if paginator.previous_page %}
-    <li class="previous">
-        <a href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; Newer Posts</a>
-    </li>
-    {% endif %}
-    {% if paginator.next_page %}
-    <li class="next">
-        <a href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">Older Posts &rarr;</a>
-    </li>
-    {% endif %}
-</ul>
-{% endif %}
