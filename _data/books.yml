@@ -32,31 +32,6 @@
           tag: [Agent Harness 论文解读]
         - title: Codex 代码解读
           tag: [Codex 代码解读]
-    - title: 大模型
-      tag: [大模型]
-      children:
-        - title: 模型调研
-          tag: [模型调研]
-        - title: 模型微调
-          tag: [模型微调]
-        - title: RAG
-          tag: [RAG]
-    - title: 深度学习
-      tag: [深度学习]
-    - title: 预训练与模型压缩
-      prefix: [pretraining_model, various_attention, duibixuexi]
-    - title: 检索与匹配
-      prefix: [lucene, es_score, recall, text_matching]
-    - title: 源码与实践
-      prefix: [crf_in_tensorflow, meta_graph_embedding]
-    - title: NLP 其它笔记
-      tag: [NLP]
-    - title: 知识图谱
-      tag: [知识图谱]
-    - title: 编程
-      tag: [编程]
-    - title: 杂项
-      tag: [杂项]
     - title: 其它
       tag: [计算机]
 

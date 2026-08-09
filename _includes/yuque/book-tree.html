@@ -132,6 +132,55 @@
                 {% assign yq_docs = yq_docs | sort: "doc_order" %}
                 {% for p in yq_docs %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
                 {% for p in yq_docs_no %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
+
+                {% if child.children %}
+                  {% for gchild in child.children %}
+                    {% assign gpicked = "|" %}
+                    {% for post in site.posts reversed %}
+                      {% assign key = post.url | append: "|" %}
+                      {% assign probe = "|" | append: key %}
+                      {% if used contains probe %}{% continue %}{% endif %}
+                      {% assign ghit = false %}
+                      {% if gchild.tag %}
+                        {% for t in post.tags %}
+                          {% assign tn = t | strip | downcase %}
+                          {% for gt in gchild.tag %}
+                            {% assign gtn = gt | strip | downcase %}
+                            {% if tn == gtn %}{% assign ghit = true %}{% break %}{% endif %}
+                          {% endfor %}
+                          {% if ghit %}{% break %}{% endif %}
+                        {% endfor %}
+                      {% endif %}
+                      {% if ghit %}
+                        {% assign gpicked = gpicked | append: key %}
+                        {% assign used = used | append: key %}
+                      {% endif %}
+                    {% endfor %}
+                    {% assign gcount = gpicked | split: "|" | size %}
+                    <li class="yq-tree-group yq-tree-sub">
+                      <div class="yq-tree-group-title" role="button" tabindex="0">
+                        <svg class="yq-caret" viewBox="0 0 1024 1024" width="12" height="12" aria-hidden="true">
+                          <path d="M384 256l320 256-320 256z" fill="currentColor"></path>
+                        </svg>
+                        <span class="yq-tree-group-name">{{ gchild.title }}</span>
+                        <span class="yq-tree-count">{{ gcount }}</span>
+                      </div>
+                      <ul class="yq-tree-children">
+                        {% assign yq_docs = "" | split: "" %}
+                        {% assign yq_docs_no = "" | split: "" %}
+                        {% for p in site.posts %}
+                          {% assign pk = "|" | append: p.url | append: "|" %}
+                          {% if gpicked contains pk %}
+                            {% if p.doc_order %}{% assign yq_docs = yq_docs | push: p %}{% else %}{% assign yq_docs_no = yq_docs_no | push: p %}{% endif %}
+                          {% endif %}
+                        {% endfor %}
+                        {% assign yq_docs = yq_docs | sort: "doc_order" %}
+                        {% for p in yq_docs %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
+                        {% for p in yq_docs_no %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
+                      </ul>
+                    </li>
+                  {% endfor %}
+                {% endif %}
               </ul>
             </li>
           {% endfor %}
