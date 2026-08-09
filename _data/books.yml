@@ -61,8 +61,11 @@
   groups:
     - title: 粒子物理导论
       tag: [粒子物理导论]
-    - title: 超对称与弦论
-      tag: [超对称与弦论]
+      children:
+        - title: CERN 2026年1–7月 arXiv 产出深度拆解
+          tag: [粒子物理-CERN]
+        - title: 超对称与弦论·知识点细读索引
+          tag: [粒子物理-超对称细读]
     - title: 数学物理方法
       tag: [数学物理方法]
     - title: 其它
