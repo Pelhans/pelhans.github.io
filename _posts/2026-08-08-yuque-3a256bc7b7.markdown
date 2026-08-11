@@ -3,7 +3,7 @@ title: "超对称与弦论·知识点细读索引(2023–2026_综述配套)"
 date: 2026-08-08
 layout: post
 liquid: false
-tags: [语雀, 物理, 粒子物理导论, 超对称与弦论]
+tags: [语雀, 物理, 粒子物理导论, 粒子物理-超对称细读]
 categories: [物理]
 yuque: true
 ---

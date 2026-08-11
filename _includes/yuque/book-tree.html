@@ -49,6 +49,35 @@
                 {% if in_child %}{% break %}{% endif %}
               {% endfor %}
             {% endif %}
+            {% if in_child == false and child.children %}
+              {% for gchild in child.children %}
+                {% if gchild.tag %}
+                  {% for t in post.tags %}
+                    {% assign tn = t | strip | downcase %}
+                    {% for gt in gchild.tag %}
+                      {% assign gtn = gt | strip | downcase %}
+                      {% if tn == gtn %}{% assign in_child = true %}{% break %}{% endif %}
+                    {% endfor %}
+                    {% if in_child %}{% break %}{% endif %}
+                  {% endfor %}
+                {% endif %}
+                {% if in_child == false and gchild.children %}
+                  {% for ggchild in gchild.children %}
+                    {% if ggchild.tag %}
+                      {% for t in post.tags %}
+                        {% assign tn = t | strip | downcase %}
+                        {% for gt in ggchild.tag %}
+                          {% assign gtn = gt | strip | downcase %}
+                          {% if tn == gtn %}{% assign in_child = true %}{% break %}{% endif %}
+                        {% endfor %}
+                        {% if in_child %}{% break %}{% endif %}
+                      {% endfor %}
+                    {% endif %}
+                  {% endfor %}
+                {% endif %}
+                {% if in_child %}{% break %}{% endif %}
+              {% endfor %}
+            {% endif %}
             {% if in_child %}{% break %}{% endif %}
           {% endfor %}
         {% endif %}
@@ -177,6 +206,55 @@
                         {% assign yq_docs = yq_docs | sort: "doc_order" %}
                         {% for p in yq_docs %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
                         {% for p in yq_docs_no %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
+
+                        {% if gchild.children %}
+                          {% for ggchild in gchild.children %}
+                            {% assign ggpicked = "|" %}
+                            {% for post in site.posts reversed %}
+                              {% assign key = post.url | append: "|" %}
+                              {% assign probe = "|" | append: key %}
+                              {% if used contains probe %}{% continue %}{% endif %}
+                              {% assign gghit = false %}
+                              {% if ggchild.tag %}
+                                {% for t in post.tags %}
+                                  {% assign tn = t | strip | downcase %}
+                                  {% for gt in ggchild.tag %}
+                                    {% assign gtn = gt | strip | downcase %}
+                                    {% if tn == gtn %}{% assign gghit = true %}{% break %}{% endif %}
+                                  {% endfor %}
+                                  {% if gghit %}{% break %}{% endif %}
+                                {% endfor %}
+                              {% endif %}
+                              {% if gghit %}
+                                {% assign ggpicked = ggpicked | append: key %}
+                                {% assign used = used | append: key %}
+                              {% endif %}
+                            {% endfor %}
+                            {% assign ggcount = ggpicked | split: "|" | size %}
+                            <li class="yq-tree-group yq-tree-sub">
+                              <div class="yq-tree-group-title" role="button" tabindex="0">
+                                <svg class="yq-caret" viewBox="0 0 1024 1024" width="12" height="12" aria-hidden="true">
+                                  <path d="M384 256l320 256-320 256z" fill="currentColor"></path>
+                                </svg>
+                                <span class="yq-tree-group-name">{{ ggchild.title }}</span>
+                                <span class="yq-tree-count">{{ ggcount }}</span>
+                              </div>
+                              <ul class="yq-tree-children">
+                                {% assign yq_docs = "" | split: "" %}
+                                {% assign yq_docs_no = "" | split: "" %}
+                                {% for p in site.posts %}
+                                  {% assign pk = "|" | append: p.url | append: "|" %}
+                                  {% if ggpicked contains pk %}
+                                    {% if p.doc_order %}{% assign yq_docs = yq_docs | push: p %}{% else %}{% assign yq_docs_no = yq_docs_no | push: p %}{% endif %}
+                                  {% endif %}
+                                {% endfor %}
+                                {% assign yq_docs = yq_docs | sort: "doc_order" %}
+                                {% for p in yq_docs %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
+                                {% for p in yq_docs_no %}{% include yuque/tree-doc.html p=p current=include.current %}{% endfor %}
+                              </ul>
+                            </li>
+                          {% endfor %}
+                        {% endif %}
                       </ul>
                     </li>
                   {% endfor %}
