@@ -32,6 +32,8 @@
           tag: [Agent Harness 论文解读]
         - title: Codex 代码解读
           tag: [Codex 代码解读]
+        - title: Anthropic Engineering 翻译
+          tag: [Anthropic Engineering 翻译]
     - title: 其它
       tag: [计算机]
 
