@@ -75,3 +75,12 @@
       tag: [数学物理方法]
     - title: 其它
       tag: [物理]
+
+# ===== 随笔 =====
+- slug: essay
+  title: 随笔
+  icon: "📝"
+  desc: 随手记录的一些思考与感悟
+  groups:
+    - title: 随笔
+      tag: [随笔-40分快感]
