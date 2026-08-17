@@ -3,8 +3,8 @@ title: Pelhans Blog
 SEOTitle: Pelhans 的博客
 header-img: img/home_haizei.jpg
 email: me@pelhans.com
-description: "自然语言处理学徒 | Pelhans，Machine Learning , NLP , KG | 这里是 @Pelhans 的博客"
-keyword: "自然语言处理, 知识图谱, 理论物理，超对称"
+description: "这里是 @Pelhans 的博客"
+keyword: "自然语言处理, 知识图谱, 物理"
 baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'
 
 
